@@ -99,6 +99,10 @@ const
   sFlag_Dai           = 'D';                         //袋装水泥
   sFlag_San           = 'S';                         //散装水泥
 
+  sFlag_PriceLS       = 'L';                         //零售价
+  sFlag_PriceQY       = 'Q';                         //区域价
+  sFlag_PriceZY       = 'Z';                         //客户专用
+
   sFlag_BillNew       = 'N';                         //新单
   sFlag_BillEdit      = 'E';                         //修改
   sFlag_BillDel       = 'D';                         //删除
@@ -287,6 +291,7 @@ const
   sTable_ManualEvent  = 'Sys_ManualEvent';           //人工干预
 
   sTable_PriceWeek    = 'S_PriceWeek';               //价格周期
+  sTable_PriceRule    = 'S_PriceRule';               //价格规则
   sTable_Customer     = 'S_Customer';                //客户信息
   sTable_Salesman     = 'S_Salesman';                //业务人员
   sTable_SaleContract = 'S_Contract';                //销售合同
@@ -294,7 +299,6 @@ const
 
   sTable_ZhiKa        = 'S_ZhiKa';                   //纸卡数据
   sTable_ZhiKaDtl     = 'S_ZhiKaDtl';                //纸卡明细
-  sTable_PriceRule    = 'S_PriceRule';               //价格规则
   sTable_Card         = 'S_Card';                    //销售磁卡
   sTable_Bill         = 'S_Bill';                    //提货单
   sTable_BillBak      = 'S_BillBak';                 //已删交货单
@@ -539,18 +543,38 @@ const
 
   sSQL_NewPriceWeek = 'Create Table $Table(W_ID $Inc, W_NO varChar(15),' +
        'W_Name varChar(50), W_Begin DateTime, W_End DateTime,' +
-       'W_Man varChar(32), W_Date DateTime, W_Valid Char(1), W_Memo varChar(50))';
+       'W_EndUse Char(1), W_Man varChar(32), W_Date DateTime,' +
+       'W_Valid Char(1), W_ValidTime DateTime, W_Memo varChar(50))';
   {-----------------------------------------------------------------------------
    价格周期: PriceWeek
    *.W_ID:记录编号
    *.W_NO:周期编号
    *.W_Name:名称
    *.W_Begin:开始
-   *.W_End:结束(若有,则视为临时价格,结束后长期价)
+   *.W_End:结束
+   *.W_EndUse:是否启用,若启用为临时价
    *.W_Man:创建人
    *.W_Date:创建时间
    *.W_Valid: 是否生效(Y/N)
+   *.W_ValidTime: 生效时间
    *.W_Memo:备注信息
+  -----------------------------------------------------------------------------}
+  
+  sSQL_NewPriceRule = 'Create Table $Table(R_ID $Inc, R_Week varChar(15),' +
+       'R_Type varChar(5), R_Area varChar(50), R_Customer varChar(15),' +
+       'R_StockNo varChar(20), R_StockName varChar(80), R_Price $Float,' +
+       'R_Man varChar(32), R_Date DateTime)';
+  {-----------------------------------------------------------------------------
+   价格规则:PriceRule
+   *.R_ID:记录编号
+   *.R_Week: 所属周期
+   *.R_Type: 类型
+   *.R_Area: 所属区域
+   *.R_Customer: 所属客户
+   *.R_StockNo,R_StockName: 物料名称
+   *.R_Price: 价格
+   *.R_Man: 办理人
+   *.R_Date: 办理时间
   -----------------------------------------------------------------------------}
 
   sSQL_NewCustomer = 'Create Table $Table(R_ID $Inc, C_ID varChar(15), ' +
@@ -765,20 +789,6 @@ const
    *.D_YunFei: 运费单价
    *.D_PPrice:调价前单价
    *.D_TPrice:允许调价
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewPriceRule = 'Create Table $Table(R_ID $Inc, R_StockNo varChar(20), ' +
-       'R_StockName varChar(80), R_Low $Float,' +
-       'R_High $Float, R_Valid Char(1), R_Man varChar(32), R_Date DateTime)';
-  {-----------------------------------------------------------------------------
-   价格规则:PriceRule
-   *.R_ID:记录编号
-   *.R_StockNo,R_StockName: 物料
-   *.R_Low: 价格下限
-   *.R_High: 价格上限
-   *.R_Valid: 有效
-   *.R_Man: 办理人
-   *.R_Date: 办理时间
   -----------------------------------------------------------------------------}
 
   sSQL_NewBill = 'Create Table $Table(R_ID $Inc, L_ID varChar(20),' +
@@ -1626,6 +1636,7 @@ begin
   AddSysTableItem(sTable_ManualEvent, sSQL_NewManualEvent);
 
   AddSysTableItem(sTable_PriceWeek, sSQL_NewPriceWeek);
+  AddSysTableItem(sTable_PriceRule, sSQL_NewPriceRule);
   AddSysTableItem(sTable_Customer, sSQL_NewCustomer);
   AddSysTableItem(sTable_Salesman, sSQL_NewSalesMan);
   AddSysTableItem(sTable_SaleContract, sSQL_NewSaleContract);
@@ -1650,7 +1661,6 @@ begin
 
   AddSysTableItem(sTable_ZhiKa, sSQL_NewZhiKa);
   AddSysTableItem(sTable_ZhiKaDtl, sSQL_NewZhiKaDtl);
-  AddSysTableItem(sTable_PriceRule, sSQL_NewPriceRule);
   AddSysTableItem(sTable_Card, sSQL_NewCard);
   AddSysTableItem(sTable_Bill, sSQL_NewBill);
   AddSysTableItem(sTable_BillBak, sSQL_NewBill);

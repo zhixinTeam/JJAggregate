@@ -23,7 +23,7 @@
 {.$DEFINE ClientMon}
 //进程守护客户端
 
-{$DEFINE HardMon}
+{.$DEFINE HardMon}
 //编译硬件守护
 
 {.$DEFINE GenRODL}
@@ -62,8 +62,6 @@
   //自动收卡票箱
   {$DEFINE MITTruckProber}
   //车检由中间件控制
-  {$DEFINE TruckProberEx}
-  //车检光栅状态判断扩展(此开关启用时建议同时启用MITTruckProber开关)
   {$DEFINE MultiReplay}
   //计数器应答模式
   {$DEFINE PrintHYEach}
@@ -89,8 +87,6 @@
   //订单量使用客户余额计算
   {$DEFINE PrintHY}
   //出厂打印化验单
-  {$DEFINE SaveHyDanEvent}
-  //生成推送化验单事件
   {$DEFINE ForceEleCard}
   //强制车辆办理和启用电子标签
   {$DEFINE WxShowCusMoney}
@@ -103,10 +99,6 @@
   //自助机原材料开卡不检查订单剩余量
   {$DEFINE ProberShow}
   //车检发送小屏
-  {$DEFINE SpecialControl}
-  //春江特殊要求
-  {$DEFINE FixLoad}
-  //定制放灰
   {$DEFINE OrderNoMulCard}
   //采购禁止一车多单
   {$DEFINE CapturePictureEx}

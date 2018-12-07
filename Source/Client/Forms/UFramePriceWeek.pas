@@ -118,6 +118,7 @@ begin
   if (nParam.FCommand = cCmd_ModalResult) and (nParam.FParamA = mrOK) then
   begin
     InitFormData('');
+    ReloadPriceWeek();
   end;
 end;
 
@@ -137,6 +138,7 @@ begin
   if (nParam.FCommand = cCmd_ModalResult) and (nParam.FParamA = mrOK) then
   begin
     InitFormData(FWhere);
+    ReloadPriceWeek();
   end;
 end;
 
@@ -154,10 +156,12 @@ begin
   if not QueryDlg(nStr, sAsk) then Exit;
 
   nStr := 'Delete From %s Where W_NO=''%s''';
-  nStr := Format(nStr, [sTable_PriceWeek, nID]);
+  nStr := Format(nStr, [sTable_PriceWeek,
+          SQLQuery.FieldByName('W_NO').AsString]);
   FDM.ExecuteSQL(nStr);
 
   InitFormData(FWhere);
+  ReloadPriceWeek();
   ShowMsg('¼ÇÂ¼ÒÑÉ¾³ý', sHint);
 end;
 

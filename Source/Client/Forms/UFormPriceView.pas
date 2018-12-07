@@ -100,9 +100,9 @@ begin
   Series1.Clear;
   SetLength(FItems, 0);
 
-  nStr := 'Select W_Name,W_Begin,W_End From $PW ' +
-          'Where W_Valid=''$F'' And ((W_Date>=''$S'' and W_Date <''$E'') Or ' +
-          ' (W_Begin>=''$S'' and W_Begin <''$E'')) ' +
+  nStr := 'Select W_Name,W_Begin,W_End,W_EndUse From $PW ' +
+          'Where (W_Date>=''$S'' and W_Date <''$E'') Or ' +
+          '      (W_Begin>=''$S'' and W_Begin <''$E'') ' +
           'Order By W_Begin ASC';
   nStr := MacroValue(nStr, [MI('$PW', sTable_PriceWeek), MI('$F', sFlag_Yes),
           MI('$S', DateTime2Str(FStart)), MI('$E', DateTime2Str(FEnd + 1))]);
@@ -122,7 +122,7 @@ begin
         FName := FieldByName('W_Name').AsString;
         FDateStart := FieldByName('W_Begin').AsDateTime;
         FDateEnd := FieldByName('W_End').AsDateTime;
-        FLimited := FDateEnd < gSysParam.FMaxDate;
+        FLimited := FieldByName('W_EndUse').AsString = sFlag_Yes;
       end;
 
       Next;

@@ -62,6 +62,8 @@ function GetLadingStockItems(var nItems: TDynamicStockItemArray): Boolean;
 //可用品种列表
 function GetCardUsed(const nCard: string): string;
 //获取卡片类型
+procedure ReloadPriceWeek();
+//重新加载周期,监控周期生效或过期
 
 function LoadSysDictItem(const nItem: string; const nList: TStrings): TDataSet;
 //读取系统字典项
@@ -619,6 +621,12 @@ begin
   end;
 
   Result := Length(nItems) > 0;
+end;
+
+procedure ReloadPriceWeek();
+var nOut: TWorkerBusinessCommand;
+begin
+  CallBusinessCommand(cBC_ReloadPriceWeek, '', '', @nOut);
 end;
 
 //------------------------------------------------------------------------------

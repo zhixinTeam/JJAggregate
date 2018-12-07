@@ -23,10 +23,8 @@ type
     dxLayout1Item3: TdxLayoutItem;
     EditEnd: TcxDateEdit;
     dxLayout1Item5: TdxLayoutItem;
-    Check1: TcxCheckBox;
-    dxLayout1Item6: TdxLayoutItem;
     dxLayout1Group2: TdxLayoutGroup;
-    Check2: TcxCheckBox;
+    Check1: TcxCheckBox;
     dxLayout1Item7: TdxLayoutItem;
     cxLabel1: TcxLabel;
     dxLayout1Item8: TdxLayoutItem;
@@ -124,14 +122,12 @@ begin
   begin
     EditEnd.Date := Str2DateTime(nData);
     Result := True;
-
-    Check2.Checked := EditEnd.Date < gSysParam.FMaxDate;
-    EditEnd.Enabled := Check2.Checked;
   end else
 
   if Sender = Check1 then
   begin
     Check1.Checked := nData = sFlag_Yes;
+    EditEnd.Enabled := Check1.Checked;
     Result := True;
   end;
 end;
@@ -144,10 +140,9 @@ begin
   if nID = '' then
   begin
     EditStart.Date := Date() + 1;
-    EditEnd.Date := gSysParam.FMaxDate;
+    EditEnd.Date := Date() + 8;
 
-    Check1.Checked := True;
-    Check2.Checked := False;
+    Check1.Checked := False;
     EditEnd.Enabled := False;
   end else
   begin
@@ -159,18 +154,9 @@ end;
 
 procedure TfFormPriceWeek.Check2PropertiesChange(Sender: TObject);
 begin
-  if ActiveControl <> Check2 then Exit;
+  if ActiveControl = Check1 then
+    EditEnd.Enabled := Check1.Checked;
   //非认为操作不予处理
-
-  if Check2.Checked then
-  begin
-    EditEnd.Enabled := True;
-    EditEnd.Date := Date() + 7;
-  end else
-  begin
-    EditEnd.Enabled := False;
-    EditEnd.Date := gSysParam.FMaxDate;
-  end;
 end;
 
 function TfFormPriceWeek.OnVerifyCtrl(Sender: TObject;
@@ -188,26 +174,71 @@ begin
 
   if Sender = EditStart then
   begin
-    Result := EditStart.Date <= EditEnd.Date;
-    nHint := '结束日期应大于开始日期';
-    if not Result then Exit;
-
-    if not Check2.Checked then Exit;
-    nStr := 'Select Count(*) From %s Where W_Valid=''%s'' And ' +
-            '(W_Begin<=''%s'' and W_End>''%s'')';
-    nStr := Format(nStr, [sTable_PriceWeek, sFlag_Yes,
-            DateTime2Str(EditEnd.Date), DateTime2Str(EditEnd.Date)]);
-    //临时价结束时,有可用的长期价
-    
-    with FDM.QueryTemp(nStr) do
-    if RecordCount > 0 then
+    if not Check1.Checked then //长期价
     begin
-      Result := Fields[0].AsInteger > 0;
-      if Result then Exit;
+      nStr := 'Select W_NO,W_Name From %s ' +
+              'Where W_EndUse=''%s'' And W_Begin=''%s''';
+      nStr := Format(nStr, [sTable_PriceWeek, sFlag_No,
+              DateTime2Str(EditStart.Date)]);
+      //同时开始的长期价
 
-      nStr := '本周期结束后没有可用的价格,会导致客户无法提货.' + #13#10 +
-              '请修改"开始、结束"日期后再保存.';
-      ShowDlg(nStr, sHint);
+      with FDM.QueryTemp(nStr) do
+      if RecordCount > 0 then
+      begin
+        nStr := '';
+        First;
+
+        while not Eof do
+        begin
+          if FieldByName('W_NO').AsString <> FRecordID then
+          begin
+            if nStr <> '' then
+              nStr := nStr + #13#10;
+            //xxxx
+            
+            nStr := nStr + Format('※.周期:%s 名称: %s', [
+                    FieldByName('W_NO').AsString,
+                    FieldByName('W_Name').AsString]);
+            //xxxxx
+          end;
+          Next;
+        end;
+
+        if nStr <> '' then
+        begin
+          nStr := '以下周期的开始时间与本周期相同:' + #13#10#13#10 +
+                  nStr + #13#10#13#10 +
+                  '请修改"开始、结束"日期后再保存.';
+          ShowDlg(nStr, sHint);
+
+          Result := False;
+          Exit;
+        end;
+      end;
+    end;
+
+    if Check1.Checked then //临时价
+    begin
+      Result := EditStart.Date <= EditEnd.Date;
+      nHint := '结束日期应大于开始日期';
+      if not Result then Exit;
+
+      nStr := 'Select Count(*) From %s ' +
+              'Where W_EndUse=''%s'' And W_Begin<=''%s''';
+      nStr := Format(nStr, [sTable_PriceWeek, sFlag_No,
+              DateTime2Str(EditEnd.Date)]);
+      //临时价结束时,有可用的长期价
+
+      with FDM.QueryTemp(nStr) do
+      if RecordCount > 0 then
+      begin
+        Result := Fields[0].AsInteger > 0;
+        if Result then Exit;
+
+        nStr := '本周期结束后没有可用的价格,会导致客户无法提货.' + #13#10 +
+                '请修改"开始、结束"日期后再保存.';
+        ShowDlg(nStr, sHint);
+      end;
     end;
   end;
 end;
@@ -225,13 +256,15 @@ begin
   if nID = '' then Exit;
   nStr := MakeSQLByStr([SF('W_Name', EditName.Text),
           SF('W_Begin', EditStart.Date, sfDateTime),
-          SF('W_End', EditEnd.Date, sfDateTime),
-          SF('W_Memo', EditMemo.Text),
+          SF('W_Valid', sFlag_No),
           SF('W_Man', gSysParam.FUserID),
           SF('W_Date', FDM.SQLServerNow, sfVal),
+          SF('W_Memo', EditMemo.Text),
 
-          SF_IF([SF('W_Valid', sFlag_Yes),
-                 SF('W_Valid', sFlag_No)], Check1.Checked),
+          SF_IF([SF('W_End', EditEnd.Date, sfDateTime),
+                 SF('W_End', gSysParam.FMaxDate, sfDateTime)], Check1.Checked),
+          SF_IF([SF('W_EndUse', sFlag_Yes),
+                 SF('W_EndUse', sFlag_No)], Check1.Checked),
           SF_IF([SF('W_NO', nID), ''], FRecordID = '')
           ], sTable_PriceWeek, SF('W_NO', FRecordID), FRecordID = '');
   //xxxxx

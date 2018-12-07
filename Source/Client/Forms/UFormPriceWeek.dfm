@@ -1,5 +1,5 @@
 inherited fFormPriceWeek: TfFormPriceWeek
-  Left = 574
+  Left = 575
   Top = 431
   ClientHeight = 268
   ClientWidth = 284
@@ -13,12 +13,12 @@ inherited fFormPriceWeek: TfFormPriceWeek
     inherited BtnOK: TButton
       Left = 138
       Top = 235
-      TabOrder = 7
+      TabOrder = 6
     end
     inherited BtnExit: TButton
       Left = 208
       Top = 235
-      TabOrder = 8
+      TabOrder = 7
     end
     object EditName: TcxTextEdit [2]
       Left = 81
@@ -60,18 +60,9 @@ inherited fFormPriceWeek: TfFormPriceWeek
       Width = 121
     end
     object Check1: TcxCheckBox [6]
-      Left = 11
-      Top = 235
-      Hint = 'T.W_Valid'
-      Caption = #21608#26399#26377#25928
-      ParentFont = False
-      TabOrder = 6
-      Transparent = True
-      Width = 86
-    end
-    object Check2: TcxCheckBox [7]
       Left = 23
       Top = 97
+      Hint = 'T.W_EndUse'
       Caption = #20020#26102#20215#26684': '#21040#26399#21518#33258#21160#21551#29992#38271#26399#20215'.'
       ParentFont = False
       Properties.OnChange = Check2PropertiesChange
@@ -79,7 +70,7 @@ inherited fFormPriceWeek: TfFormPriceWeek
       Transparent = True
       Width = 121
     end
-    object cxLabel1: TcxLabel [8]
+    object cxLabel1: TcxLabel [7]
       Left = 23
       Top = 86
       AutoSize = False
@@ -116,7 +107,7 @@ inherited fFormPriceWeek: TfFormPriceWeek
           object dxLayout1Item7: TdxLayoutItem
             Caption = 'cxCheckBox1'
             ShowCaption = False
-            Control = Check2
+            Control = Check1
             ControlOptions.ShowBorder = False
           end
           object dxLayout1Item5: TdxLayoutItem
@@ -133,14 +124,6 @@ inherited fFormPriceWeek: TfFormPriceWeek
           Caption = #22791#27880#20449#24687':'
           CaptionOptions.AlignVert = tavTop
           Control = EditMemo
-          ControlOptions.ShowBorder = False
-        end
-      end
-      inherited dxLayout1Group1: TdxLayoutGroup
-        object dxLayout1Item6: TdxLayoutItem [0]
-          Caption = 'cxCheckBox1'
-          ShowCaption = False
-          Control = Check1
           ControlOptions.ShowBorder = False
         end
       end

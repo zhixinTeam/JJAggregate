@@ -15,9 +15,9 @@ uses
   UFormPassword, UFrameAuthorize, UFormAuthorize, UFormOptions,
   {$IFDEF MicroMsg}
   UFrameWeiXinAccount, UFormWeiXinAccount,
-  UFrameWeiXinSendlog, UFormWeiXinSendlog, UFormGetWechartAccount
+  UFrameWeiXinSendlog, UFormWeiXinSendlog, UFormGetWechartAccount,
   {$ENDIF}
-  UFramePriceWeek, UFormPriceWeek, UFormPriceView,
+  UFramePriceWeek, UFormPriceWeek, UFormPriceView, UFramePriceRule,
   UFrameCustomer, UFormCustomer, UFormGetCustom, UFrameSalesMan, UFormSalesMan,
   UFrameShouJu, UFormShouJu, UFramePayment, UFormPayment,
   UFrameCustomerCredit, UFormCustomerCredit, UFrameCusAccount,

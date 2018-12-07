@@ -27,7 +27,7 @@ const
   cFI_FrameCustomer     = $0004;                     //客户管理
   cFI_FrameSalesMan     = $0005;                     //业务员
   cFI_FramePriceWeek    = $0006;                     //价格周期
-  cFI_FrameZhiKa        = $0007;                     //办理纸卡
+  cFI_FramePriceRule    = $0007;                     //价格管理
   cFI_FrameMakeCard     = $0012;                     //办理磁卡
   cFI_FrameBill         = $0013;                     //开提货单
   cFI_FrameBillQuery    = $0014;                     //开单查询
@@ -335,6 +335,7 @@ begin
   AddMenuModuleItem('MAIN_B02', cFI_FrameCustomer);
   AddMenuModuleItem('MAIN_B03', cFI_FrameSalesMan);
   AddMenuModuleItem('MAIN_B04', cFI_FramePriceWeek);
+  AddMenuModuleItem('MAIN_B05', cFI_FramePriceRule);
 
   AddMenuModuleItem('MAIN_C01', cFI_FrameZhiKaVerify);
   AddMenuModuleItem('MAIN_C02', cFI_FramePayment);
@@ -349,7 +350,7 @@ begin
   AddMenuModuleItem('MAIN_D02', cFI_FrameMakeCard);
   AddMenuModuleItem('MAIN_D03', cFI_FormBill, mtForm);
   AddMenuModuleItem('MAIN_D04', cFI_FormBill, mtForm);
-  AddMenuModuleItem('MAIN_D05', cFI_FrameZhiKa);
+  AddMenuModuleItem('MAIN_D05', -1);
   AddMenuModuleItem('MAIN_D06', cFI_FrameBill);
   AddMenuModuleItem('MAIN_D08', cFI_FormTruckEmpty, mtForm);
   AddMenuModuleItem('MAIN_D09', cFI_FrameMakeLSCard);
