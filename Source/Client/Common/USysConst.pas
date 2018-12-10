@@ -93,19 +93,20 @@ const
 
   cFI_FormPriceWeek     = $1006;                     //价格周期
   cFI_FormViewPriceWeek = $1007;                     //周期图
-  cFI_FormBaseInfo      = $1008;                     //基本信息
-  cFI_FormCustomer      = $1009;                     //客户资料
-  cFI_FormSaleMan       = $1010;                     //业务员
-  cFI_FormZhiKaParam    = $1011;                     //纸卡参数
-  cFI_FormGetZhika      = $1012;                     //选择纸卡
-  cFI_FormMakeCard      = $1013;                     //办理磁卡
-  cFI_FormMakeRFIDCard  = $1014;                     //办理电子标签
-  cFI_FormMakeLSCard    = $1015;                     //厂内零售办卡
+  cFI_FormPriceRetail   = $1008;                     //零售价
+  cFI_FormPriceArea     = $1009;                     //区域价
+  cFI_FormPriceCustomer = $1010;                     //专用价
 
-  cFI_FormBill          = $1016;                     //开提货单
+  cFI_FormBaseInfo      = $1011;                     //基本信息
+  cFI_FormCustomer      = $1012;                     //客户资料
+  cFI_FormSaleMan       = $1013;                     //业务员
+  cFI_FormMakeCard      = $1014;                     //办理磁卡
+  cFI_FormMakeRFIDCard  = $1015;                     //办理电子标签
+  cFI_FormMakeLSCard    = $1016;                     //厂内零售办卡
+
+  cFI_FormBill          = $1017;                     //开提货单
   cFI_FormSanPreHK      = $1101;                     //散装预合卡
-  cFI_FormShouJu        = $1017;                     //开收据
-  cFI_FormZhiKaVerify   = $1018;                     //纸卡审核
+  cFI_FormShouJu        = $1018;                     //开收据
   cFI_FormCusCredit     = $1019;                     //信用变动
   cFI_FormPayment       = $1020;                     //销售回款
   cFI_FormTruckIn       = $1021;                     //车辆进厂

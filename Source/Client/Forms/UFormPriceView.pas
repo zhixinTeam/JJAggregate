@@ -12,7 +12,7 @@ uses
   cxButtonEdit, cxLabel, cxTextEdit, cxContainer, cxEdit, cxMaskEdit,
   cxDropDownEdit, cxCalendar, cxGraphics, cxLookAndFeels,
   cxLookAndFeelPainters, cxCheckBox, ExtCtrls, TeeProcs, TeEngine, Chart,
-  Series, GanttCh;
+  Series, GanttCh, cxColorComboBox;
 
 type
   TWeekItem = record
@@ -20,6 +20,7 @@ type
     FDateStart: TDateTime;
     FDateEnd: TDateTime;
     FLimited: Boolean;
+    FValid: Boolean;
   end;
   TWeekItems = array of TWeekItem;
 
@@ -29,6 +30,8 @@ type
     Chart1: TChart;
     dxLayout1Item3: TdxLayoutItem;
     Series1: TGanttSeries;
+    Edit1: TcxColorComboBox;
+    dxLayout1Item4: TdxLayoutItem;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure Chart1MouseMove(Sender: TObject; Shift: TShiftState; X,
@@ -94,13 +97,14 @@ end;
 
 procedure TfFormPriceView.InitFormData();
 var nStr: string;
+    nColor: TColor;
     nMax: TDateTime;
     i,nIdx: Integer;
 begin
   Series1.Clear;
   SetLength(FItems, 0);
 
-  nStr := 'Select W_Name,W_Begin,W_End,W_EndUse From $PW ' +
+  nStr := 'Select W_Name,W_Begin,W_End,W_EndUse,W_Valid From $PW ' +
           'Where (W_Date>=''$S'' and W_Date <''$E'') Or ' +
           '      (W_Begin>=''$S'' and W_Begin <''$E'') ' +
           'Order By W_Begin ASC';
@@ -123,6 +127,7 @@ begin
         FDateStart := FieldByName('W_Begin').AsDateTime;
         FDateEnd := FieldByName('W_End').AsDateTime;
         FLimited := FieldByName('W_EndUse').AsString = sFlag_Yes;
+        FValid := FieldByName('W_Valid').AsString = sFlag_Yes;
       end;
 
       Next;
@@ -132,12 +137,12 @@ begin
 
   for nIdx:=Low(FItems) to High(FItems) do
   begin
-    if FItems[nIdx].FDateEnd < gSysParam.FMaxDate then Continue;
+    if FItems[nIdx].FLimited then Continue;
     //临时价格
 
     for i:=nIdx+1 to High(FItems) do
     begin
-      if FItems[i].FDateEnd < gSysParam.FMaxDate then Continue;
+      if FItems[i].FLimited then Continue;
       //临时价格
 
       FItems[nIdx].FDateEnd := FItems[i].FDateStart;
@@ -170,9 +175,19 @@ begin
       FDateEnd := nMax + 20;
     //xxxxx
 
-    if FItems[i].FLimited then
-         Series1.AddGanttColor(FDateStart, FDateEnd, i, FName, clSkyBlue)
-    else Series1.AddGanttColor(FDateStart, FDateEnd, i, FName, clMoneyGreen);
+    if FLimited then
+    begin
+      if FValid then
+           nColor := clBlue
+      else nColor := clSkyBlue;
+    end else
+    begin
+      if FValid then
+           nColor := clGreen
+      else nColor := clMoneyGreen;
+    end;
+
+    Series1.AddGanttColor(FDateStart, FDateEnd, i, FName, nColor);
     Inc(i);
   end;
 end;

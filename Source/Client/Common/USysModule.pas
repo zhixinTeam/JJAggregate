@@ -18,6 +18,7 @@ uses
   UFrameWeiXinSendlog, UFormWeiXinSendlog, UFormGetWechartAccount,
   {$ENDIF}
   UFramePriceWeek, UFormPriceWeek, UFormPriceView, UFramePriceRule,
+  UFormPriceRetail, UFormPriceArea, UFormPriceCustomer,
   UFrameCustomer, UFormCustomer, UFormGetCustom, UFrameSalesMan, UFormSalesMan,
   UFrameShouJu, UFormShouJu, UFramePayment, UFormPayment,
   UFrameCustomerCredit, UFormCustomerCredit, UFrameCusAccount,

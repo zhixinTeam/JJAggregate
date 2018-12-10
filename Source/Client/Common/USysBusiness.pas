@@ -17,10 +17,11 @@ type
     FID: string;         //编号
     FType: string;       //类型
     FName: string;       //名称
+    FPrice: Double;      //价格
     FParam: string;      //扩展
   end;
 
-  TDynamicStockItemArray = array of TLadingStockItem;
+  TStockTypeItems = array of TLadingStockItem;
   //系统可用的品种列表
 
   PZTLineItem = ^TZTLineItem;
@@ -58,7 +59,7 @@ function GetSysValidDate: Integer;
 function GetTruckEmptyValue(nTruck: string): Double;
 function GetSerialNo(const nGroup,nObject: string; nUseDate: Boolean = True): string;
 //获取串行编号
-function GetLadingStockItems(var nItems: TDynamicStockItemArray): Boolean;
+function GetLadingStockItems(var nItems: TStockTypeItems): Boolean;
 //可用品种列表
 function GetCardUsed(const nCard: string): string;
 //获取卡片类型
@@ -590,7 +591,7 @@ begin
 end;
 
 //Desc: 获取当前系统可用的水泥品种列表
-function GetLadingStockItems(var nItems: TDynamicStockItemArray): Boolean;
+function GetLadingStockItems(var nItems: TStockTypeItems): Boolean;
 var nStr: string;
     nIdx: Integer;
 begin
@@ -610,9 +611,13 @@ begin
 
       while not Eof do
       begin
-        nItems[nIdx].FType := FieldByName('D_Memo').AsString;
-        nItems[nIdx].FName := FieldByName('D_Value').AsString;
-        nItems[nIdx].FID := FieldByName('D_ParamB').AsString;
+        with nItems[nIdx] do
+        begin
+          FType := FieldByName('D_Memo').AsString;
+          FName := FieldByName('D_Value').AsString;
+          FID := FieldByName('D_ParamB').AsString;
+          FPrice := 0;
+        end;
 
         Next;
         Inc(nIdx);

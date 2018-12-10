@@ -115,7 +115,7 @@ AutoIncBuild=0
 MajorVer=1
 MinorVer=0
 Release=0
-Build=2
+Build=20
 Debug=0
 PreRelease=0
 Special=0
@@ -126,14 +126,14 @@ CodePage=1252
 [Version Info Keys]
 CompanyName=
 FileDescription=
-FileVersion=1.0.0.2
+FileVersion=1.0.0.20
 InternalName=
 LegalCopyright=
 LegalTrademarks=
 OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
-LastCompiledTime=2018-11-29 15:13:28
+LastCompiledTime=2018-12-07 16:03:40
 [Excluded Packages]
 C:\Program Files (x86)\RemObjects Software\RemObjects SDK for Delphi\Dcu\D7\RemObjects_DataSnap_D7.bpl=RemObjects SDK - DataSnap Integration Pack
 C:\Program Files (x86)\RemObjects Software\RemObjects SDK for Delphi\Dcu\D7\RemObjects_Server_DataSnap_D7.bpl=RemObjects SDK - Server DataSnap Integration Pack

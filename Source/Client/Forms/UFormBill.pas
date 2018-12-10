@@ -126,7 +126,7 @@ begin
     FillChar(nInfo, SizeOf(nInfo), #0);
     gInfo := nInfo;
 
-    CreateBaseFormItem(cFI_FormGetZhika, nPopedom, nP);
+   // CreateBaseFormItem(cFI_FormGetZhika, nPopedom, nP);
     if (nP.FCommand <> cCmd_ModalResult) or (nP.FParamA <> mrOK) then Exit;
 
     gInfo.FCard  := '';

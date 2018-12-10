@@ -359,7 +359,7 @@ begin
   if cxView1.DataController.GetSelectedCount > 0 then
   begin
     nP.FCommand := cCmd_AddData;
-    CreateBaseFormItem(cFI_FormGetZhika, PopedomItem, @nP);
+    //CreateBaseFormItem(cFI_FormGetZhika, PopedomItem, @nP);
     if (nP.FCommand <> cCmd_ModalResult) or (nP.FParamA <> mrOK) then Exit;
 
     nStr := SQLQuery.FieldByName('L_ZhiKa').AsString;

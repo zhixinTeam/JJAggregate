@@ -17,12 +17,12 @@ inherited fFormPriceView: TfFormPriceView
       Top = 324
       Caption = #30830#23450
       Enabled = False
-      TabOrder = 2
+      TabOrder = 3
     end
     inherited BtnExit: TButton
       Left = 501
       Top = 324
-      TabOrder = 3
+      TabOrder = 4
     end
     object cxLabel1: TcxLabel [2]
       Left = 23
@@ -78,6 +78,34 @@ inherited fFormPriceView: TfFormPriceView
         NextTask.Order = loNone
       end
     end
+    object Edit1: TcxColorComboBox [4]
+      Left = 11
+      Top = 324
+      ParentFont = False
+      Properties.CustomColors = <
+        item
+          Color = clSkyBlue
+          Description = #20020#26102#20215#26684
+        end
+        item
+          Color = clMoneyGreen
+          Description = #38271#26399#20215#26684
+        end
+        item
+          Color = clBlue
+          Description = #29983#25928#20020#26102#20215
+        end
+        item
+          Color = clGreen
+          Description = #29983#25928#38271#26399#20215
+        end>
+      Properties.DefaultDescription = #22270#20363#35828#26126
+      Properties.NamingConvention = cxncNone
+      Properties.PrepareList = cxplNone
+      Properties.ReadOnly = True
+      TabOrder = 2
+      Width = 135
+    end
     inherited dxLayout1Group_Root: TdxLayoutGroup
       inherited dxGroup1: TdxLayoutGroup
         Caption = ''
@@ -94,6 +122,14 @@ inherited fFormPriceView: TfFormPriceView
           ShowCaption = False
           Control = Chart1
           ControlOptions.AutoColor = True
+          ControlOptions.ShowBorder = False
+        end
+      end
+      inherited dxLayout1Group1: TdxLayoutGroup
+        object dxLayout1Item4: TdxLayoutItem [0]
+          Caption = #22791#27880':'
+          ShowCaption = False
+          Control = Edit1
           ControlOptions.ShowBorder = False
         end
       end

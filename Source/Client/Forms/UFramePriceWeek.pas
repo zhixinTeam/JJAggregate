@@ -151,13 +151,23 @@ begin
     ShowMsg('请选择要删除的记录', sHint); Exit;
   end;
 
-  nID := SQLQuery.FieldByName('W_Name').AsString;
-  nStr := Format('确定要删除名称为[ %s ]的记录吗?', [nID]);
+  nID := SQLQuery.FieldByName('W_NO').AsString;
+  nStr := 'Select Count(*) From %s Where R_Week=''%s''';
+  nStr := Format(nStr, [sTable_PriceRule, nID]);
+
+  with FDM.QueryTemp(nStr) do
+  if Fields[0].AsInteger > 0 then
+  begin
+    ShowMsg('该周期不能删除(已使用)', sHint);
+    Exit;
+  end;
+
+  nStr := Format('确定要删除名称为[ %s ]的记录吗?', [
+          SQLQuery.FieldByName('W_Name').AsString]);
   if not QueryDlg(nStr, sAsk) then Exit;
 
   nStr := 'Delete From %s Where W_NO=''%s''';
-  nStr := Format(nStr, [sTable_PriceWeek,
-          SQLQuery.FieldByName('W_NO').AsString]);
+  nStr := Format(nStr, [sTable_PriceWeek, nID]);
   FDM.ExecuteSQL(nStr);
 
   InitFormData(FWhere);
