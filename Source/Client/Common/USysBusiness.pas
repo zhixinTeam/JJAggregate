@@ -76,6 +76,8 @@ function LoadCustomerInfo(const nCID: string; const nList: TcxMCListBox;
  var nHint: string): TDataSet;
 //载入客户信息
 
+function MakeZhiKaCode: string;
+//生成纸卡提货代码
 function IsZhiKaNeedVerify: Boolean;
 //纸卡是否需要审核
 function IsPrintZK: Boolean;
@@ -87,6 +89,8 @@ function LoadZhiKaInfo(const nZID: string; const nList: TcxMCListBox;
 //载入纸卡
 function GetZhikaValidMoney(nZhiKa: string; var nFixMoney: Boolean): Double;
 //纸卡可用金
+function GetZhikaUsedMoney(nZhiKa: string): Double;
+//纸卡已用金额
 function GetCustomerValidMoney(nCID: string; const nLimit: Boolean = True;
  const nCredit: PDouble = nil): Double;
 //客户可用金额
@@ -103,6 +107,8 @@ function SaveXuNiCustomer(const nName,nSaleMan: string): string;
 //存临时客户
 function IsAutoPayCredit: Boolean;
 //回款时冲信用
+function SmallTOBig(small: real): string;
+//金额转大写
 function SaveCustomerPayment(const nCusID,nCusName,nSaleMan: string;
  const nType,nPayment,nMemo: string; const nMoney: Double;
  const nCredit: Boolean = True): Boolean;
@@ -159,7 +165,13 @@ function GetTruckRealLabel(const nTruck: string): string;
 //获取车辆绑定的电子标签
 procedure CapturePicture(const nTunnel: PPTTunnelItem; const nList: TStrings);
 //抓拍指定通道
-
+procedure CapturePictureEx(const nTunnel: PPTTunnelItem;
+  const nLogin: Integer; nList: TStrings);
+//抓拍nTunnel的图像Ex
+function InitCapture(const nTunnel: PPTTunnelItem; var nLogin: Integer): Boolean;
+//初始化抓拍，与CapturePictureEx配套使用
+function FreeCapture(nLogin: Integer): Boolean;
+//释放抓拍
 procedure GetPoundAutoWuCha(var nWCValZ,nWCValF: Double; const nVal: Double;
  const nStation: string = '');
 //获取误差范围
@@ -235,8 +247,6 @@ function SaveCompensation(const nSaleMan,nCusID,nCusName,nPayment,nMemo: string;
 //保存用户补偿金
 
 //------------------------------------------------------------------------------
-procedure PrintSaleContractReport(const nID: string; const nAsk: Boolean);
-//打印合同
 function PrintZhiKaReport(const nZID: string; const nAsk: Boolean): Boolean;
 //打印纸卡
 function PrintShouJuReport(const nSID: string; const nAsk: Boolean): Boolean;
@@ -302,17 +312,6 @@ function GetshoporderbyTruck(const nData: string): string;
 procedure SaveWebOrderDelMsg(const nLID, nBillType: string);
 //插入推送消息
 
-function MakeSaleViewData: Boolean;
-//生成销售特定字段数据(特定使用)
-function MakeOrderViewData: Boolean;
-//生成采购特定字段数据(特定使用)
-procedure CapturePictureEx(const nTunnel: PPTTunnelItem;
-                         const nLogin: Integer; nList: TStrings);
-//抓拍nTunnel的图像Ex
-function InitCapture(const nTunnel: PPTTunnelItem; var nLogin: Integer): Boolean;
-//初始化抓拍，与CapturePictureEx配套使用
-function FreeCapture(nLogin: Integer): Boolean;
-//释放抓拍
 implementation
 
 //Desc: 记录日志
@@ -777,6 +776,138 @@ begin
   end;
 end;
 
+//Date: 2018-09-25
+//Parm: 通道;登陆ID;列表
+//Desc: 抓拍nTunnel的图像
+procedure CapturePictureEx(const nTunnel: PPTTunnelItem;
+                         const nLogin: Integer; nList: TStrings);
+const
+  cRetry = 2;
+  //重试次数
+var nStr: string;
+    nIdx,nInt: Integer;
+    nErr: Integer;
+    nPic: NET_DVR_JPEGPARA;
+begin
+  nList.Clear;
+  if not Assigned(nTunnel.FCamera) then Exit;
+  //not camera
+  if nLogin <= -1 then Exit;
+
+  WriteLog(nTunneL.FID + '开始抓拍');
+  if not DirectoryExists(gSysParam.FPicPath) then
+    ForceDirectories(gSysParam.FPicPath);
+  //new dir
+
+  if gSysParam.FPicBase >= 100 then
+    gSysParam.FPicBase := 0;
+  //clear buffer
+
+  try
+
+    nPic.wPicSize := nTunnel.FCamera.FPicSize;
+    nPic.wPicQuality := nTunnel.FCamera.FPicQuality;
+
+    for nIdx:=Low(nTunnel.FCameraTunnels) to High(nTunnel.FCameraTunnels) do
+    begin
+      if nTunnel.FCameraTunnels[nIdx] = MaxByte then continue;
+      //invalid
+
+      for nInt:=1 to cRetry do
+      begin
+        nStr := MakePicName();
+        //file path
+
+        gCameraNetSDKMgr.NET_DVR_CaptureJPEGPicture(nLogin,
+                                   nTunnel.FCameraTunnels[nIdx],
+                                   nPic, nStr);
+        //capture pic
+
+        nErr := gCameraNetSDKMgr.NET_DVR_GetLastError;
+
+        if nErr = 0 then
+        begin
+          WriteLog('通道'+IntToStr(nTunnel.FCameraTunnels[nIdx])+'抓拍成功');
+          nList.Add(nStr);
+          Break;
+        end;
+
+        if nIdx = cRetry then
+        begin
+          nStr := '抓拍图像[ %s.%d ]失败,错误码: %d';
+          nStr := Format(nStr, [nTunnel.FCamera.FHost,
+                   nTunnel.FCameraTunnels[nIdx], nErr]);
+          WriteLog(nStr);
+        end;
+      end;
+    end;
+  except
+  end;
+end;
+
+function InitCapture(const nTunnel: PPTTunnelItem; var nLogin: Integer): Boolean;
+const
+  cRetry = 2;
+  //重试次数
+var nStr: string;
+    nIdx: Integer;
+    nErr: Integer;
+    nInfo: TNET_DVR_DEVICEINFO;
+begin
+  Result := False;
+  if not Assigned(nTunnel.FCamera) then Exit;
+  //not camera
+
+  try
+    nLogin := -1;
+    gCameraNetSDKMgr.NET_DVR_SetDevType(nTunnel.FCamera.FType);
+    //xxxxx
+
+    gCameraNetSDKMgr.NET_DVR_Init;
+    //xxxxx
+
+    for nIdx:=1 to cRetry do
+    begin
+      nLogin := gCameraNetSDKMgr.NET_DVR_Login(nTunnel.FCamera.FHost,
+                   nTunnel.FCamera.FPort,
+                   nTunnel.FCamera.FUser,
+                   nTunnel.FCamera.FPwd, nInfo);
+      //to login
+
+      nErr := gCameraNetSDKMgr.NET_DVR_GetLastError;
+      if nErr = 0 then break;
+
+      if nIdx = cRetry then
+      begin
+        nStr := '登录摄像机[ %s.%d ]失败,错误码: %d';
+        nStr := Format(nStr, [nTunnel.FCamera.FHost, nTunnel.FCamera.FPort, nErr]);
+        WriteLog(nStr);
+        if nLogin > -1 then
+         gCameraNetSDKMgr.NET_DVR_Logout(nLogin);
+        gCameraNetSDKMgr.NET_DVR_Cleanup();
+        Exit;
+      end;
+    end;
+    Result := True;
+  except
+
+  end;
+end;
+
+function FreeCapture(nLogin: Integer): Boolean;
+begin
+  Result := False;
+  try
+    if nLogin > -1 then
+     gCameraNetSDKMgr.NET_DVR_Logout(nLogin);
+    gCameraNetSDKMgr.NET_DVR_Cleanup();
+
+    Result := True;
+  except
+
+  end;
+end;
+
 //------------------------------------------------------------------------------
 //Date: 2017-07-09
 //Parm: 包装正负误差;票重;磅站号
@@ -932,6 +1063,12 @@ begin
   if not Result then
     WriteLog(nOut.FBase.FErrDesc);
   //xxxxx
+end;
+
+procedure ProberShowTxt(const nTunnel, nText: string);
+var nOut: TWorkerBusinessCommand;
+begin
+  CallBusinessHardware(cBC_ShowTxt, nTunnel, nText, @nOut);
 end;
 
 //------------------------------------------------------------------------------
@@ -1235,6 +1372,95 @@ begin
   end;
 end;
 
+function SmallTOBig(small: real): string;
+var
+  SmallMonth, BigMonth: string;
+  wei1, qianwei1: string[2];
+  qianwei, dianweizhi, qian: integer;
+  fs_bj: boolean;
+begin
+  if small < 0 then
+    fs_bj := True
+  else
+    fs_bj := False;
+  small      := abs(small);
+  {------- 修改参数令值更精确 -------}
+  {小数点后的位置，需要的话也可以改动-2值}
+  qianwei    := -2;
+  {转换成货币形式，需要的话小数点后加多几个零}
+  Smallmonth := formatfloat('0.00', small);
+  {---------------------------------}
+  dianweizhi := pos('.', Smallmonth);{小数点的位置}
+  {循环小写货币的每一位，从小写的右边位置到左边}
+  for qian := length(Smallmonth) downto 1 do
+  begin
+    {如果读到的不是小数点就继续}
+    if qian <> dianweizhi then
+    begin
+      {位置上的数转换成大写}
+      case StrToInt(Smallmonth[qian]) of
+        1: wei1 := '壹';
+        2: wei1 := '贰';
+        3: wei1 := '叁';
+        4: wei1 := '肆';
+        5: wei1 := '伍';
+        6: wei1 := '陆';
+        7: wei1 := '柒';
+        8: wei1 := '捌';
+        9: wei1 := '玖';
+        0: wei1 := '零';
+      end;
+      {判断大写位置，可以继续增大到real类型的最大值}
+      case qianwei of
+        -3: qianwei1 := '厘';
+        -2: qianwei1 := '分';
+        -1: qianwei1 := '角';
+        0: qianwei1  := '元';
+        1: qianwei1  := '拾';
+        2: qianwei1  := '佰';
+        3: qianwei1  := '仟';
+        4: qianwei1  := '万';
+        5: qianwei1  := '拾';
+        6: qianwei1  := '佰';
+        7: qianwei1  := '仟';
+        8: qianwei1  := '亿';
+        9: qianwei1  := '拾';
+        10: qianwei1 := '佰';
+        11: qianwei1 := '仟';
+      end;
+      inc(qianwei);
+      BigMonth := wei1 + qianwei1 + BigMonth;{组合成大写金额}
+    end;
+  end;
+
+  BigMonth := StringReplace(BigMonth, '零拾', '零', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零佰', '零', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零仟', '零', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零角零分', '', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零角', '零', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零分', '', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零零', '零', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零零', '零', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零零', '零', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零亿', '亿', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零万', '万', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '零元', '元', [rfReplaceAll]);
+  BigMonth := StringReplace(BigMonth, '亿万', '亿', [rfReplaceAll]);
+  BigMonth := BigMonth + '整';
+  BigMonth := StringReplace(BigMonth, '分整', '分', [rfReplaceAll]);
+
+  if BigMonth = '元整' then
+    BigMonth := '零元整';
+  if copy(BigMonth, 1, 2) = '元' then
+    BigMonth := copy(BigMonth, 3, length(BigMonth) - 2);
+  if copy(BigMonth, 1, 2) = '零' then
+    BigMonth := copy(BigMonth, 3, length(BigMonth) - 2);
+  if fs_bj = True then
+    SmallTOBig := '- ' + BigMonth
+  else
+    SmallTOBig := BigMonth;
+end;
+
 //Date: 2014-09-14
 //Parm: 客户编号
 //Desc: 验证nCusID是否有足够的钱,或信用没有过期
@@ -1477,6 +1703,15 @@ begin
 end;
 
 //------------------------------------------------------------------------------
+//Desc: 纸卡提货密码
+function MakeZhiKaCode: string;
+var nOut: TWorkerBusinessCommand;
+begin
+  if CallBusinessCommand(cBC_MakeZhiKaPassword, '', '', @nOut) then
+       Result := nOut.FData
+  else Result := '';
+end;
+
 //Desc: 纸卡是否需要审核
 function IsZhiKaNeedVerify: Boolean;
 var nStr: string;
@@ -1548,7 +1783,7 @@ begin
   //xxxxx
 
   nStr := MacroValue(nStr, [MI('$ZK', sTable_ZhiKa),
-             MI('$Con', sTable_SaleContract), MI('$SM', sTable_Salesman),
+             MI('$SM', sTable_Salesman),
              MI('$Cus', sTable_Customer), MI('$ID', nZID)]);
   //xxxxx
 
@@ -1574,7 +1809,7 @@ end;
 
 //Date: 2014-09-14
 //Parm: 纸卡号;是否限提
-//Desc: 获取nZhiKa的可用金哦
+//Desc: 获取nZhiKa的可用金
 function GetZhikaValidMoney(nZhiKa: string; var nFixMoney: Boolean): Double;
 var nOut: TWorkerBusinessCommand;
 begin
@@ -1583,6 +1818,17 @@ begin
     Result := StrToFloat(nOut.FData);
     nFixMoney := nOut.FExtParam = sFlag_Yes;
   end else Result := 0;
+end;
+
+//Date: 2018-12-13
+//Parm: 纸卡号
+//Desc: 获取nZhiKa的已使用金额
+function GetZhikaUsedMoney(nZhiKa: string): Double;
+var nOut: TWorkerBusinessCommand;
+begin
+  if CallBusinessCommand(cBC_GetZhiKaMoneyUsed, nZhiKa, '', @nOut) then
+       Result := StrToFloat(nOut.FData)
+  else Result := 0;
 end;
 
 //Desc: 获取nCID用户的可用金额,包含信用额或净额
@@ -2073,57 +2319,6 @@ begin
 end;
 
 //------------------------------------------------------------------------------
-//Desc: 打印标识为nID的销售合同
-procedure PrintSaleContractReport(const nID: string; const nAsk: Boolean);
-var nStr: string;
-    nParam: TReportParamItem;
-begin
-  if nAsk then
-  begin
-    nStr := '是否要打印销售合同?';
-    if not QueryDlg(nStr, sAsk) then Exit;
-  end;
-
-  nStr := 'Select sc.*,S_Name,C_Name From $SC sc ' +
-          '  Left Join $SM sm On sm.S_ID=sc.C_SaleMan ' +
-          '  Left Join $Cus cus On cus.C_ID=sc.C_Customer ' +
-          'Where sc.C_ID=''$ID''';
-
-  nStr := MacroValue(nStr, [MI('$SC', sTable_SaleContract),
-          MI('$SM', sTable_Salesman), MI('$Cus', sTable_Customer),
-          MI('$ID', nID)]);
-
-  if FDM.QueryTemp(nStr).RecordCount < 1 then
-  begin
-    nStr := '编号为[ %s] 的销售合同已无效!!';
-    nStr := Format(nStr, [nID]);
-    ShowMsg(nStr, sHint); Exit;
-  end;
-
-  nStr := 'Select * From %s Where E_CID=''%s''';
-  nStr := Format(nStr, [sTable_SContractExt, nID]);
-  FDM.QuerySQL(nStr);
-
-  nStr := gPath + sReportDir + 'SaleContract.fr3';
-  if not FDR.LoadReportFile(nStr) then
-  begin
-    nStr := '无法正确加载报表文件';
-    ShowMsg(nStr, sHint); Exit;
-  end;
-
-  nParam.FName := 'UserName';
-  nParam.FValue := gSysParam.FUserID;
-  FDR.AddParamItem(nParam);
-
-  nParam.FName := 'Company';
-  nParam.FValue := gSysParam.FHintText;
-  FDR.AddParamItem(nParam);
-
-  FDR.Dataset1.DataSet := FDM.SqlTemp;
-  FDR.Dataset2.DataSet := FDM.SqlQuery;
-  FDR.ShowReport;
-end;
-
 //Desc: 打印纸卡
 function PrintZhiKaReport(const nZID: string; const nAsk: Boolean): Boolean;
 var nStr: string;
@@ -2945,313 +3140,6 @@ begin
         Result := True;
       end;
     end;
-  end;
-end;
-
-procedure ProberShowTxt(const nTunnel, nText: string);
-var nOut: TWorkerBusinessCommand;
-begin
-  CallBusinessHardware(cBC_ShowTxt, nTunnel, nText, @nOut);
-end;
-
-//Desc: 生成销售特定字段数据(特定使用)
-function MakeSaleViewData: Boolean;
-var nID: string;
-    nStr: string;
-    nList : TStrings;
-    nIdx: Integer;
-begin
-  nList := TStringList.Create;
-  try
-    nStr := 'Select top 1000 L_ID , L_MValue From %s ' +
-            'Where L_MValueView is null';
-    nStr := Format(nStr, [sTable_Bill]);
-
-    with FDM.QueryTemp(nStr) do
-    if RecordCount > 0 then
-    begin
-      First;
-
-      while not Eof do
-      begin
-        nID := Fields[0].AsString;
-
-        if Fields[1].AsString = '' then
-        begin
-          Next;
-          Continue;
-        end;
-
-        if Fields[1].AsFloat <= 49 then
-        begin
-          nStr := 'Update %s Set L_MValueview = L_MValue Where L_ID=''%s''';
-          nStr := Format(nStr, [sTable_Bill, nID]);
-          nList.Add(nStr);
-
-          nStr := 'Update %s Set L_Valueview = L_Value Where L_ID=''%s''';
-          nStr := Format(nStr, [sTable_Bill, nID]);
-          nList.Add(nStr);
-
-          nStr := 'Update a set a.P_MValueView = b.L_MValueView,'+
-                  ' a.P_ValueView = b.L_ValueView from %s a, %s b'+
-                  ' where  a.P_Bill = b.L_ID and b.L_ID=''%s''';
-          nStr := Format(nStr, [sTable_PoundLog, sTable_Bill, nID]);
-          nList.Add(nStr);
-        end
-        else
-        begin
-          nStr := 'Update %s Set L_MValueview = (40 + 899*rand() / 100) Where L_ID=''%s''';
-          nStr := Format(nStr, [sTable_Bill, nID]);
-          nList.Add(nStr);
-
-          nStr := 'Update %s Set L_Valueview = L_MValueView - L_PValue Where L_ID=''%s''';
-          nStr := Format(nStr, [sTable_Bill, nID]);
-          nList.Add(nStr);
-
-          nStr := 'Update a set a.P_MValueView = b.L_MValueView,'+
-                  ' a.P_ValueView = b.L_ValueView from %s a, %s b'+
-                  ' where  a.P_Bill = b.L_ID and b.L_ID=''%s''';
-          nStr := Format(nStr, [sTable_PoundLog, sTable_Bill, nID]);
-          nList.Add(nStr);
-        end;
-        Next;
-      end;
-    end;
-
-    FDM.ADOConn.BeginTrans;
-    try
-      for nIdx:=0 to nList.Count - 1 do
-      begin
-        FDM.ExecuteSQL(nList[nIdx]);
-      end;
-      FDM.ADOConn.CommitTrans;
-    except
-      On E: Exception do
-      begin
-        Result := False;
-        FDM.ADOConn.RollbackTrans;
-        WriteLog(E.Message);
-      end;
-    end;
-  finally
-    nList.Free;
-  end;
-end;
-
-//Desc: 生成采购特定字段数据(特定使用)
-function MakeOrderViewData: Boolean;
-var nID: string;
-    nStr: string;
-    nList : TStrings;
-    nIdx: Integer;
-begin
-  nList := TStringList.Create;
-  try
-    nStr := 'Select top 1000 D_ID ,D_MValue From %s ' +
-            'Where D_MValueView is null';
-    nStr := Format(nStr, [sTable_OrderDtl]);
-
-    with FDM.QueryTemp(nStr) do
-    if RecordCount > 0 then
-    begin
-      First;
-
-      while not Eof do
-      begin
-        nID := Fields[0].AsString;
-
-        if Fields[1].AsString = '' then
-        begin
-          Next;
-          Continue;
-        end;
-
-        if Fields[1].AsFloat <= 49 then
-        begin
-          nStr := 'Update %s Set D_MValueview = D_MValue Where D_ID=''%s''';
-          nStr := Format(nStr, [sTable_OrderDtl, nID]);
-          nList.Add(nStr);
-
-          nStr := 'Update %s Set D_Valueview = D_MValue - D_PValue Where D_ID=''%s''';
-          nStr := Format(nStr, [sTable_OrderDtl, nID]);
-          nList.Add(nStr);
-
-          nStr := 'Update a set a.P_MValueView = b.D_MValueView,'+
-                  ' a.P_ValueView = b.D_ValueView from %s a, %s b'+
-                  ' where  a.P_Order = b.D_ID and b.D_ID=''%s''';
-          nStr := Format(nStr, [sTable_PoundLog, sTable_OrderDtl, nID]);
-          nList.Add(nStr);
-        end
-        else
-        begin
-          nStr := 'Update %s Set D_MValueview = (40 + 899*rand() / 100) Where D_ID=''%s''';
-          nStr := Format(nStr, [sTable_OrderDtl, nID]);
-          nList.Add(nStr);
-
-          nStr := 'Update %s Set D_Valueview = D_MValueView - D_PValue Where D_ID=''%s''';
-          nStr := Format(nStr, [sTable_OrderDtl, nID]);
-          nList.Add(nStr);
-
-          nStr := 'Update a set a.P_MValueView = b.D_MValueView,'+
-                  ' a.P_ValueView = b.D_ValueView from %s a, %s b'+
-                  ' where  a.P_Order = b.D_ID and b.D_ID=''%s''';
-          nStr := Format(nStr, [sTable_PoundLog, sTable_OrderDtl, nID]);
-          nList.Add(nStr);
-        end;
-        Next;
-      end;
-    end;
-
-    FDM.ADOConn.BeginTrans;
-    try
-      for nIdx:=0 to nList.Count - 1 do
-      begin
-        FDM.ExecuteSQL(nList[nIdx]);
-      end;
-      FDM.ADOConn.CommitTrans;
-    except
-      On E: Exception do
-      begin
-        Result := False;
-        FDM.ADOConn.RollbackTrans;
-        WriteLog(E.Message);
-      end;
-    end;
-  finally
-    nList.Free;
-  end;
-end;
-
-//Date: 2018-09-25
-//Parm: 通道;登陆ID;列表
-//Desc: 抓拍nTunnel的图像
-procedure CapturePictureEx(const nTunnel: PPTTunnelItem;
-                         const nLogin: Integer; nList: TStrings);
-const
-  cRetry = 2;
-  //重试次数
-var nStr: string;
-    nIdx,nInt: Integer;
-    nErr: Integer;
-    nPic: NET_DVR_JPEGPARA;
-    nInfo: TNET_DVR_DEVICEINFO;
-begin
-  nList.Clear;
-  if not Assigned(nTunnel.FCamera) then Exit;
-  //not camera
-  if nLogin <= -1 then Exit;
-
-  WriteLog(nTunneL.FID + '开始抓拍');
-  if not DirectoryExists(gSysParam.FPicPath) then
-    ForceDirectories(gSysParam.FPicPath);
-  //new dir
-
-  if gSysParam.FPicBase >= 100 then
-    gSysParam.FPicBase := 0;
-  //clear buffer
-
-  try
-
-    nPic.wPicSize := nTunnel.FCamera.FPicSize;
-    nPic.wPicQuality := nTunnel.FCamera.FPicQuality;
-
-    for nIdx:=Low(nTunnel.FCameraTunnels) to High(nTunnel.FCameraTunnels) do
-    begin
-      if nTunnel.FCameraTunnels[nIdx] = MaxByte then continue;
-      //invalid
-
-      for nInt:=1 to cRetry do
-      begin
-        nStr := MakePicName();
-        //file path
-
-        gCameraNetSDKMgr.NET_DVR_CaptureJPEGPicture(nLogin,
-                                   nTunnel.FCameraTunnels[nIdx],
-                                   nPic, nStr);
-        //capture pic
-
-        nErr := gCameraNetSDKMgr.NET_DVR_GetLastError;
-
-        if nErr = 0 then
-        begin
-          WriteLog('通道'+IntToStr(nTunnel.FCameraTunnels[nIdx])+'抓拍成功');
-          nList.Add(nStr);
-          Break;
-        end;
-
-        if nIdx = cRetry then
-        begin
-          nStr := '抓拍图像[ %s.%d ]失败,错误码: %d';
-          nStr := Format(nStr, [nTunnel.FCamera.FHost,
-                   nTunnel.FCameraTunnels[nIdx], nErr]);
-          WriteLog(nStr);
-        end;
-      end;
-    end;
-  except
-  end;
-end;
-
-function InitCapture(const nTunnel: PPTTunnelItem; var nLogin: Integer): Boolean;
-const
-  cRetry = 2;
-  //重试次数
-var nStr: string;
-    nIdx,nInt: Integer;
-    nErr: Integer;
-    nInfo: TNET_DVR_DEVICEINFO;
-begin
-  Result := False;
-  if not Assigned(nTunnel.FCamera) then Exit;
-  //not camera
-
-  try
-    nLogin := -1;
-    gCameraNetSDKMgr.NET_DVR_SetDevType(nTunnel.FCamera.FType);
-    //xxxxx
-
-    gCameraNetSDKMgr.NET_DVR_Init;
-    //xxxxx
-
-    for nIdx:=1 to cRetry do
-    begin
-      nLogin := gCameraNetSDKMgr.NET_DVR_Login(nTunnel.FCamera.FHost,
-                   nTunnel.FCamera.FPort,
-                   nTunnel.FCamera.FUser,
-                   nTunnel.FCamera.FPwd, nInfo);
-      //to login
-
-      nErr := gCameraNetSDKMgr.NET_DVR_GetLastError;
-      if nErr = 0 then break;
-
-      if nIdx = cRetry then
-      begin
-        nStr := '登录摄像机[ %s.%d ]失败,错误码: %d';
-        nStr := Format(nStr, [nTunnel.FCamera.FHost, nTunnel.FCamera.FPort, nErr]);
-        WriteLog(nStr);
-        if nLogin > -1 then
-         gCameraNetSDKMgr.NET_DVR_Logout(nLogin);
-        gCameraNetSDKMgr.NET_DVR_Cleanup();
-        Exit;
-      end;
-    end;
-    Result := True;
-  except
-
-  end;
-end;
-
-function FreeCapture(nLogin: Integer): Boolean;
-begin
-  Result := False;
-  try
-    if nLogin > -1 then
-     gCameraNetSDKMgr.NET_DVR_Logout(nLogin);
-    gCameraNetSDKMgr.NET_DVR_Cleanup();
-
-    Result := True;
-  except
-
   end;
 end;
 

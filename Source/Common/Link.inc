@@ -67,11 +67,11 @@
   {$DEFINE PrintHYEach}
   //随车开化验单
   {.$DEFINE PrintHeGeZheng}
-  {$DEFINE PrintHuaYanDan}
+  {.$DEFINE PrintHuaYanDan}
   //随车开单时打合格证、化验单
   {$DEFINE BatchInHYOfBill}
   //批次保存在化验单字段
-  {$DEFINE SanPreHK}
+  {.$DEFINE SanPreHK}
   //散装开单时预合卡
   {.$DEFINE AutoPoundInManual}
   //自动称重人工干预异常

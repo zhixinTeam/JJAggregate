@@ -10,7 +10,8 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, UFormNormal, cxGraphics, cxContainer, cxEdit, cxTextEdit,
   cxMaskEdit, cxDropDownEdit, dxLayoutControl, StdCtrls, cxControls,
-  ComCtrls, cxListView, cxButtonEdit, cxLabel;
+  ComCtrls, cxListView, cxButtonEdit, cxLabel, cxLookAndFeels,
+  cxLookAndFeelPainters;
 
 type
   TfFormGetCustom = class(TfFormNormal)
@@ -141,7 +142,7 @@ begin
   begin
     EditCus.Text := nID;
     if QueryCustom(10) then ActiveControl := ListCustom;
-  end else ActiveControl := EditSMan;
+  end else ActiveControl := EditCus;
 end;
 
 //Date: 2010-3-9

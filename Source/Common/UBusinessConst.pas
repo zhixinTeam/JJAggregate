@@ -30,8 +30,10 @@ const
   cBC_UserLogOut              = $0006;   //用户注销
   cBC_ReloadPriceWeek         = $0007;   //重新载入价格周期
 
-  cBC_GetCustomerMoney        = $0010;   //获取客户可用金
-  cBC_GetZhiKaMoney           = $0011;   //获取纸卡可用金
+  cBC_MakeZhiKaPassword       = $0008;   //生成纸卡提货密码
+  cBC_GetCustomerMoney        = $0009;   //获取客户可用金
+  cBC_GetZhiKaMoney           = $0010;   //获取纸卡可用金
+  cBC_GetZhiKaMoneyUsed       = $0011;   //获取纸卡已用金
   cBC_CustomerHasMoney        = $0012;   //客户是否有余额
 
   cBC_SaveTruckInfo           = $0013;   //保存车辆信息

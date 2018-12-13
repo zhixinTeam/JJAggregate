@@ -174,6 +174,7 @@ const
   sFlag_EnableBakdb   = 'Uses_BackDB';               //备用库
   sFlag_ValidDate     = 'SysValidDate';              //有效期
   sFlag_ZhiKaVerify   = 'ZhiKaVerify';               //纸卡审核
+  sFlag_ZKMinMoney    = 'ZhiKaMinMoney';             //纸卡最小金额
   sFlag_PrintZK       = 'PrintZK';                   //打印纸卡
   sFlag_PrintBill     = 'PrintStockBill';            //需打印订单
   sFlag_ViaBillCard   = 'ViaBillCard';               //直接制卡
@@ -294,8 +295,6 @@ const
   sTable_PriceRule    = 'S_PriceRule';               //价格规则
   sTable_Customer     = 'S_Customer';                //客户信息
   sTable_Salesman     = 'S_Salesman';                //业务人员
-  sTable_SaleContract = 'S_Contract';                //销售合同
-  sTable_SContractExt = 'S_ContractExt';             //合同扩展
 
   sTable_ZhiKa        = 'S_ZhiKa';                   //纸卡数据
   sTable_ZhiKaDtl     = 'S_ZhiKaDtl';                //纸卡明细
@@ -697,77 +696,34 @@ const
    *.C_Memo:备注
   -----------------------------------------------------------------------------}
 
-  sSQL_NewSaleContract = 'Create Table $Table(R_ID $Inc, C_ID varChar(15),' +
-       'C_Project varChar(100),C_SaleMan varChar(15), C_Customer varChar(15),' +
-       'C_Date varChar(20), C_Area varChar(50), C_Addr varChar(50),' +
-       'C_Delivery varChar(50), C_Payment varChar(20), C_Approval varChar(30),' +
-       'C_ZKDays Integer, C_XuNi Char(1), C_Freeze Char(1), C_Memo varChar(50))';
-  {-----------------------------------------------------------------------------
-   销售合同: SalesContract
-   *.R_ID: 编号
-   *.C_Project: 项目名称
-   *.C_SaleMan: 销售人员
-   *.C_Customer: 客户
-   *.C_Date: 签订时间
-   *.C_Area: 所属区域
-   *.C_Addr: 签订地点
-   *.C_Delivery: 交货地
-   *.C_Payment: 付款方式
-   *.C_Approval: 批准人
-   *.C_ZKDays: 纸卡有效期
-   *.C_XuNi: 虚拟合同
-   *.C_Freeze: 是否冻结
-   *.C_Memo: 备注信息
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewSContractExt = 'Create Table $Table(R_ID $Inc,' +
-       'E_CID varChar(15), E_Type Char(1), ' +
-       'E_StockNo varChar(20), E_StockName varChar(80),' +
-       'E_Value Decimal(15,5), E_Price Decimal(15,5), E_Money Decimal(15,5))';
-  {-----------------------------------------------------------------------------
-   销售合同: SalesContract
-   *.R_ID: 记录编号
-   *.E_CID: 销售合同
-   *.E_Type: 类型(袋,散)
-   *.E_StockNo,E_StockName: 水泥类型
-   *.E_Value: 数量
-   *.E_Price: 单价
-   *.E_Money: 金额
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewZhiKa = 'Create Table $Table(R_ID $Inc,Z_ID varChar(15),' +
-       'Z_Name varChar(100),Z_Card varChar(16),' +
-       'Z_CID varChar(15), Z_Project varChar(100), Z_Customer varChar(15),' +
-       'Z_SaleMan varChar(15), Z_Payment varChar(20), Z_Lading Char(1),' +
-       'Z_ValidDays DateTime, Z_Password varChar(16), Z_OnlyPwd Char(1),' +
-       'Z_Verified Char(1), Z_InValid Char(1), Z_Freeze Char(1),' +
-       'Z_YFMoney $Float, Z_FixedMoney $Float, Z_OnlyMoney Char(1),' +
-       'Z_TJStatus Char(1), Z_Memo varChar(200), Z_Man varChar(32),' +
-       'Z_Date DateTime, Z_VerifyMan varChar(32), Z_VerifyDate DateTime)';
+  sSQL_NewZhiKa = 'Create Table $Table(R_ID $Inc, Z_ID varChar(15),' +
+       'Z_Name varChar(100), Z_Card varChar(16), Z_Project varChar(100),' +
+       'Z_Customer varChar(15), Z_SaleMan varChar(15), Z_Lading Char(1),' +
+       'Z_ValidDays DateTime, Z_Password varChar(16),' + 
+       'Z_Money $Float, Z_MoneyUsed $Float, Z_MoneyAll Char(1),' +
+       'Z_Verified Char(1), Z_VerifyMan varChar(32), Z_VerifyDate DateTime,' +
+       'Z_InValid Char(1), Z_Freeze Char(1),' +
+       'Z_Man varChar(32), Z_Date DateTime, Z_Memo varChar(200))';
   {-----------------------------------------------------------------------------
    纸卡办理: ZhiKa
    *.R_ID:记录编号
    *.Z_ID:纸卡号
-   *.Z_Card:磁卡号
    *.Z_Name:纸卡名称
-   *.Z_CID:销售合同
+   *.Z_Card:磁卡号
    *.Z_Project:项目名称
    *.Z_Customer:客户编号
    *.Z_SaleMan:业务员
-   *.Z_Payment:付款方式
    *.Z_Lading:提货方式(自提,送货)
    *.Z_ValidDays:有效期
    *.Z_Password: 密码
-   *.Z_OnlyPwd: 统一密码
+   *.Z_Money:可用金
+   *.Z_MoneyUsed: 已使用
+   *.Z_MoneyAll: 使用全部
    *.Z_Verified:已审核
    *.Z_VerifyMan: 审核人
    *.Z_VerifyDate: 审核时间
    *.Z_InValid:已无效
    *.Z_Freeze:已冻结
-   *.Z_YFMoney:预付金额
-   *.Z_FixedMoney:可用金
-   *.Z_OnlyMoney:只使用可用金
-   *.Z_TJStatus:调价状态
    *.Z_Man:操作人
    *.Z_Date:创建时间
   -----------------------------------------------------------------------------}
@@ -1639,8 +1595,6 @@ begin
   AddSysTableItem(sTable_PriceRule, sSQL_NewPriceRule);
   AddSysTableItem(sTable_Customer, sSQL_NewCustomer);
   AddSysTableItem(sTable_Salesman, sSQL_NewSalesMan);
-  AddSysTableItem(sTable_SaleContract, sSQL_NewSaleContract);
-  AddSysTableItem(sTable_SContractExt, sSQL_NewSContractExt);
 
   AddSysTableItem(sTable_CusAccount, sSQL_NewCusAccount);
   AddSysTableItem(sTable_InOutMoney, sSQL_NewInOutMoney);

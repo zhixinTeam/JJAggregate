@@ -135,13 +135,13 @@ begin
   end;
 
   nStr := SQLQuery.FieldByName('S_ID').AsString;
-  nSQL := 'Select Count(*) From %s Where C_SaleMan=''%s''';
-  nSQL := Format(nSQL, [sTable_SaleContract, nStr]);
+  nSQL := 'Select Count(*) From %s Where Z_SaleMan=''%s''';
+  nSQL := Format(nSQL, [sTable_ZhiKa, nStr]);
 
   with FDM.QueryTemp(nSQL) do
   if Fields[0].AsInteger > 0 then
   begin
-    ShowMsg('该业务人员不能删除', '已签合同'); Exit;
+    ShowMsg('该业务人员不能删除', '已办纸卡'); Exit;
   end;
 
   nStr := SQLQuery.FieldByName('S_Name').AsString;

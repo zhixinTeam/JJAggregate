@@ -38,16 +38,19 @@ type
     FListA,FListB: TStrings;
     //列表对象
     FNumPriceWeek: Integer;
-    //计时计数
     FLoadPriceWeek: Boolean;
     FWeekItems: TPriceWeekItems;
     //价格周期数据
+    FNumNextDay: Int64;
+    FNumUpdateZhiKa: Integer;
+    //更新纸卡
     FWaiter: TWaitObject;
     //等待对象
     FSyncLock: TCrossProcWaitObject;
     //同步锁定
   protected
     procedure DoCheckPriceWeek;
+    procedure DoUpdateZhiKa;
     procedure Execute; override;
     //执行线程
   public
@@ -146,8 +149,8 @@ begin
   FListB := TStringList.Create;
 
   FWaiter := TWaitObject.Create;
-  FWaiter.Interval := 100;
-  //1/10 second
+  FWaiter.Interval := 500;
+  //1/2 second
 
   FSyncLock := TCrossProcWaitObject.Create('BusMIT_CronTask_Sync');
   //process sync
@@ -180,12 +183,13 @@ end;
 procedure TTaskThread.Execute;
 var nErr: Integer;
     nInit: Int64;
-    nStr: string;
 begin
   FLoadPriceWeek := False;
   //init data
 
+  FNumNextDay := 0;
   FNumPriceWeek := 0;
+  FNumUpdateZhiKa := 0;
   //init counter
 
   while not Terminated do
@@ -194,13 +198,23 @@ begin
     if Terminated then Exit;
 
     Inc(FNumPriceWeek);
-    //inc counter
+    Inc(FNumUpdateZhiKa);
+    Dec(FNumNextDay);
+    //inc&dec counter
 
-    if FNumPriceWeek >= 5 then
+    if FNumPriceWeek >= 2 then
        FNumPriceWeek := 0;
     //价格周期监控: 2次/秒
 
-    if (FNumPriceWeek <> 0) then
+    if (FNumUpdateZhiKa >= 7200) or (FNumNextDay <= 0) then
+      FNumUpdateZhiKa := 0;
+    //更新纸卡信息: 1次/小时 或 新一天
+
+    if FNumNextDay <= 0 then
+      FNumNextDay := Trunc(((Date() + 1) - Now()) * 24 * 3600 * 2) + 3;
+    //距离明天的计数:延迟1秒
+    
+    if (FNumPriceWeek <> 0) and (FNumUpdateZhiKa <> 0) then
       Continue;
     //无业务可做
 
@@ -220,10 +234,21 @@ begin
       begin
         nInit := GetTickCount;
         DoCheckPriceWeek();
-
         nInit := GetTickCount - nInit;
+
         if nInit > 3 * 1000 then
           WriteLog(Format('价格周期监控,耗时: %dms.', [nInit]));
+        //xxxxx
+      end;
+
+      if FNumUpdateZhiKa = 0 then
+      begin
+        nInit := GetTickCount;
+        DoUpdateZhiKa();
+        nInit := GetTickCount - nInit;
+        
+        if nInit > 3 * 1000 then
+          WriteLog(Format('更新纸卡状态,耗时: %dms.', [nInit]));
         //xxxxx
       end;
     finally
@@ -366,6 +391,31 @@ begin
       WriteLog(Format(nStr, [FID, FName, DateTime2Str(Now())]));
     end;
   end;
+end;
+
+//Date: 2018-12-12
+//Desc: 更新纸卡状态信息
+procedure TTaskThread.DoUpdateZhiKa;
+var nStr,nMoney: string;
+begin
+  nMoney := '';
+  nStr := 'Select D_Value From %s Where D_Name=''%s'' And D_Memo=''%s''';
+  nStr := Format(nStr, [sTable_SysDict, sFlag_SysParam, sFlag_ZKMinMoney]);
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  if RecordCount > 0 then
+  begin
+    nStr := Fields[0].AsString;
+    if IsNumber(nStr, True) and (StrToFloat(nStr) > 0) then
+      nMoney := Format(' Or (Z_Money > 0 And Z_Money-Z_MoneyUsed<=%s)', [nStr]);
+    //xxxx
+  end;
+
+  nStr := 'Update %s Set Z_InValid=''%s'' Where Z_InValid=''%s'' And (' +
+          'Z_ValidDays<=%s%s)';
+  nStr := Format(nStr, [sTable_ZhiKa, sFlag_Yes, sFlag_No,
+          sField_SQLServer_Now, nMoney]);
+  gDBConnManager.WorkerExec(FDBConn, nStr);
 end;
 
 initialization

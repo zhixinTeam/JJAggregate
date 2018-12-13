@@ -71,10 +71,14 @@ type
     //系统是否已过期
     function ReloadPriceWeek(var nData: string): Boolean;
     //重载价格周期
+    function MakeZhiKaPassword(var nData: string): Boolean;
+    //生成纸卡密码
     function GetCustomerValidMoney(var nData: string): Boolean;
     //获取客户可用金
     function GetZhiKaValidMoney(var nData: string): Boolean;
     //获取纸卡可用金
+    function GetZhiKaUsedMoney(var nData: string): Boolean;
+    //获取纸卡已用金额
     function CustomerHasMoney(var nData: string): Boolean;
     //验证客户是否有钱
     function SaveTruck(var nData: string): Boolean;
@@ -311,9 +315,11 @@ begin
    cBC_GetSerialNO         : Result := GetSerailID(nData);
    cBC_IsSystemExpired     : Result := IsSystemExpired(nData);
    cBC_ReloadPriceWeek     : Result := ReloadPriceWeek(nData);
+   cBC_MakeZhiKaPassword   : Result := MakeZhiKaPassword(nData);
 
    cBC_GetCustomerMoney    : Result := GetCustomerValidMoney(nData);
    cBC_GetZhiKaMoney       : Result := GetZhiKaValidMoney(nData);
+   cBC_GetZhiKaMoneyUsed   : Result := GetZhiKaUsedMoney(nData);
    cBC_CustomerHasMoney    : Result := CustomerHasMoney(nData);
    cBC_SaveTruckInfo       : Result := SaveTruck(nData);
    cBC_UpdateTruckInfo     : Result := UpdateTruck(nData);
@@ -564,15 +570,55 @@ begin
   Result := True;
 end;
 
-{$IFDEF COMMON}
-//Date: 2014-09-05
+//Desc: 生成纸卡提货密码
+function TWorkerBusinessCommander.MakeZhiKaPassword(var nData: string): Boolean;
+const
+  cMaxLen = 6;
+var nStr: string;
+    nIdx,nLen: Integer;
+begin
+  while True do
+  begin
+    nStr := MD5Print(MD5String(DateTimeSerial()));
+    FOut.FData := '';
+    nLen := Length(nStr);
+
+    for nIdx:=1 to nLen do
+     if nStr[nIdx] in ['0'..'9'] then
+      FOut.FData := FOut.FData + nStr[nIdx];
+    //only number
+
+    nLen := Length(FOut.FData);
+    if nLen < cMaxLen then Continue;
+    nIdx := Random(nLen);
+
+    if nLen - nIdx < cMaxLen - 1 then nIdx := nLen - (cMaxLen - 1);
+    if nIdx < 1 then nIdx := 1;
+    FOut.FData := UpperCase(Copy(FOut.FData, nIdx, cMaxLen));
+
+    nStr := 'Select Count(*) From %s ' +
+            'Where Z_Password=''%s'' And Z_InValid=''%s''';
+    nStr := Format(nStr, [sTable_ZhiKa, FOut.FData, sFlag_No]);
+
+    with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+      if Fields[0].AsInteger < 1 then Break;
+    //编号可用
+  end;
+
+  Result := True;
+end;
+
+//Date: 2018-12-13
+//Parm: 客户号[FIn.FData];使用信用[FIn.FExtParam]
 //Desc: 获取指定客户的可用金额
 function TWorkerBusinessCommander.GetCustomerValidMoney(var nData: string): Boolean;
 var nStr: string;
     nUseCredit: Boolean;
-    nVal,nCredit: Double;
+    nVal,nCredit,nHasUsed: Double;
 begin
+  Result := True;
   nUseCredit := False;
+  
   if FIn.FExtParam = sFlag_Yes then
   begin
     nStr := 'Select MAX(C_End) From %s ' +
@@ -585,16 +631,30 @@ begin
     //信用未过期
   end;
 
+  nStr := 'Select Sum(Z_Money) From %s ' +
+          'Where Z_InValid=''%s'' And Z_Customer=''%s''';
+  nStr := Format(nStr, [sTable_ZhiKa, sFlag_No, FIn.FData]);
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+    nHasUsed := Fields[0].AsFloat;
+  //有效纸卡占用金额
+
+  nStr := 'Select Sum(L_Money) From (Select L_Value*L_Price as L_Money ' +
+          'From %s Where L_OutFact Is Null And L_ZKMoney=''%s'') t';
+  nStr := Format(nStr, [sTable_Bill, sFlag_Yes]);
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+    nHasUsed := nHasUsed - Fields[0].AsFloat;
+  nHasUsed := Float2Float(nHasUsed, cPrecision, True);
+  //未出厂(冻结)占用资金,限提纸卡的冻结金不予计算
+
   nStr := 'Select * From %s Where A_CID=''%s''';
   nStr := Format(nStr, [sTable_CusAccount, FIn.FData]);
-
   with gDBConnManager.WorkerQuery(FDBConn, nStr) do
   begin
     if RecordCount < 1 then
     begin
-      nData := '编号为[ %s ]的客户账户不存在.';
-      nData := Format(nData, [FIn.FData]);
-
+      nData := Format('编号为[ %s ]的客户账户不存在.', [FIn.FData]);
       Result := False;
       Exit;
     end;
@@ -603,87 +663,110 @@ begin
             FieldByName('A_OutMoney').AsFloat -
             FieldByName('A_Compensation').AsFloat -
             FieldByName('A_FreezeMoney').AsFloat;
-    //xxxxx
+    nVal := Float2Float(nVal, cPrecision, False);
 
     nCredit := FieldByName('A_CreditLimit').AsFloat;
-    nCredit := Float2PInt(nCredit, cPrecision, False) / cPrecision;
+    nCredit := Float2Float(nCredit, cPrecision, False);
 
     if nUseCredit then
       nVal := nVal + nCredit;
+    nVal := nVal - nHasUsed;
 
-    nVal := Float2PInt(nVal, cPrecision, False) / cPrecision;
     FOut.FData := FloatToStr(nVal);
     FOut.FExtParam := FloatToStr(nCredit);
-    Result := True;
   end;
 end;
-{$ENDIF}
 
-{$IFDEF COMMON}
-//Date: 2014-09-05
+//Date: 2018-12-13
+//Parm: 纸卡号[FIn.FData]
 //Desc: 获取指定纸卡的可用金额
 function TWorkerBusinessCommander.GetZhiKaValidMoney(var nData: string): Boolean;
 var nStr: string;
-    nVal,nMoney,nCredit: Double;
+    nMoney: Double;
 begin
-  nStr := 'Select ca.*,Z_OnlyMoney,Z_FixedMoney From $ZK,$CA ca ' +
-          'Where Z_ID=''$ZID'' and A_CID=Z_Customer';
-  nStr := MacroValue(nStr, [MI('$ZK', sTable_ZhiKa), MI('$ZID', FIn.FData),
-          MI('$CA', sTable_CusAccount)]);
-  //xxxxx
-
+  nStr := 'Select Z_Money,Z_MoneyUsed,Z_MoneyAll,Z_Customer From %s ' +
+          'Where Z_ID=''%s''';
+  nStr := Format(nStr, [sTable_ZhiKa, FIn.FData]);
+  
   with gDBConnManager.WorkerQuery(FDBConn, nStr) do
   begin
     if RecordCount < 1 then
     begin
-      nData := '编号为[ %s ]的纸卡不存在,或客户账户无效.';
-      nData := Format(nData, [FIn.FData]);
-
+      nData := Format('编号为[ %s ]的纸卡不存在.', [FIn.FData]);
       Result := False;
       Exit;
     end;
 
-    FOut.FExtParam := FieldByName('Z_OnlyMoney').AsString;
-    nMoney := FieldByName('Z_FixedMoney').AsFloat;
+    nStr := FieldByName('Z_MoneyAll').AsString;
+    if nStr = sFlag_Yes then
+    begin
+      FIn.FData := FieldByName('Z_Customer').AsString;
+      FIn.FExtParam := sFlag_Yes;
 
-    nVal := FieldByName('A_InitMoney').AsFloat + FieldByName('A_InMoney').AsFloat -
-            FieldByName('A_OutMoney').AsFloat -
-            FieldByName('A_Compensation').AsFloat -
-            FieldByName('A_FreezeMoney').AsFloat;
-    //xxxxx
+      Result := GetCustomerValidMoney(nData);
+      Exit;
+    end; //不限提,计算客户可用金
 
-    nCredit := FieldByName('A_CreditLimit').AsFloat;
-    nCredit := Float2PInt(nCredit, cPrecision, False) / cPrecision;
+    nMoney := FieldByName('Z_Money').AsFloat -
+              FieldByName('Z_MoneyUsed').AsFloat;
+    //已出厂剩余
 
-    nStr := 'Select MAX(C_End) From %s ' +
-            'Where C_CusID=''%s'' and C_Money>=0 and C_Verify=''%s''';
-    nStr := Format(nStr, [sTable_CusCredit, FieldByName('A_CID').AsString,
-            sFlag_Yes]);
-    //xxxxx
+    nStr := 'Select Sum(L_Money) From (Select L_Value*L_Price as L_Money ' +
+            'From %s Where L_OutFact Is Null And L_ZhiKa=''%s'') t';
+    nStr := Format(nStr, [sTable_Bill, FIn.FData]);
 
     with gDBConnManager.WorkerQuery(FDBConn, nStr) do
-    if (Fields[0].AsDateTime > Str2Date('2000-01-01')) and
-       (Fields[0].AsDateTime > Now()) then
-    begin
-      nVal := nVal + nCredit;
-      //信用未过期
-    end;
-
-    nVal := Float2PInt(nVal, cPrecision, False) / cPrecision;
-    //total money
-
-    if FOut.FExtParam = sFlag_Yes then
-    begin
-      if nMoney > nVal then
-        nMoney := nVal;
-      //enough money
-    end else nMoney := nVal;
-
+      nMoney := nMoney - Fields[0].AsFloat; //未出厂(冻结)占用资金
+    nMoney := Float2Float(nMoney, cPrecision, False);
+                                         
     FOut.FData := FloatToStr(nMoney);
     Result := True;
   end;
 end;
-{$ENDIF}
+
+//Date: 2018-12-13
+//Parm: 纸卡号[FIn.FData]
+//Desc: 获取纸卡已用金额
+function TWorkerBusinessCommander.GetZhiKaUsedMoney(var nData: string): Boolean;
+var nStr: string;
+    nVal,nFreeze: Double;
+begin
+  Result := True;
+  nStr := 'Select Z_MoneyUsed,Z_MoneyAll From %s Where Z_ID=''%s''';
+  nStr := Format(nStr, [sTable_ZhiKa, FIn.FData]);
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    if RecordCount < 1 then
+    begin
+      Result := False;
+      nData := Format('纸卡[ %s ]已丢失.', [FIn.FData]);
+      Exit;
+    end;
+
+    nVal := FieldByName('Z_MoneyUsed').AsFloat;
+    nVal := Float2Float(nVal, cPrecision, True);
+
+    if FieldByName('Z_MoneyAll').AsString = sFlag_Yes then
+    begin
+      FOut.FData := FloatToStr(nVal);
+      Exit;
+    end; //不限提则不用处理冻结金
+  end;
+
+  nStr := 'Select Sum(L_Money) From (Select L_Value*L_Price as L_Money ' +
+          'From %s Where L_OutFact Is Null And L_ZhiKa=''%s'') t';
+  nStr := Format(nStr, [sTable_Bill, FIn.FData]);
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    nFreeze := Float2Float(Fields[0].AsFloat, cPrecision, True);
+    nVal := nVal + nFreeze;
+    
+    FOut.FData := FloatToStr(nVal);
+    FOut.FExtParam := FloatToStr(nFreeze);
+  end; //未出厂(冻结)占用资金
+end;
 
 //Date: 2014-09-05
 //Desc: 验证客户是否有钱,以及信用是否过期

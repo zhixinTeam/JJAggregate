@@ -37,10 +37,10 @@ const
   cFI_FrameAuditTruck   = $0018;                     //审核车辆
   cFI_FrameBillBuDanAudit = $0019;                     //补单审核
 
+  cFI_FramePayment      = $0021;                     //销售回款
   cFI_FrameShouJu       = $0020;                     //收据查询
-  cFI_FrameZhiKaVerify  = $0021;                     //纸卡审核
-  cFI_FramePayment      = $0022;                     //销售回款
-  cFI_FrameCusCredit    = $0023;                     //信用管理
+  cFI_FrameCusCredit    = $0022;                     //信用管理
+  cFI_FrameZhiKa        = $0023;                     //纸卡管理
 
   cFI_FrameLadingDai    = $0030;                     //袋装提货
   cFI_FramePoundQuery   = $0031;                     //磅房查询
@@ -100,6 +100,7 @@ const
   cFI_FormBaseInfo      = $1011;                     //基本信息
   cFI_FormCustomer      = $1012;                     //客户资料
   cFI_FormSaleMan       = $1013;                     //业务员
+  cFI_FormZhiKa         = $1113;                     //办理纸卡
   cFI_FormMakeCard      = $1014;                     //办理磁卡
   cFI_FormMakeRFIDCard  = $1015;                     //办理电子标签
   cFI_FormMakeLSCard    = $1016;                     //厂内零售办卡
@@ -338,7 +339,7 @@ begin
   AddMenuModuleItem('MAIN_B04', cFI_FramePriceWeek);
   AddMenuModuleItem('MAIN_B05', cFI_FramePriceRule);
 
-  AddMenuModuleItem('MAIN_C01', cFI_FrameZhiKaVerify);
+  AddMenuModuleItem('MAIN_C01', cFI_FrameZhiKa);
   AddMenuModuleItem('MAIN_C02', cFI_FramePayment);
   AddMenuModuleItem('MAIN_C03', cFI_FrameCusCredit);
   AddMenuModuleItem('MAIN_C04', cFI_FrameSaleInvoice);
