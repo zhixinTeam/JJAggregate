@@ -106,7 +106,7 @@ const
   cFI_FormMakeLSCard    = $1016;                     //厂内零售办卡
 
   cFI_FormBill          = $1017;                     //开提货单
-  cFI_FormSanPreHK      = $1101;                     //散装预合卡
+  cFI_FormGetZhika      = $1101;                     //获取纸卡
   cFI_FormShouJu        = $1018;                     //开收据
   cFI_FormCusCredit     = $1019;                     //信用变动
   cFI_FormPayment       = $1020;                     //销售回款
@@ -355,10 +355,6 @@ begin
   AddMenuModuleItem('MAIN_D05', -1);
   AddMenuModuleItem('MAIN_D06', cFI_FrameBill);
   AddMenuModuleItem('MAIN_D08', cFI_FormTruckEmpty, mtForm);
-  AddMenuModuleItem('MAIN_D09', cFI_FrameMakeLSCard);
-  AddMenuModuleItem('MAIN_D10', cFI_FrameSanPreHK);
-  AddMenuModuleItem('MAIN_D11', cFI_FrameAuditTruck);
-  AddMenuModuleItem('MAIN_D12', cFI_FrameBillBuDanAudit);
 
   AddMenuModuleItem('MAIN_E01', cFI_FramePoundManual);
   AddMenuModuleItem('MAIN_E02', cFI_FramePoundAuto);

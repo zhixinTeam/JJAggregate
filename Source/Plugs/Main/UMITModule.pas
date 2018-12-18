@@ -15,7 +15,7 @@ uses
   {$IFDEF HardMon}UEventHardware, UWorkerHardware,{$ENDIF}
   {$IFDEF MicroMsg}UMgrRemoteWXMsg,{$ENDIF}
   UMemDataPool, UMgrDBConn, UMgrParam, UMgrPlug, UMgrChannel, UChannelChooser,
-  USAPConnection, UCronTasks, UWorkerBusiness;
+  USAPConnection, UCronTasks, UWorkerBusiness, UWorkerBusinessBill;
 
 procedure InitSystemObject(const nMainForm: THandle);
 procedure RunSystemObject;

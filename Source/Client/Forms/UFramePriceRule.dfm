@@ -164,5 +164,12 @@ inherited fFramePriceRule: TfFramePriceRule
       Caption = #26597#30475#21608#26399#22270
       OnClick = N2Click
     end
+    object N2: TMenuItem
+      Caption = '-'
+    end
+    object N3: TMenuItem
+      Caption = #24403#21069#20215#26684#34920
+      OnClick = N3Click
+    end
   end
 end

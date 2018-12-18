@@ -1,5 +1,5 @@
 inherited fFormBill: TfFormBill
-  Left = 608
+  Left = 609
   Top = 168
   ClientHeight = 460
   ClientWidth = 419
@@ -49,7 +49,7 @@ inherited fFormBill: TfFormBill
       Height = 113
       Columns = <
         item
-          Caption = #27700#27877#31867#22411
+          Caption = #21697#31181#21517#31216
           Width = 80
         end
         item
@@ -129,16 +129,7 @@ inherited fFormBill: TfFormBill
       OnKeyPress = EditLadingKeyPress
       Width = 120
     end
-    object EditFQ: TcxTextEdit [10]
-      Left = 264
-      Top = 157
-      ParentFont = False
-      Properties.MaxLength = 100
-      Properties.OnEditValueChanged = EditFQPropertiesEditValueChanged
-      TabOrder = 13
-      Width = 120
-    end
-    object EditType: TcxComboBox [11]
+    object EditType: TcxComboBox [10]
       Left = 81
       Top = 157
       ParentFont = False
@@ -149,27 +140,24 @@ inherited fFormBill: TfFormBill
         'Z=Z'#12289#26632#21488
         'V=V'#12289'VIP'
         'S=S'#12289#33337#36816)
-      TabOrder = 14
+      TabOrder = 13
       OnKeyPress = EditLadingKeyPress
       Width = 120
     end
-    object PrintGLF: TcxCheckBox [12]
-      Left = 11
-      Top = 427
-      Caption = #25171#21360#36807#36335#36153
+    object EditPrice: TcxButtonEdit [11]
+      Left = 264
+      Top = 157
       ParentFont = False
-      TabOrder = 15
-      Transparent = True
-      Width = 95
-    end
-    object PrintHY: TcxCheckBox [13]
-      Left = 111
-      Top = 427
-      Caption = #25171#21360#21270#39564#21333
-      ParentFont = False
-      TabOrder = 16
-      Transparent = True
-      Width = 95
+      Properties.Buttons = <
+        item
+          Default = True
+          Kind = bkEllipsis
+        end>
+      Properties.ReadOnly = True
+      Properties.OnButtonClick = EditPricePropertiesButtonClick
+      TabOrder = 14
+      Text = #28857#20987#26597#30475
+      Width = 121
     end
     inherited dxLayout1Group_Root: TdxLayoutGroup
       inherited dxGroup1: TdxLayoutGroup
@@ -188,11 +176,11 @@ inherited fFormBill: TfFormBill
             Control = EditType
             ControlOptions.ShowBorder = False
           end
-          object dxLayout1Item5: TdxLayoutItem
+          object dxLayout1Item13: TdxLayoutItem
             AutoAligns = [aaVertical]
             AlignHorz = ahClient
-            Caption = #23553#31614#32534#21495':'
-            Control = EditFQ
+            Caption = #20215#26684#28165#21333':'
+            Control = EditPrice
             ControlOptions.ShowBorder = False
           end
         end
@@ -232,7 +220,7 @@ inherited fFormBill: TfFormBill
             object dxLayout1Item7: TdxLayoutItem
               AutoAligns = [aaVertical]
               AlignHorz = ahClient
-              Caption = #27700#27877#31867#22411':'
+              Caption = #25552#36135#21697#31181':'
               Control = EditStock
               ControlOptions.ShowBorder = False
             end
@@ -273,20 +261,6 @@ inherited fFormBill: TfFormBill
           Caption = 'New Item'
           ShowCaption = False
           Control = ListBill
-          ControlOptions.ShowBorder = False
-        end
-      end
-      inherited dxLayout1Group1: TdxLayoutGroup
-        object dxLayout1Item13: TdxLayoutItem [0]
-          Caption = 'cxCheckBox1'
-          ShowCaption = False
-          Visible = False
-          Control = PrintGLF
-          ControlOptions.ShowBorder = False
-        end
-        object dxLayout1Item14: TdxLayoutItem [1]
-          ShowCaption = False
-          Control = PrintHY
           ControlOptions.ShowBorder = False
         end
       end

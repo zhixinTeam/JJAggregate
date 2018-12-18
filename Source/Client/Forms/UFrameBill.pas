@@ -36,21 +36,16 @@ type
     PMenu1: TPopupMenu;
     N1: TMenuItem;
     N2: TMenuItem;
-    N3: TMenuItem;
     N4: TMenuItem;
     EditLID: TcxButtonEdit;
     dxLayout1Item8: TdxLayoutItem;
     N5: TMenuItem;
-    N6: TMenuItem;
     Edit1: TcxTextEdit;
     dxLayout1Item9: TdxLayoutItem;
-    N7: TMenuItem;
     N8: TMenuItem;
     N9: TMenuItem;
     dxLayout1Item10: TdxLayoutItem;
     CheckDelete: TcxCheckBox;
-    N10: TMenuItem;
-    N11: TMenuItem;
     procedure EditIDPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure BtnDelClick(Sender: TObject);
@@ -58,14 +53,9 @@ type
     procedure EditDatePropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure N1Click(Sender: TObject);
-    procedure N3Click(Sender: TObject);
     procedure N4Click(Sender: TObject);
     procedure N5Click(Sender: TObject);
-    procedure N7Click(Sender: TObject);
-    procedure PMenu1Popup(Sender: TObject);
     procedure CheckDeleteClick(Sender: TObject);
-    procedure N10Click(Sender: TObject);
-    procedure N11Click(Sender: TObject);
     procedure cxView1DblClick(Sender: TObject);
   protected
     FStart,FEnd: TDate;
@@ -276,18 +266,6 @@ begin
   end;
 end;
 
-procedure TfFrameBill.PMenu1Popup(Sender: TObject);
-begin
-  N3.Enabled := gPopedomManager.HasPopedom(PopedomItem, sPopedom_Edit);
-  //销售调拨
-
-  {$IFDEF DYGL}
-  N10.Visible := True;
-  N11.Visible := True;
-  //打印预提单和过路费
-  {$ENDIF}
-end;
-
 //Desc: 修改未进厂车牌号
 procedure TfFrameBill.N5Click(Sender: TObject);
 var nStr,nTruck: string;
@@ -311,122 +289,6 @@ begin
       InitFormData(FWhere);
       ShowMsg('车牌号修改成功', sHint);
     end;
-  end;
-end;
-
-//Desc: 修改封签号
-procedure TfFrameBill.N7Click(Sender: TObject);
-var nStr,nID,nSeal,nSave: string;
-begin
-  if cxView1.DataController.GetSelectedCount > 0 then
-  begin
-    {$IFDEF BatchInHYOfBill}
-    nSave := 'L_HYDan';
-    {$ELSE}
-    nSave := 'L_Seal';
-    {$ENDIF}
-
-    nStr := SQLQuery.FieldByName(nSave).AsString;
-    nSeal := nStr;
-    if not ShowInputBox('请输入新的封签编号:', '修改', nSeal, 100) then Exit;
-
-    if (nSeal = '') or (nStr = nSeal) then Exit;
-    //无效或一致
-    nID := SQLQuery.FieldByName('L_ID').AsString;
-
-    nStr := '确定要将交货单[ %s ]的封签号该为[ %s ]吗?';
-    nStr := Format(nStr, [nID, nSeal]);
-    if not QueryDlg(nStr, sAsk) then Exit;
-
-    nStr := 'Update %s Set %s=''%s'' Where L_ID=''%s''';
-    nStr := Format(nStr, [sTable_Bill, nSave, nSeal, nID]);
-    FDM.ExecuteSQL(nStr);
-
-    nStr := '修改封签号[ %s -> %s ].';
-    nStr := Format(nStr, [SQLQuery.FieldByName(nSave).AsString, nSeal]);
-    FDM.WriteSysLog(sFlag_BillItem, nID, nStr, False);
-
-    InitFormData(FWhere);
-    ShowMsg('封签号修改成功', sHint);
-  end;
-end;
-
-//Desc: 调拨提货单
-procedure TfFrameBill.N3Click(Sender: TObject);
-var nStr,nTmp: string;
-    nP: TFormCommandParam;
-begin
-  if cxView1.DataController.GetSelectedCount > 0 then
-  begin
-    nP.FCommand := cCmd_AddData;
-    //CreateBaseFormItem(cFI_FormGetZhika, PopedomItem, @nP);
-    if (nP.FCommand <> cCmd_ModalResult) or (nP.FParamA <> mrOK) then Exit;
-
-    nStr := SQLQuery.FieldByName('L_ZhiKa').AsString;
-    if nStr = nP.FParamB then
-    begin
-      ShowMsg('相同纸卡不能调拨', sHint);
-      Exit;
-    end;
-
-    nStr := 'Select C_ID,C_Name From %s,%s ' +
-            'Where Z_ID=''%s'' And Z_Customer=C_ID';
-    nStr := Format(nStr, [sTable_ZhiKa, sTable_Customer, nP.FParamB]);
-
-    with FDM.QueryTemp(nStr) do
-    begin
-      if RecordCount < 1 then
-      begin
-        ShowMsg('纸卡信息无效', sHint);
-        Exit;
-      end;
-
-      nStr := '系统将执行提货调拨操作,明细如下: ' + #13#10#13#10 +
-              '※.从客户: %s.%s' + #13#10 +
-              '※.到客户: %s.%s' + #13#10 +
-              '※.品  种: %s.%s' + #13#10 +
-              '※.调拨量: %.2f吨' + #13#10#13#10 +
-              '确定要执行请点击"是".';
-      nStr := Format(nStr, [SQLQuery.FieldByName('L_CusID').AsString,
-              SQLQuery.FieldByName('L_CusName').AsString,
-              FieldByName('C_ID').AsString,
-              FieldByName('C_Name').AsString,
-              SQLQuery.FieldByName('L_StockNo').AsString,
-              SQLQuery.FieldByName('L_StockName').AsString,
-              SQLQuery.FieldByName('L_Value').AsFloat]);
-      if not QueryDlg(nStr, sAsk) then Exit;
-    end;
-
-    nStr := SQLQuery.FieldByName('L_ID').AsString;
-    if BillSaleAdjust(nStr, nP.FParamB) then
-    begin
-      nTmp := '销售调拨给纸卡[ %s ].';
-      nTmp := Format(nTmp, [nP.FParamB]);
-
-      FDM.WriteSysLog(sFlag_BillItem, nStr, nTmp, False);
-      InitFormData(FWhere);
-      ShowMsg('调拨成功', sHint);
-    end;
-  end;
-end;
-
-procedure TfFrameBill.N10Click(Sender: TObject);
-var nStr: string;
-begin
-  if cxView1.DataController.GetSelectedCount > 0 then
-  begin
-    nStr := SQLQuery.FieldByName('L_ID').AsString;
-    PrintBillLoadReport(nStr, False);
-  end;
-end;
-
-procedure TfFrameBill.N11Click(Sender: TObject);
-var nStr: string;
-begin
-  if cxView1.DataController.GetSelectedCount > 0 then
-  begin
-    nStr := SQLQuery.FieldByName('L_ID').AsString;
-    PrintBillFYDReport(nStr, False);
   end;
 end;
 

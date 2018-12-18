@@ -69,8 +69,8 @@ implementation
 
 {$R *.dfm}
 uses
-  ULibFun, UFormBase, UMgrControl, UDataModule, UFormCtrl, USysDB, USysConst,
-  USysGrid, USysBusiness;
+  ULibFun, UBusinessConst, UFormBase, UMgrControl, UDataModule, UFormCtrl,
+  USysDB, USysConst, USysGrid, USysBusiness;
 
 type
   TPriceWeek = record

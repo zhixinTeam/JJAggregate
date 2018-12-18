@@ -38,6 +38,8 @@ type
     EditArea: TcxButtonEdit;
     dxLayout1Item9: TdxLayoutItem;
     EditPrice: TcxButtonEdit;
+    Check1: TcxCheckBox;
+    dxLayout1Item10: TdxLayoutItem;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure BtnOKClick(Sender: TObject);
@@ -56,6 +58,7 @@ type
     FActiveWeek: Integer;
     FDefaultWeek,FDefaultArea: string;
     //xxxx
+    FModalResult: TModalResult;
     procedure InitFormData(const nID: string);
     //载入数据
     procedure ShowPriceEditor(const nShow: Boolean);
@@ -73,8 +76,8 @@ implementation
 
 {$R *.dfm}
 uses
-  ULibFun, UFormBase, UMgrControl, UDataModule, UFormCtrl, UFormBaseInfo,
-  USysDB, USysConst, USysGrid, USysBusiness;
+  ULibFun, UBusinessConst, UFormBase, UMgrControl, UDataModule, UFormCtrl,
+  UFormBaseInfo, USysDB, USysConst, USysGrid, USysBusiness;
 
 type
   TPriceWeek = record
@@ -111,13 +114,16 @@ begin
     end;
 
     Caption := '区域价 - 管理';
+    FModalResult := mrNone;
+
     InitFormData('');
+    ShowModal;
 
     if Assigned(nP) then
     begin
       nP.FCommand := cCmd_ModalResult;
-      nP.FParamA := ShowModal;
-    end else ShowModal;
+      nP.FParamA := FModalResult;
+    end;
     Free;
   end;
 end;
@@ -397,7 +403,8 @@ begin
 
   if not gPriceWeeks[FActiveWeek].FChanged then
   begin
-    ModalResult := mrOk;
+    if not Check1.Checked then
+      ModalResult := mrOk;
     Exit;
   end;
 
@@ -434,7 +441,11 @@ begin
     end;
 
     FDM.ADOConn.CommitTrans;
-    ModalResult := mrOk;
+    FModalResult := mrOk;
+    
+    if Check1.Checked then
+         ShowMsg('保存成功', sHint)
+    else ModalResult := mrOk;
   except
     on nErr: Exception do
     begin

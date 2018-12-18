@@ -31,10 +31,13 @@ const
   cBC_ReloadPriceWeek         = $0007;   //重新载入价格周期
 
   cBC_MakeZhiKaPassword       = $0008;   //生成纸卡提货密码
+  cBC_GetLadingStockItems     = $0108;   //载入可发货品种列表
   cBC_GetCustomerMoney        = $0009;   //获取客户可用金
+  cBC_GetCustomerPrice        = $0109;   //获取客户价格清单
   cBC_GetZhiKaMoney           = $0010;   //获取纸卡可用金
   cBC_GetZhiKaMoneyUsed       = $0011;   //获取纸卡已用金
   cBC_CustomerHasMoney        = $0012;   //客户是否有余额
+  cBC_CheckZhiKaValid         = $0112;   //验证纸卡是否有效
 
   cBC_SaveTruckInfo           = $0013;   //保存车辆信息
   cBC_UpdateTruckInfo         = $0017;   //保存车辆信息
@@ -184,6 +187,18 @@ type
   TLadingBillItems = array of TLadingBillItem;
   //交货单列表
 
+  TLadingStockTypeItem = record
+    FID: string;         //编号
+    FType: string;       //类型
+    FName: string;       //名称
+    FPrice: Double;      //价格
+    FParam: string;      //扩展
+    FSelected: Boolean;  //选中
+  end;
+
+  TStockTypeItems = array of TLadingStockTypeItem;
+  //系统可用的品种列表
+
   PWorkerWebChatData = ^TWorkerWebChatData;
   TWorkerWebChatData = record
     FBase     : TBWDataBase;
@@ -197,6 +212,11 @@ procedure AnalyseBillItems(const nData: string; var nItems: TLadingBillItems);
 //解析由业务对象返回的交货单数据
 function CombineBillItmes(const nItems: TLadingBillItems): string;
 //合并交货单数据为业务对象能处理的字符串
+
+procedure AnalyseTypeItems(const nData: string; var nItems: TStockTypeItems);
+//解析品种类型数据
+function CombineTypeItmes(const nItems: TStockTypeItems): string;
+//合并品种类型数据
 
 resourcestring
   {*PBWDataBase.FParam*}
@@ -413,6 +433,93 @@ begin
 
       nListA.Add(PackerEncodeStr(nListB.Text));
       //add bill
+    end;
+
+    Result := PackerEncodeStr(nListA.Text);
+    //pack all
+  finally
+    nListB.Free;
+    nListA.Free;
+  end;
+end;
+
+//Date: 2018-12-16
+//Parm: 品种数据;解析结果
+//Desc: 将nData解析为结构化列表
+procedure AnalyseTypeItems(const nData: string; var nItems: TStockTypeItems);
+var nStr: string;
+    nIdx,nInt: Integer;
+    nListA,nListB: TStrings;
+begin
+  nListA := TStringList.Create;
+  nListB := TStringList.Create;
+  try
+    nListA.Text := PackerDecodeStr(nData);
+    //type list
+    nInt := 0;
+    SetLength(nItems, nListA.Count);
+
+    for nIdx:=0 to nListA.Count - 1 do
+    begin
+      nListB.Text := PackerDecodeStr(nListA[nIdx]);
+      //type item
+
+      with nListB,nItems[nInt]
+      {$IFDEF XE.LibFun},TDateTimeHelper,TStringHelper{$ENDIF} do
+      begin
+        FID       := Values['ID'];
+        FType     := Values['Type'];
+        FName     := Values['Name'];
+        FParam    := Values['Param'];
+        FSelected := Values['Selected'] = sFlag_Yes;
+
+        nStr := Trim(Values['Price']);
+        if (nStr <> '') and IsNumber(nStr, True) then
+             FPrice := StrToFloat(nStr)
+        else FPrice := 0;
+      end;
+
+      Inc(nInt);
+    end;
+  finally
+    nListB.Free;
+    nListA.Free;
+  end;
+end;
+
+//Date: 2018-12-16
+//Parm: 品种数据
+//Desc: 合并nItems为业务对象可处理的字符串
+function CombineTypeItmes(const nItems: TStockTypeItems): string;
+var nIdx: Integer;
+    nListA,nListB: TStrings;
+begin
+  nListA := TStringList.Create;
+  nListB := TStringList.Create;
+  try
+    Result := '';
+    nListA.Clear;
+    nListB.Clear;
+
+    for nIdx:=Low(nItems) to High(nItems) do
+    with nItems[nIdx]
+    {$IFDEF XE.LibFun},TDateTimeHelper,TStringHelper{$ENDIF} do
+    begin
+      with nListB do
+      begin
+        Values['ID']    := FID;
+        Values['Type']  := FType;
+        Values['Name']  := FName;
+        Values['Price'] := FloatToStr(FPrice);
+        Values['Param'] := FParam;
+
+        if FSelected then
+             Values['Selected'] := sFlag_Yes
+        else Values['Selected'] := sFlag_No;
+      end;
+
+      nListA.Add(PackerEncodeStr(nListB.Text));
+      //add item
     end;
 
     Result := PackerEncodeStr(nListA.Text);

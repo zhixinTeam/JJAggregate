@@ -171,7 +171,7 @@ inherited fFrameBill: TfFrameBill
           ControlOptions.ShowBorder = False
         end
         object dxLayout1Item9: TdxLayoutItem
-          Caption = #27700#27877#21697#31181':'
+          Caption = #25552#36135#21697#31181':'
           Control = Edit1
           ControlOptions.ShowBorder = False
         end
@@ -213,22 +213,11 @@ inherited fFrameBill: TfFrameBill
   end
   object PMenu1: TPopupMenu
     AutoHotkeys = maManual
-    OnPopup = PMenu1Popup
     Left = 4
     Top = 264
     object N1: TMenuItem
       Caption = #25171#21360#25552#36135#21333
       OnClick = N1Click
-    end
-    object N10: TMenuItem
-      Caption = #25171#21360#36807#36335#36153
-      Visible = False
-      OnClick = N10Click
-    end
-    object N11: TMenuItem
-      Caption = #25171#21360#21457#36816#21333
-      Visible = False
-      OnClick = N11Click
     end
     object N2: TMenuItem
       Caption = '-'
@@ -236,17 +225,6 @@ inherited fFrameBill: TfFrameBill
     object N5: TMenuItem
       Caption = #20462#25913#36710#29260#21495
       OnClick = N5Click
-    end
-    object N7: TMenuItem
-      Caption = #20462#25913#23553#31614#21495
-      OnClick = N7Click
-    end
-    object N6: TMenuItem
-      Caption = '-'
-    end
-    object N3: TMenuItem
-      Caption = #35843#25320#25552#36135#21333
-      OnClick = N3Click
     end
     object N8: TMenuItem
       Caption = '-'

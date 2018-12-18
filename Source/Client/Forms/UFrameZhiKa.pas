@@ -34,7 +34,7 @@ type
     N1: TMenuItem;
     EditDate: TcxButtonEdit;
     dxLayout1Item6: TdxLayoutItem;
-    EditSale: TcxButtonEdit;
+    EditCode: TcxButtonEdit;
     dxLayout1Item8: TdxLayoutItem;
     N2: TMenuItem;
     N3: TMenuItem;
@@ -211,13 +211,13 @@ begin
     InitFormData(FWhere);
   end else
 
-  if Sender = EditSale then
+  if Sender = EditCode then
   begin
-    EditSale.Text := Trim(EditSale.Text);
-    if EditSale.Text = '' then Exit;
+    EditCode.Text := Trim(EditCode.Text);
+    if EditCode.Text = '' then Exit;
 
-    FWhere := 'S_Name like ''%%%s%%'' Or S_PY like ''%%%s%%''';
-    FWhere := Format(FWhere, [EditSale.Text, EditSale.Text]);
+    FWhere := 'Z_Password like ''%%%s%%''';
+    FWhere := Format(FWhere, [EditCode.Text]);
     InitFormData(FWhere);
   end;
 end;

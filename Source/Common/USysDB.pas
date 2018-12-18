@@ -180,10 +180,6 @@ const
   sFlag_ViaBillCard   = 'ViaBillCard';               //直接制卡
   sFlag_PayCredit     = 'Pay_Credit';                //回款冲信用
   sFlag_CreditVerify  = 'CreditVerify';              //信用审核
-  sFlag_SettleValid   = 'SettleValid';               //结算有效期
-  sFlag_HYValue       = 'HYMaxValue';                //化验批次量
-  sFlag_SaleManDept   = 'SaleManDepartment';         //业务员部门编号
-  sFlag_VerifyFQValue = 'VerifyFQValue';             //禁止封签号超发
   sFlag_VerifyTruckP  = 'VerifyTruckP';              //校验预置皮重
 
   sFlag_WXFactory     = 'WXFactoryID';               //微信标识
@@ -218,7 +214,6 @@ const
 
   sFlag_PaymentItem   = 'PaymentItem';               //付款方式信息项
   sFlag_PaymentItem2  = 'PaymentItem2';              //销售回款信息项
-  sFlag_LadingItem    = 'LadingItem';                //提货方式信息项
   sFlag_OrderItem     = 'OrderItem';                 //采购订单信息项
 
   sFlag_ProviderItem  = 'ProviderItem';              //供应商信息项
@@ -301,7 +296,6 @@ const
   sTable_Card         = 'S_Card';                    //销售磁卡
   sTable_Bill         = 'S_Bill';                    //提货单
   sTable_BillBak      = 'S_BillBak';                 //已删交货单
-  sTable_BillHK       = 'S_BillPreHK';               //开单预合卡
 
   sTable_StockMatch   = 'S_StockMatch';              //品种映射
   sTable_StockParam   = 'S_StockParam';              //品种参数
@@ -1618,7 +1612,6 @@ begin
   AddSysTableItem(sTable_Card, sSQL_NewCard);
   AddSysTableItem(sTable_Bill, sSQL_NewBill);
   AddSysTableItem(sTable_BillBak, sSQL_NewBill);
-  AddSysTableItem(sTable_BillHK, sSQL_NewBillHK);
 
   AddSysTableItem(sTable_Truck, sSQL_NewTruck);
   AddSysTableItem(sTable_ZTLines, sSQL_NewZTLines);

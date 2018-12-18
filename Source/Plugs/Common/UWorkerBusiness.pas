@@ -73,8 +73,15 @@ type
     //重载价格周期
     function MakeZhiKaPassword(var nData: string): Boolean;
     //生成纸卡密码
+    function GetLadingStockItems(var nData: string;
+      const nSelected: Boolean = True): Boolean;
+    //可提货品种列表
+    function CheckZhiKaValid(var nData: string): Boolean;
+    //验证纸卡是否有效
     function GetCustomerValidMoney(var nData: string): Boolean;
     //获取客户可用金
+    function GetCustomerPrice(var nData: string): Boolean;
+    //获取客户价格清单
     function GetZhiKaValidMoney(var nData: string): Boolean;
     //获取纸卡可用金
     function GetZhiKaUsedMoney(var nData: string): Boolean;
@@ -315,9 +322,12 @@ begin
    cBC_GetSerialNO         : Result := GetSerailID(nData);
    cBC_IsSystemExpired     : Result := IsSystemExpired(nData);
    cBC_ReloadPriceWeek     : Result := ReloadPriceWeek(nData);
-   cBC_MakeZhiKaPassword   : Result := MakeZhiKaPassword(nData);
 
+   cBC_MakeZhiKaPassword   : Result := MakeZhiKaPassword(nData);
+   cBC_GetLadingStockItems : Result := GetLadingStockItems(nData);
+   cBC_CheckzhiKaValid     : Result := CheckZhiKaValid(nData);
    cBC_GetCustomerMoney    : Result := GetCustomerValidMoney(nData);
+   cBC_GetCustomerPrice    : Result := GetCustomerPrice(nData);
    cBC_GetZhiKaMoney       : Result := GetZhiKaValidMoney(nData);
    cBC_GetZhiKaMoneyUsed   : Result := GetZhiKaUsedMoney(nData);
    cBC_CustomerHasMoney    : Result := CustomerHasMoney(nData);
@@ -608,6 +618,114 @@ begin
   Result := True;
 end;
 
+//Desc: 获取可提货品种列表
+function TWorkerBusinessCommander.GetLadingStockItems(var nData: string;
+  const nSelected: Boolean): Boolean;
+var nStr: string;
+    nIdx: Integer;
+    nItems: TStockTypeItems;
+begin
+  nStr := 'Select D_Value,D_Memo,D_ParamB From %s ' +
+          'Where D_Name=''%s'' Order By D_Index ASC';
+  nStr := Format(nStr, [sTable_SysDict, sFlag_StockItem]);
+  
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    SetLength(nItems, RecordCount);
+    if RecordCount > 0 then
+    begin
+      nIdx := 0;
+      First;
+
+      while not Eof do
+      begin
+        with nItems[nIdx] do
+        begin
+          FType := FieldByName('D_Memo').AsString;
+          FName := FieldByName('D_Value').AsString;
+          FID := FieldByName('D_ParamB').AsString;
+
+          FParam := '';
+          FPrice := 0;
+          FSelected := nSelected;
+        end;
+
+        Next;
+        Inc(nIdx);
+      end;
+    end;
+  end;
+
+  Result := Length(nItems) > 0;
+  if Result then
+       FOut.FData := CombineTypeItmes(nItems)
+  else nData := Format('未配置[ %s.%s ]字典项', [sTable_SysDict, sFlag_StockItem]);
+end;
+
+//Date: 2018-12-14
+//Parm: 纸卡号[FIn.FData];是否取货码[FIn.FExtParam]
+//Desc: 验证纸卡号是否有效
+function TWorkerBusinessCommander.CheckZhiKaValid(var nData: string): Boolean;
+var nStr: string;
+begin
+  if FIn.FExtParam = sFlag_Yes then //取货码
+  begin
+    nStr := 'Select Top 1 Z_ID,Z_Customer,Z_InValid,Z_Freeze,Z_ValidDays,' +
+            'Z_Verified,%s as Z_Now From %s ' +
+            'Where Z_Password=''%s'' Order By R_ID DESC';
+    nStr := Format(nStr, [sField_SQLServer_Now, sTable_ZhiKa, FIn.FData]);
+  end else
+  begin
+    nStr := 'Select Z_ID,Z_Customer,Z_InValid,Z_Freeze,Z_ValidDays,' +
+            'Z_Verified,%s as Z_Now From %s Where Z_ID=''%s''';
+    nStr := Format(nStr, [sField_SQLServer_Now, sTable_ZhiKa, FIn.FData]);
+  end;
+
+  Result := False;
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    if RecordCount < 1 then
+    begin
+      if FIn.FExtParam = sFlag_Yes then
+           nStr := '提货码[ %s ]无效'
+      else nStr := '纸卡[ %s ]已丢失';
+
+      nData := Format(nStr, [FIn.FData]);
+      Exit;
+    end;
+
+    nStr := FieldByName('Z_ID').AsString;
+    if FieldByName('Z_InValid').AsString = sFlag_Yes then
+    begin
+      nData := Format('纸卡[ %s ]已无效', [nStr]);
+      Exit;
+    end;
+
+    if FieldByName('Z_Freeze').AsString = sFlag_Yes then
+    begin
+      nData := Format('纸卡[ %s ]已被冻结', [nStr]);
+      Exit;
+    end;
+
+    if FieldByName('Z_Verified').AsString = sFlag_No then
+    begin
+      nData := Format('纸卡[ %s ]未审核', [nStr]);
+      Exit;
+    end;
+
+    if FieldByName('Z_ValidDays').AsDateTime <=
+       FieldByName('Z_Now').AsDateTime then
+    begin
+      nData := Format('纸卡[ %s ]已过期', [nStr]);
+      Exit;
+    end;
+
+    FOut.FData := nStr;
+    FOut.FExtParam := FieldByName('Z_Customer').AsString;
+    Result := True;
+  end;
+end;
+
 //Date: 2018-12-13
 //Parm: 客户号[FIn.FData];使用信用[FIn.FExtParam]
 //Desc: 获取指定客户的可用金额
@@ -677,6 +795,122 @@ begin
   end;
 end;
 
+//Date: 2018-12-16
+//Parm: 客户号[FIn.FData];默认选中
+//Desc: 生成客户当前的价格表
+function TWorkerBusinessCommander.GetCustomerPrice(var nData: string): Boolean;
+var nStr,nArea: string;
+    nIdx: Integer;
+    nItems: TStockTypeItems;
+begin
+  Result := GetLadingStockItems(nData, False);
+  if not Result then Exit;
+  AnalyseTypeItems(FOut.FData, nItems);
+
+  nStr := 'Select C_Area From %s Where C_ID=''%s''';
+  nStr := Format(nStr, [sTable_Customer, FIn.FData]);
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    if RecordCount < 1 then
+    begin
+      Result := False;
+      nData := Format('客户[ %s ]已丢失', [FIn.FData]);
+      Exit;
+    end;
+
+    nArea := Trim(Fields[0].AsString);
+  end;
+
+  nStr := 'Select W_NO,W_Name,R_ID,R_Type,R_Area,R_Customer,R_StockNo,' +
+          'R_Price From %s,%s Where W_Valid=''%s'' And W_NO=R_Week ' +
+          'Order By R_StockNo ASC,R_Price DESC';
+  nStr := Format(nStr, [sTable_PriceWeek, sTable_PriceRule, sFlag_Yes]);
+  //价格倒序:同品种高价优先.
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    if RecordCount < 1 then
+    begin
+      Result := False;
+      nData := '当前没有生效的价格表';
+      Exit;
+    end;
+
+    for nIdx:=Low(nItems) to High(nItems) do
+    with nItems[nIdx] do
+    begin
+      First;
+      while not Eof do //扫描专用价
+      begin
+        if (FieldByName('R_StockNo').AsString = FID) and
+           (FieldByName('R_Type').AsString = sFlag_PriceZY) and
+           (FieldByName('R_Customer').AsString = FIn.FData) then
+        begin
+          FSelected := True;
+          FPrice := FieldByName('R_Price').AsFloat;
+
+          FParam := Format('周期:[ %s,%s ] 记录:[ %s ] 类型:[ 客户专用 ]', [
+            FieldByName('W_NO').AsString, FieldByName('W_Name').AsString,
+            FieldByName('R_ID').AsString]);
+          Break;
+        end;
+
+        Next;
+      end;
+
+      if FSelected then Continue;
+      //专用价生效
+
+      if nArea <> '' then
+      begin
+        First;
+        while not Eof do //扫描区域价
+        begin
+          if (FieldByName('R_StockNo').AsString = FID) and
+             (FieldByName('R_Type').AsString = sFlag_PriceQY) and
+             (FieldByName('R_Area').AsString = nArea) then
+          begin
+            FSelected := True;
+            FPrice := FieldByName('R_Price').AsFloat;
+
+            FParam := Format('周期:[ %s,%s ] 记录:[ %s ] 类型:[ %s区域价 ]', [
+              FieldByName('W_NO').AsString, FieldByName('W_Name').AsString,
+              FieldByName('R_ID').AsString, nArea]);
+            Break;
+          end;
+
+          Next;
+        end;
+      end;
+
+      if FSelected then Continue;
+      //区域价生效
+
+      First;
+      while not Eof do //扫描零售价
+      begin
+        if (FieldByName('R_StockNo').AsString = FID) and
+           (FieldByName('R_Type').AsString = sFlag_PriceLS) then
+        begin
+          FSelected := True;
+          FPrice := FieldByName('R_Price').AsFloat;
+
+          FParam := Format('周期:[ %s,%s ] 记录:[ %s ] 类型:[ 零售价 ]', [
+              FieldByName('W_NO').AsString, FieldByName('W_Name').AsString,
+              FieldByName('R_ID').AsString]);
+          Break;
+        end;
+
+        Next;
+      end;
+    end;
+  end;
+
+  FOut.FData := CombineTypeItmes(nItems);
+  //合并价格表
+end;
+
 //Date: 2018-12-13
 //Parm: 纸卡号[FIn.FData]
 //Desc: 获取指定纸卡的可用金额
@@ -701,7 +935,7 @@ begin
     if nStr = sFlag_Yes then
     begin
       FIn.FData := FieldByName('Z_Customer').AsString;
-      FIn.FExtParam := sFlag_Yes;
+      FIn.FExtParam := sFlag_No;
 
       Result := GetCustomerValidMoney(nData);
       Exit;
@@ -720,6 +954,7 @@ begin
     nMoney := Float2Float(nMoney, cPrecision, False);
                                          
     FOut.FData := FloatToStr(nMoney);
+    FIn.FExtParam := sFlag_Yes;
     Result := True;
   end;
 end;

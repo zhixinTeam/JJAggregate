@@ -23,7 +23,7 @@ uses
   UFrameShouJu, UFormShouJu, UFramePayment, UFormPayment,
   UFrameCustomerCredit, UFormCustomerCredit, UFrameCusAccount,
   UFrameCusInOutMoney, UFrameZhiKa, UFormZhiKa, UFrameBill, UFormBill,
-  UFormReadCard, UFormTruckEmpty,
+  UFormGetZhiKa, UFormReadCard, UFormTruckEmpty,
   UFormGetTruck, UFrameQueryDiapatch, UFrameTruckQuery, UFrameBillCard,
   UFormCard, UFormTruckIn, UFormTruckOut, UFormLadingDai, UFormLadingSan,
   UFramePoundManual, UFramePoundAuto, UFramePMaterails, UFormPMaterails,

@@ -33,6 +33,8 @@ type
     N1: TMenuItem;
     dxLayout1Item7: TdxLayoutItem;
     EditDate: TcxButtonEdit;
+    N2: TMenuItem;
+    N3: TMenuItem;
     procedure EditIDPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure BtnAddClick(Sender: TObject);
@@ -42,6 +44,7 @@ type
     procedure PMenu1Popup(Sender: TObject);
     procedure EditDatePropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
+    procedure N3Click(Sender: TObject);
   private
     { Private declarations }
     FStart,FEnd: TDate;
@@ -60,8 +63,8 @@ implementation
 
 {$R *.dfm}
 uses
-  ULibFun, UMgrControl, UFormBase, UFormWait, UDataModule, USysBusiness,
-  UFormDateFilter, USysConst, USysDB;
+  ULibFun, UMgrControl, UBusinessConst, UFormBase, UDataModule, USysBusiness,
+  UFormDateFilter, UFormPriceShow, USysConst, USysDB;
 
 class function TfFramePriceRule.FrameID: integer;
 begin
@@ -216,7 +219,9 @@ end;
 //------------------------------------------------------------------------------
 procedure TfFramePriceRule.PMenu1Popup(Sender: TObject);
 begin
-
+  N3.Enabled := (cxView1.DataController.GetSelectedCount > 0) and
+                (SQLQuery.FieldByName('R_Customer').AsString <> '');
+  //xxxxx
 end;
 
 //Desc: 查看周期图
@@ -227,6 +232,15 @@ begin
   nParam.FParamA := FStart;
   nParam.FParamB := FEnd;
   CreateBaseFormItem(cFI_FormViewPriceWeek, PopedomItem, @nParam);
+end;
+
+//Desc: 查看价格单
+procedure TfFramePriceRule.N3Click(Sender: TObject);
+var nTypes: TStockTypeItems;
+begin
+  if LoadStockItemsPrice(SQLQuery.FieldByName('R_Customer').AsString,
+    nTypes) then ShowPriceViewForm(nTypes);
+  //xxxxx
 end;
 
 initialization

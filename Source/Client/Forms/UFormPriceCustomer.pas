@@ -38,6 +38,8 @@ type
     EditPrice: TcxButtonEdit;
     dxLayout1Item9: TdxLayoutItem;
     EditCustomer: TcxButtonEdit;
+    Check1: TcxCheckBox;
+    dxLayout1Item10: TdxLayoutItem;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure BtnOKClick(Sender: TObject);
@@ -57,6 +59,7 @@ type
     FActiveCusID,FActiveCusName: string;
     FDefaultWeek: string;
     //xxxxx
+    FModalResult: TModalResult;
     procedure InitFormData(const nID: string);
     //载入数据
     procedure ShowPriceEditor(const nShow: Boolean);
@@ -74,8 +77,8 @@ implementation
 
 {$R *.dfm}
 uses
-  ULibFun, UFormBase, UMgrControl, UDataModule, UFormCtrl, USysDB, USysConst,
-  USysGrid, USysBusiness;
+  ULibFun, UBusinessConst, UFormBase, UMgrControl, UDataModule, UFormCtrl,
+  USysDB, USysConst, USysGrid, USysBusiness;
 
 type
   TPriceWeek = record
@@ -114,13 +117,16 @@ begin
     end;
 
     Caption := '客户专属价 - 管理';
+    FModalResult := mrNone;
+
     InitFormData(FDefaultWeek);
+    ShowModal;
 
     if Assigned(nP) then
     begin
       nP.FCommand := cCmd_ModalResult;
-      nP.FParamA := ShowModal;
-    end else ShowModal;
+      nP.FParamA := FModalResult;
+    end;
     Free;
   end;
 end;
@@ -377,7 +383,7 @@ procedure TfFormPriceCusomter.EditCustomerPropertiesButtonClick(
   Sender: TObject; AButtonIndex: Integer);
 var nP: TFormCommandParam;
 begin
-  nP.FParamA := FActiveCusID;
+  nP.FParamA := FActiveCusName;
   CreateBaseFormItem(cFI_FormGetCustom, '', @nP);
 
   if (nP.FCommand = cCmd_ModalResult) and (nP.FParamA = mrOK) then
@@ -403,7 +409,8 @@ begin
 
   if not gPriceWeeks[FActiveWeek].FChanged then
   begin
-    ModalResult := mrOk;
+    if not Check1.Checked then
+      ModalResult := mrOk;
     Exit;
   end;
 
@@ -415,7 +422,8 @@ begin
 
   FDM.ADOConn.BeginTrans;
   try
-    nStr := 'Delete From %s Where R_Week=''%s'' And R_Type=''%s''';
+    nStr := 'Delete From %s Where R_Week=''%s'' And R_Type=''%s'' And ' +
+            'R_Customer=''%s''';
     nStr := Format(nStr, [sTable_PriceRule, gPriceWeeks[FActiveWeek].FID,
             sFlag_PriceZY, FActiveCusID]);
     FDM.ExecuteSQL(nStr); //clear first
@@ -439,7 +447,11 @@ begin
     end;
 
     FDM.ADOConn.CommitTrans;
-    ModalResult := mrOk;
+    FModalResult := mrOk;
+
+    if Check1.Checked then
+         ShowMsg('保存成功', sHint)
+    else ModalResult := mrOk;
   except
     on nErr: Exception do
     begin

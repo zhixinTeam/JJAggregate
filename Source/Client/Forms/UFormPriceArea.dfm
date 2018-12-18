@@ -13,12 +13,12 @@ inherited fFormPriceArea: TfFormPriceArea
     inherited BtnOK: TButton
       Left = 233
       Top = 378
-      TabOrder = 7
+      TabOrder = 8
     end
     inherited BtnExit: TButton
       Left = 303
       Top = 378
-      TabOrder = 8
+      TabOrder = 9
     end
     object EditBegin: TcxTextEdit [2]
       Left = 81
@@ -107,6 +107,15 @@ inherited fFormPriceArea: TfFormPriceArea
       TabOrder = 5
       Width = 121
     end
+    object Check1: TcxCheckBox [9]
+      Left = 11
+      Top = 378
+      Caption = #20445#23384#21518#19981#36864#20986'.'
+      ParentFont = False
+      TabOrder = 7
+      Transparent = True
+      Width = 115
+    end
     inherited dxLayout1Group_Root: TdxLayoutGroup
       inherited dxGroup1: TdxLayoutGroup
         object dxLayout1Item6: TdxLayoutItem
@@ -154,6 +163,14 @@ inherited fFormPriceArea: TfFormPriceArea
           Caption = 'cxListView1'
           ShowCaption = False
           Control = List1
+          ControlOptions.ShowBorder = False
+        end
+      end
+      inherited dxLayout1Group1: TdxLayoutGroup
+        object dxLayout1Item10: TdxLayoutItem [0]
+          Caption = 'cxCheckBox1'
+          ShowCaption = False
+          Control = Check1
           ControlOptions.ShowBorder = False
         end
       end

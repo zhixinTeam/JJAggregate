@@ -1,5 +1,5 @@
 {*******************************************************************************
-  作者: dmzn@163.com 2014-09-01
+  作者: dmzn@163.com 2018-12-14
   描述: 开提货单
 *******************************************************************************}
 unit UFormBill;
@@ -36,16 +36,12 @@ type
     dxLayout1Group5: TdxLayoutGroup;
     dxLayout1Group8: TdxLayoutGroup;
     dxLayout1Group7: TdxLayoutGroup;
-    EditFQ: TcxTextEdit;
-    dxLayout1Item5: TdxLayoutItem;
     dxLayout1Group2: TdxLayoutGroup;
     dxLayout1Item6: TdxLayoutItem;
     EditType: TcxComboBox;
-    dxLayout1Group3: TdxLayoutGroup;
-    PrintGLF: TcxCheckBox;
+    EditPrice: TcxButtonEdit;
     dxLayout1Item13: TdxLayoutItem;
-    dxLayout1Item14: TdxLayoutItem;
-    PrintHY: TcxCheckBox;
+    dxLayout1Group3: TdxLayoutGroup;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure EditStockPropertiesChange(Sender: TObject);
@@ -53,7 +49,8 @@ type
     procedure BtnDelClick(Sender: TObject);
     procedure BtnOKClick(Sender: TObject);
     procedure EditLadingKeyPress(Sender: TObject; var Key: Char);
-    procedure EditFQPropertiesEditValueChanged(Sender: TObject);
+    procedure EditPricePropertiesButtonClick(Sender: TObject;
+      AButtonIndex: Integer);
   protected
     { Protected declarations }
     FBuDanFlag: string;
@@ -61,6 +58,8 @@ type
     procedure LoadFormData;
     procedure LoadStockList;
     //载入数据
+    procedure CombinStockAndPrice(const nApplyPrice: Boolean);
+    //合并价格
   public
     { Public declarations }
     class function CreateForm(const nPopedom: string = '';
@@ -74,8 +73,8 @@ implementation
 {$R *.dfm}
 uses
   ULibFun, DB, IniFiles, UMgrControl, UAdjustForm, UFormBase, UBusinessPacker,
-  UDataModule, USysPopedom, USysBusiness, USysDB, USysGrid, USysConst,
-  UFormWait;
+  UBusinessConst, UDataModule, USysPopedom, USysBusiness, USysDB, USysGrid,
+  USysConst, UFormWait, UFormPriceShow;
 
 type
   TCommonInfo = record
@@ -85,8 +84,6 @@ type
     FOnlyMoney: Boolean;
     FIDList: string;
     FShowPrice: Boolean;
-    FPriceChanged: Boolean;
-
     FCard: string;
     FTruck: string;
   end;
@@ -95,14 +92,15 @@ type
     FType: string;
     FStockNO: string;
     FStockName: string;
-    FStockSeal: string;
     FPrice: Double;
+    FPriceIndex: Integer;
     FValue: Double;
     FSelecte: Boolean;
   end;
 
 var
   gInfo: TCommonInfo;
+  gStockTypes: TStockTypeItems;
   gStockList: array of TStockItem;
   //全局使用
 
@@ -126,27 +124,12 @@ begin
     FillChar(nInfo, SizeOf(nInfo), #0);
     gInfo := nInfo;
 
-   // CreateBaseFormItem(cFI_FormGetZhika, nPopedom, nP);
+    CreateBaseFormItem(cFI_FormGetZhika, nPopedom, nP);
     if (nP.FCommand <> cCmd_ModalResult) or (nP.FParamA <> mrOK) then Exit;
 
     gInfo.FCard  := '';
     gInfo.FZhiKa := nP.FParamB;
     gInfo.FCusID := nP.FParamC;
-
-    {$IFDEF UseK3SalePlan}
-    if not nBuDan then
-    begin
-      CreateBaseFormItem(cFI_Form_HT_SalePlan, nPopedom, nP);
-      if (nP.FCommand <> cCmd_ModalResult) or (nP.FParamA <> mrOK) then Exit;
-
-      with gInfo do
-      begin
-        FCard := nP.FParamB;
-        FTruck:= nP.FParamD;
-        FPlan := Pointer(Integer(nP.FParamC));
-      end;
-    end;
-    {$ENDIF}
   finally
     if not Assigned(nParam) then Dispose(nP);
   end;
@@ -162,11 +145,13 @@ begin
     end;
 
     if not BtnOK.Enabled then Exit;
-    gInfo.FShowPrice := gPopedomManager.HasPopedom(nPopedom, sPopedom_ViewPrice);
-
     Caption := '开提货单';
-    nBool := not gPopedomManager.HasPopedom(nPopedom, sPopedom_Edit);
-    EditLading.Properties.ReadOnly := nBool;
+    with gPopedomManager do
+    begin
+      gInfo.FShowPrice := HasPopedom(nPopedom, sPopedom_ViewPrice);
+      nBool := not HasPopedom(nPopedom, sPopedom_Edit);
+      EditLading.Properties.ReadOnly := nBool;
+    end;
 
     if nBuDan then //补单
          FBuDanFlag := sFlag_Yes
@@ -193,38 +178,15 @@ begin
 end;
 
 procedure TfFormBill.FormCreate(Sender: TObject);
-var nStr: string;
-    nIni: TIniFile;
+var nIni: TIniFile;
 begin
   nIni := TIniFile.Create(gPath + sFormConfig);
   try
-    nStr := nIni.ReadString(Name, 'FQLabel', '');
-    if nStr <> '' then
-      dxLayout1Item5.Caption := nStr;
-    //xxxxx
-
-    PrintHY.Checked := nIni.ReadBool(Name, 'PrintHY', False);
-    //随车开单
-
     LoadMCListBoxConfig(Name, ListInfo, nIni);
     LoadcxListViewConfig(Name, ListBill, nIni);
   finally
     nIni.Free;
   end;
-
-  {$IFDEF PrintGLF}
-  dxLayout1Item13.Visible := True;
-  {$ELSE}
-  dxLayout1Item13.Visible := False;
-  PrintGLF.Checked := False;
-  {$ENDIF}
-
-  {$IFDEF PrintHYEach}
-  dxLayout1Item14.Visible := True;
-  {$ELSE}
-  dxLayout1Item14.Visible := False;
-  PrintHY.Checked := False;
-  {$ENDIF}
 
   AdjustCtrlData(Self);
 end;
@@ -234,7 +196,6 @@ var nIni: TIniFile;
 begin
   nIni := TIniFile.Create(gPath + sFormConfig);
   try
-    nIni.WriteBool(Name, 'PrintHY', PrintHY.Checked);
     SaveMCListBoxConfig(Name, ListInfo, nIni);
     SavecxListViewConfig(Name, ListBill, nIni);
   finally
@@ -287,8 +248,6 @@ begin
   with gInfo do
   begin
     FCusID := nDB.FieldByName('Z_Customer').AsString;
-    FPriceChanged := nDB.FieldByName('Z_TJStatus').AsString = sFlag_TJOver;
-    
     SetCtrlData(EditLading, nDB.FieldByName('Z_Lading').AsString);
     FMoney := GetZhikaValidMoney(gInfo.FZhiKa, gInfo.FOnlyMoney);
   end else
@@ -299,6 +258,10 @@ begin
   BtnOK.Enabled := IsCustomerCreditValid(gInfo.FCusID);
   if not BtnOK.Enabled then Exit;
   //to verify credit
+
+  BtnOK.Enabled := LoadStockItemsPrice(gInfo.FCusID, gStockTypes);
+  if not BtnOK.Enabled then Exit;
+  //load price
 
   SetLength(gStockList, 0);
   nStr := 'Select * From %s Where D_ZID=''%s''';
@@ -318,56 +281,57 @@ begin
       FType := FieldByName('D_Type').AsString;
       FStockNO := FieldByName('D_StockNo').AsString;
       FStockName := FieldByName('D_StockName').AsString;
-      FPrice := FieldByName('D_Price').AsFloat;
 
+      FPrice := 0;
       FValue := 0;
       FSelecte := False;
-
-      if gInfo.FPriceChanged then
-      begin
-        nTmp := '品种:[ %-8s ] 原价:[ %.2f ] 现价:[ %.2f ]' + #32#32;
-        nTmp := Format(nTmp, [FStockName, FieldByName('D_PPrice').AsFloat, FPrice]);
-        nStr := nStr + nTmp + #13#10;
-      end;
 
       Inc(nIdx);
       Next;
     end;
-  end else
+  end;
+  
+  if Length(gStockList) < 1 then //纸卡不限提货品种
   begin
-    nStr := Format('纸卡[ %s ]没有可提的水泥品种,已终止.', [gInfo.FZhiKa]);
-    ShowDlg(nStr, sHint);
-    BtnOK.Enabled := False; Exit;
+    SetLength(gStockList, Length(gStockTypes));
+    for nIdx:=Low(gStockTypes) to High(gStockTypes) do
+    with gStockList[nIdx] do
+    begin
+      FType := gStockTypes[nIdx].FType;
+      FStockNO := gStockTypes[nIdx].FID;
+      FStockName := gStockTypes[nIdx].FName;
+
+      FPrice := 0;
+      FValue := 0;
+      FSelecte := False;
+    end;
   end;
 
-  if gInfo.FPriceChanged then
-  begin
-    nStr := '管理员已调整纸卡[ %s ]的价格,明细如下: ' + #13#10#13#10 +
-            AdjustHintToRead(nStr) + #13#10 +
-            '请询问客户是否接受新单价,接受点"是"按钮.' ;
-    nStr := Format(nStr, [gInfo.FZhiKa]);
-
-    {$IFNDEF NoShowPriceChange}
-    BtnOK.Enabled := QueryDlg(nStr, sHint);
-    if not BtnOK.Enabled then Exit;
-    {$ENDIF}
-
-    nStr := 'Update %s Set Z_TJStatus=Null Where Z_ID=''%s''';
-    nStr := Format(nStr, [sTable_ZhiKa, gInfo.FZhiKa]);
-    FDM.ExecuteSQL(nStr);
-  end;
-
+  CombinStockAndPrice(True);
+  //apply price
+  
   EditType.ItemIndex := 0;
-  LoadStockList;
-  //load stock into window 
+  LoadStockList; //load stock into window
+  ActiveControl := EditTruck;
+end;
 
-  if Length(gInfo.FCard) > 0  then //零售刷卡
+//Desc: 将价格合并到纸卡品种列表
+procedure TfFormBill.CombinStockAndPrice(const nApplyPrice: Boolean);
+var i,nIdx: Integer;
+begin
+  for nIdx:=Low(gStockList) to High(gStockList) do
   begin
-    EditTruck.Text := gInfo.FTruck;
-    ActiveControl  := EditValue;
-  end else
-  begin
-    ActiveControl := EditTruck;
+    gStockList[nIdx].FPriceIndex := -1;
+    //default
+    
+    for i:=Low(gStockTypes) to High(gStockTypes) do
+    if gStockTypes[i].FID = gStockList[nIdx].FStockNO then
+    begin
+      if nApplyPrice then
+        gStockList[nIdx].FPrice := gStockTypes[i].FPrice;
+      gStockList[nIdx].FPriceIndex := i;
+      Break;
+    end;
   end;
 end;
 
@@ -428,18 +392,18 @@ begin
       dxGroup2.Caption := Format('提单明细 单价:%.2f元/吨', [FPrice]);
     //xxxxx
   end;
+end;
 
-  nIni := TIniFile.Create(gPath + sFormConfig);
-  try
-    EditFQ.Text := nIni.ReadString('EditFQ', GetCtrlData(EditStock), '');
-  finally
-    nIni.Free;
-  end;
-  //读取对应品种的封签号
+procedure TfFormBill.EditPricePropertiesButtonClick(Sender: TObject;
+  AButtonIndex: Integer);
+begin
+  if gInfo.FShowPrice then
+       ShowPriceViewForm(gStockTypes)
+  else ShowMsg('没有足够权限', sHint);
 end;
 
 function TfFormBill.OnVerifyCtrl(Sender: TObject; var nHint: string): Boolean;
-var nVal: Double;
+var nVal,nMax: Double;
 begin
   Result := True;
 
@@ -461,13 +425,6 @@ begin
     nHint := '请选择有效的提货方式';
   end else
 
-  if Sender = EditFQ then
-  begin
-    EditFQ.Text := Trim(EditFQ.Text);
-    Result := (Length(EditFQ.Text) > 0) or (not VerifyFQSumValue);
-    nHint := '出厂编号不能为空';
-  end;  
-
   if Sender = EditValue then
   begin
     Result := IsNumber(EditValue.Text, True) and (StrToFloat(EditValue.Text)>0);
@@ -479,14 +436,14 @@ begin
     with gStockList[StrToInt(GetCtrlData(EditStock))] do
     if FPrice > 0 then
     begin
-      nVal := StrToFloat(EditValue.Text);
-      nVal := Float2Float(nVal, cPrecision, False);
-      Result := FloatRelation(gInfo.FMoney / FPrice, nVal, rtGE, cPrecision);
+      nVal := Float2Float(StrToFloat(EditValue.Text), cPrecision, True);
+      nMax := Float2Float(gInfo.FMoney / FPrice, cPrecision, False);
+      Result := nMax >= nVal;
 
       nHint := '已超出可办理量';
       if not Result then Exit;
 
-      if FloatRelation(gInfo.FMoney / FPrice, nVal, rtEqual, cPrecision) then
+      if nMax = nVal then
       begin
         nHint := '';
         Result := QueryDlg('确定要按最大可提货量全部开出吗?', sAsk);
@@ -512,36 +469,15 @@ begin
     begin
       if (FType = sFlag_San) and (ListBill.Items.Count > 0) then
       begin
-        ShowMsg('散装水泥不能混装', sHint);
+        ShowMsg('散装品种不能混装', sHint);
         ActiveControl := EditStock;
         Exit;
       end;
 
-      EditFQ.Text := Trim(EditFQ.Text);
-      nMax := GetHYMaxValue;
-      nSend:= GetFQValueByStockNo(EditFQ.Text);
-      nVal := nSend + StrToFloat(EditValue.Text);
-
-      if VerifyFQSumValue then
-      begin
-        if FloatRelation(nMax, nVal, rtLE, cPrecision) then
-        begin
-          ShowMsg('出厂封签号已超发,请更换封签号', sHint);
-          ActiveControl := EditFQ;
-          Exit;
-        end;
-
-        if FloatRelation(nMax * 0.9, nVal, rtLE, cPrecision) then
-        begin
-          ShowDlg('出厂封签号已发90%,请及时通知化验室更新.', sWarn);
-        end;  
-      end;
-
-      FStockSeal := Trim(EditFQ.Text);
       FValue := StrToFloat(EditValue.Text);
       FValue := Float2Float(FValue, cPrecision, False);
       FSelecte := True;
-
+      
       EditTruck.Properties.ReadOnly := True;
       gInfo.FMoney := gInfo.FMoney - FPrice * FValue;
     end;
@@ -579,28 +515,26 @@ begin
   begin
     ShowMsg('请先办理提货单', sHint); Exit;
   end;
-  
-  {$IFDEF ForceEleCard}
-  if not IsEleCardVaid(EditTruck.Text) then
+
+  if not LoadStockItemsPrice(gInfo.FCusID, gStockTypes) then Exit;
+  //重新载入价格
+  CombinStockAndPrice(False);
+
+  for nIdx:=Low(gStockList) to High(gStockList) do
+  with gStockList[nIdx] do
   begin
-    ShowMsg('车辆未办理电子标签或电子标签未启用！请联系管理员', sHint); Exit;
+    if not FSelecte then Continue;
+    if (FPriceIndex < 0) or (FPrice <> gStockTypes[FPriceIndex].FPrice) then
+    begin
+      ShowDlg('当前价格已失效(刚调价),请重新执行开单操作', sHint);
+      Exit;
+    end;
   end;
-  {$ENDIF}
 
   nStocks := TStringList.Create;
   nList := TStringList.Create;
   nTmp := TStringList.Create;
   try
-    {$IFDEF VerifyK3Stock} //新安中联: 验证品种能否发货
-    nList.Clear;
-    for nIdx:=Low(gStockList) to High(gStockList) do
-     with gStockList[nIdx],nTmp do
-      if FSelecte then nList.Add(FStockNO);
-    //xxxxx
-
-    if not IsStockValid(CombinStr(nList, ',')) then Exit;
-    {$ENDIF}
-
     nList.Clear;
     nPrint := False;
     LoadSysDictItem(sFlag_PrintBill, nStocks);
@@ -615,19 +549,11 @@ begin
       Values['Type'] := FType;
       Values['StockNO'] := FStockNO;
       Values['StockName'] := FStockName;
-      Values['Seal']  := FStockSeal;
       Values['Price'] := FloatToStr(FPrice);
       Values['Value'] := FloatToStr(FValue);
 
-      if PrintGLF.Checked  then
-           Values['PrintGLF'] := sFlag_Yes
-      else Values['PrintGLF'] := sFlag_No;
-
-      if PrintHY.Checked  then
-           Values['PrintHY'] := sFlag_Yes
-      else Values['PrintHY'] := sFlag_No;
-
-      Values['IsPlan'] := sFlag_No;
+      Values['PriceDesc'] := gStockTypes[FPriceIndex].FParam;
+      //价格描述
       nList.Add(PackerEncodeStr(nTmp.Text));
       //new bill
 
@@ -668,24 +594,11 @@ begin
   //办理磁卡
 
   if nPrint then
-    PrintBillFYDReport(gInfo.FIDList, True);
+    PrintBillReport(gInfo.FIDList, True);
   //print report
   
   ModalResult := mrOk;
   ShowMsg('提货单保存成功', sHint);
-end;
-
-procedure TfFormBill.EditFQPropertiesEditValueChanged(Sender: TObject);
-var nIni: TIniFile;
-begin
-  inherited;
-  nIni := TIniFile.Create(gPath + sFormConfig);
-  try
-    nIni.WriteString('EditFQ', GetCtrlData(EditStock), EditFQ.Text);
-  finally
-    nIni.Free;
-  end;
-  //保存封签号
 end;
 
 initialization

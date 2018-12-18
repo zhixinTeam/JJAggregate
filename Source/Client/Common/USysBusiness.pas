@@ -13,17 +13,6 @@ uses
   USysDB, USysLoger;
 
 type
-  TLadingStockItem = record
-    FID: string;         //编号
-    FType: string;       //类型
-    FName: string;       //名称
-    FPrice: Double;      //价格
-    FParam: string;      //扩展
-  end;
-
-  TStockTypeItems = array of TLadingStockItem;
-  //系统可用的品种列表
-
   PZTLineItem = ^TZTLineItem;
   TZTLineItem = record
     FID       : string;      //编号
@@ -87,6 +76,9 @@ function DeleteZhiKa(const nZID: string): Boolean;
 function LoadZhiKaInfo(const nZID: string; const nList: TcxMCListBox;
  var nHint: string): TDataset;
 //载入纸卡
+function IsZhiKaValid(var nZhiKa,nHint: string;
+ const nIsCode: Boolean = False): Boolean;
+//纸卡是否有效
 function GetZhikaValidMoney(nZhiKa: string; var nFixMoney: Boolean): Double;
 //纸卡可用金
 function GetZhikaUsedMoney(nZhiKa: string): Double;
@@ -121,6 +113,9 @@ function IsCustomerCreditValid(const nCusID: string): Boolean;
 
 function IsStockValid(const nStocks: string): Boolean;
 //品种是否可以发货
+function LoadStockItemsPrice(const nCusID: string;
+  var nItems: TStockTypeItems): Boolean;
+//载入客户的价格清单
 function SaveBill(const nBillData: string): string;
 //保存交货单
 function DeleteBill(const nBill: string): Boolean;
@@ -227,9 +222,6 @@ function ChangeDispatchMode(const nMode: Byte): Boolean;
 function OpenDoorByReader(const nReader: string; nType: string = 'Y'): Boolean;
 //读卡器打开道闸
 
-function GetHYMaxValue: Double;
-function GetHYValueByStockNo(const nNo: string): Double;
-//获取化验单已开量
 function IsEleCardVaid(const nTruckNo: string): Boolean;
 //验证车辆电子标签
 function IfStockHasLs(const nStockNo: string): Boolean;
@@ -273,10 +265,6 @@ function GetTruckLastTime(const nTruck: string): Integer;
 function IsStrictSanValue: Boolean;
 //判断是否严格执行散装禁止超发
 
-function GetFQValueByStockNo(const nStock: string): Double;
-//获取封签号已发量
-function VerifyFQSumValue: Boolean;
-//是否校验封签号
 function AddManualEventRecord(const nEID,nKey,nEvent:string;
  const nFrom: string = sFlag_DepBangFang ;
  const nSolution: string = sFlag_Solution_YN;
@@ -591,40 +579,12 @@ end;
 
 //Desc: 获取当前系统可用的水泥品种列表
 function GetLadingStockItems(var nItems: TStockTypeItems): Boolean;
-var nStr: string;
-    nIdx: Integer;
+var nOut: TWorkerBusinessCommand;
 begin
-  nStr := 'Select D_Value,D_Memo,D_ParamB From $Table ' +
-          'Where D_Name=''$Name'' Order By D_Index ASC';
-  nStr := MacroValue(nStr, [MI('$Table', sTable_SysDict),
-                            MI('$Name', sFlag_StockItem)]);
-  //xxxxx
-
-  with FDM.QueryTemp(nStr) do
-  begin
-    SetLength(nItems, RecordCount);
-    if RecordCount > 0 then
-    begin
-      nIdx := 0;
-      First;
-
-      while not Eof do
-      begin
-        with nItems[nIdx] do
-        begin
-          FType := FieldByName('D_Memo').AsString;
-          FName := FieldByName('D_Value').AsString;
-          FID := FieldByName('D_ParamB').AsString;
-          FPrice := 0;
-        end;
-
-        Next;
-        Inc(nIdx);
-      end;
-    end;
-  end;
-
-  Result := Length(nItems) > 0;
+  Result := CallBusinessCommand(cBC_GetLadingStockItems, '', '', @nOut);
+  if Result then
+       AnalyseTypeItems(nOut.FData, nItems)
+  else SetLength(nItems, 0);
 end;
 
 procedure ReloadPriceWeek();
@@ -1807,6 +1767,26 @@ begin
   end;
 end;
 
+//Date: 2018-12-14
+//Parm: 纸卡号[in,out];提示信息[in]客户编号[out];是提货码
+//Desc: 验证nZhiKa是否有效
+function IsZhiKaValid(var nZhiKa,nHint: string;
+ const nIsCode: Boolean): Boolean;
+var nStr: string;
+    nOut: TWorkerBusinessCommand;
+begin
+  if nIsCode then
+       nStr := sFlag_Yes
+  else nStr := sFlag_No;
+
+  Result := CallBusinessCommand(cBC_CheckZhiKaValid, nZhiKa, nStr, @nOut, False);
+  if Result then
+  begin
+    nZhiKa := nOut.FData;
+    nHint := nOut.FExtParam;
+  end else nHint := nOut.FBase.FErrDesc;
+end;
+
 //Date: 2014-09-14
 //Parm: 纸卡号;是否限提
 //Desc: 获取nZhiKa的可用金
@@ -1863,6 +1843,19 @@ function IsStockValid(const nStocks: string): Boolean;
 var nOut: TWorkerBusinessCommand;
 begin
   Result := CallBusinessCommand(cBC_CheckStockValid, nStocks, '', @nOut);
+end;
+
+//Date: 2018-12-14
+//Parm: 客户编号;价格清单
+//Desc: 载入nCusID客户当前的价格清单
+function LoadStockItemsPrice(const nCusID: string;
+  var nItems: TStockTypeItems): Boolean;
+var nOut: TWorkerBusinessCommand;
+begin
+  Result := CallBusinessCommand(cBC_GetCustomerPrice, nCusID, '', @nOut);
+  if Result then
+       AnalyseTypeItems(nOut.FData, nItems)
+  else SetLength(nItems, 0);
 end;
 
 //Date: 2014-09-15
@@ -2196,20 +2189,6 @@ begin
     Add(Format('单据类型:%s %s', [nDelimiter, BillTypeToStr(FIsVIP)]));
     Add(Format('供 应 商:%s %s', [nDelimiter, FCusName]));
   end;
-end;
-
-//------------------------------------------------------------------------------
-//Desc: 每批次最大量
-function GetHYMaxValue: Double;
-var nStr: string;
-begin
-  nStr := 'Select D_Value From %s Where D_Name=''%s'' and D_Memo=''%s''';
-  nStr := Format(nStr, [sTable_SysDict, sFlag_SysParam, sFlag_HYValue]);
-
-  with FDM.QueryTemp(nStr) do
-  if RecordCount > 0 then
-       Result := Fields[0].AsFloat
-  else Result := 0;
 end;
 
 //Desc: 获取nNo水泥编号的已开量
@@ -2831,6 +2810,7 @@ begin
   Result := FDR.PrintSuccess;
 end;                                                 
 
+//------------------------------------------------------------------------------
 //Date: 2015/1/18
 //Parm: 车牌号；电子标签；是否启用；旧电子标签
 //Desc: 读标签是否成功；新的电子标签
@@ -2885,34 +2865,6 @@ begin
   nSQL := Format(nSQL, [sTable_SysDict, sFlag_SysParam, sFlag_StrictSanVal]);
 
   with FDM.QueryTemp(nSQL) do
-  if RecordCount > 0 then
-    Result := Fields[0].AsString = sFlag_Yes;
-end;
-
-function GetFQValueByStockNo(const nStock: string): Double;
-var nSQL: string;
-begin
-  Result := 0;
-  if nStock = '' then Exit;
-
-  nSQL := 'Select Sum(L_Value) From %s Where L_Seal=''%s'' ' +
-          'and L_Date > GetDate() - 30';   //一个月内的总计
-  nSQL := Format(nSQL, [sTable_Bill, nStock]);
-  with FDM.QueryTemp(nSQL) do
-  if RecordCount > 0 then
-    Result := Fields[0].AsFloat;
-end;
-
-function VerifyFQSumValue: Boolean;
-var nStr: string;
-begin
-  Result := False;
-  //默认不判断
-
-  nStr := 'Select D_Value From %s Where D_Name=''%s'' and D_Memo=''%s''';
-  nStr := Format(nStr, [sTable_SysDict, sFlag_SysParam, sFlag_VerifyFQValue]);
-
-  with FDM.QueryTemp(nStr) do
   if RecordCount > 0 then
     Result := Fields[0].AsString = sFlag_Yes;
 end;

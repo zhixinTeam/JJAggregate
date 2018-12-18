@@ -82,8 +82,8 @@ implementation
 {$R *.dfm}
 
 uses
-  IniFiles, ULibFun, UMgrControl, UAdjustForm, UDataModule, UFormCtrl,
-  UFormBase, UFrameBase, USysDB, USysConst, USysBusiness;
+  IniFiles, UBusinessConst, ULibFun, UMgrControl, UAdjustForm, UDataModule,
+  UFormCtrl, UFormBase, UFrameBase, USysDB, USysConst, USysBusiness;
 
 type
   TZhiKaItem = record
