@@ -53,8 +53,7 @@ implementation
 
 uses
   IniFiles, UlibFun, UMgrControl, UMgrPoundTunnels, UFramePoundManualItem,
-  {$IFDEF HR1847}UKRTruckProber,{$ELSE}UMgrTruckProbe,{$ENDIF}
-  UMgrRemoteVoice, UMgrVoiceNet, UDataModule, UFormWait, USysDataDict,
+  UMgrTruckProbe, UMgrVoiceNet, UDataModule, UFormWait, USysDataDict,
   USysGrid, USysLoger, USysConst, USysDB;
 
 class function TfFramePoundManual.FrameID: integer;
@@ -94,38 +93,25 @@ begin
   end;
 
   {$IFNDEF MITTruckProber}
-    {$IFDEF HR1847}   //30330123
-    if not Assigned(gKRMgrProber) then
-    begin
-      gKRMgrProber := TKRMgrProber.Create;
-      gKRMgrProber.LoadConfig(gPath + 'TruckProber.xml');
-
-      Inc(gSysParam.FProberUser);
-    end;
-    {$ELSE}
-    if not Assigned(gProberManager) then
-    begin
-      gProberManager := TProberManager.Create;
-      gProberManager.LoadConfig(gPath + 'TruckProber.xml');
-    end;
-    Inc(gSysParam.FProberUser);
-    gProberManager.StartProber;
-    {$ENDIF}
+  if not Assigned(gProberManager) then
+  begin
+    gProberManager := TProberManager.Create;
+    gProberManager.LoadConfig(gPath + 'TruckProber.xml');
+  end;
+  
+  Inc(gSysParam.FProberUser);
+  gProberManager.StartProber;
   {$ENDIF}
 
   if gSysParam.FVoiceUser < 1 then
   begin
     Inc(gSysParam.FVoiceUser);
-    gVoiceHelper.LoadConfig(gPath + 'Voice.xml');
-    gVoiceHelper.StartVoice;
-
-    if FileExists(gPath + 'NetVoice.xml') then
-    begin
-      if not Assigned(gNetVoiceHelper) then
-        gNetVoiceHelper := TNetVoiceManager.Create;
-      gNetVoiceHelper.LoadConfig(gPath + 'NetVoice.xml');
-      gNetVoiceHelper.StartVoice;
-    end;
+    if not Assigned(gNetVoiceHelper) then
+      gNetVoiceHelper := TNetVoiceManager.Create;
+    //xxxxx
+    
+    gNetVoiceHelper.LoadConfig(gPath + 'NetVoice.xml');
+    gNetVoiceHelper.StartVoice;
   end;
 end;
 
@@ -138,19 +124,16 @@ begin
   Dec(gSysParam.FVoiceUser);
   if gSysParam.FVoiceUser < 1 then
   begin
-    if Assigned(gNetVoiceHelper) then gNetVoiceHelper.StopVoice;
-
-    gVoiceHelper.StopVoice;
+    if Assigned(gNetVoiceHelper) then
+      gNetVoiceHelper.StopVoice;
     //xxxxx
   end;          
 
   {$IFNDEF MITTruckProber}
     Dec(gSysParam.FProberUser);
-    {$IFNDEF HR1847}
     if gSysParam.FProberUser < 1 then
       gProberManager.StopProber;
     //xxxxx
-    {$ENDIF}
   {$ENDIF}
 
   nIni := TIniFile.Create(gPath + sFormConfig);

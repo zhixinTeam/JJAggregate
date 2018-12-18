@@ -232,11 +232,7 @@ begin
   Timer2.Enabled := False;
 
   {$IFNDEF MITTruckProber}
-    {$IFDEF HR1847}
-    gKRMgrProber.TunnelOC(FPoundTunnel.FID,False);
-    {$ELSE}
-    gProberManager.TunnelOC(FPoundTunnel.FID,False);
-    {$ENDIF}
+  gProberManager.TunnelOC(FPoundTunnel.FID,False);
   {$ENDIF}
 end;
 
@@ -543,18 +539,8 @@ begin
 
   if FBarrierGate then
   begin
-    {$IFDEF ZZSJ}
-    if (FUIData.FStatus = sFlag_TruckIn) or
-       (FUIData.FStatus = sFlag_TruckBFP) then
-    begin
-      nStr := '[n1]%s刷卡成功请上磅,并熄火停车,进厂请系好安全带,戴好安全帽';
-      nStr := Format(nStr, [FUIData.FTruck]);
-    end;
-    {$ELSE}
     nStr := '[n1]%s刷卡成功请上磅,并熄火停车';
     nStr := Format(nStr, [FUIData.FTruck]);
-    {$ENDIF}
-    
     PlayVoice(nStr);
     //读卡成功，语音提示
 
@@ -771,15 +757,7 @@ begin
             PlayVoice(nStr);
 
             nStr := GetTruckNO(FTruck) + '请去包装点包';
-            LEDDisplay(nStr);
-
-            {$IFDEF ProberShow}
-              {$IFDEF MITTruckProber}
-              ProberShowTxt(FPoundTunnel.FID, nStr);
-              {$ELSE}
-              gProberManager.ShowTxt(FPoundTunnel.FID, nStr);
-              {$ENDIF}
-            {$ENDIF}
+            LEDDisplay(nStr); 
             Exit;
           end;
           {$ENDIF}
@@ -986,30 +964,14 @@ begin
   //更新界面
 
   {$IFDEF MITTruckProber}
-    if not IsTunnelOK(FPoundTunnel.FID) then
+  if not IsTunnelOK(FPoundTunnel.FID) then
   {$ELSE}
-    {$IFDEF HR1847}
-    if not gKRMgrProber.IsTunnelOK(FPoundTunnel.FID) then
-    {$ELSE}
-      {$IFNDEF TruckProberEx}
-      if not gProberManager.IsTunnelOK(FPoundTunnel.FID) then
-      {$ELSE}
-      if not gProberManager.IsTunnelOKEx(FPoundTunnel.FID) then
-      {$ENDIF}
-    {$ENDIF}
+  if not gProberManager.IsTunnelOK(FPoundTunnel.FID) then
   {$ENDIF}
   begin
     nStr := '车辆未停到位,请移动车辆.';
     PlayVoice(nStr);
     LEDDisplay(nStr);
-    WriteSysLog(nStr);
-    {$IFDEF ProberShow}
-      {$IFDEF MITTruckProber}
-      ProberShowTxt(FPoundTunnel.FID, nStr);
-      {$ELSE}
-      gProberManager.ShowTxt(FPoundTunnel.FID, nStr);
-      {$ENDIF}
-    {$ENDIF}
 
     InitSamples;
     Exit;
@@ -1026,18 +988,9 @@ begin
        and (FBillItems[0].FNextStatus = sFlag_TruckBFM) then
       nStr := GetTruckNO(FUIData.FTruck) + '票重:' +
               GetValue(StrToFloatDef(EditZValue.Text,0))
-    else
-      nStr := GetTruckNO(FUIData.FTruck) + '重量:' + GetValue(nValue);
+    else nStr := GetTruckNO(FUIData.FTruck) + '重量:' + GetValue(nValue);
+
     LEDDisplay(nStr);
-
-    {$IFDEF ProberShow}
-      {$IFDEF MITTruckProber}
-      ProberShowTxt(FPoundTunnel.FID, nStr);
-      {$ELSE}
-      gProberManager.ShowTxt(FPoundTunnel.FID, nStr);
-      {$ENDIF}
-    {$ENDIF}
-
     TimerDelay.Enabled := True
   end
   else
@@ -1080,13 +1033,9 @@ begin
     //磅上无道闸时，即时过磅完毕
 
     {$IFDEF MITTruckProber}
-        TunnelOC(FPoundTunnel.FID, True);
+    TunnelOC(FPoundTunnel.FID, True);
     {$ELSE}
-      {$IFDEF HR1847}
-      gKRMgrProber.TunnelOC(FPoundTunnel.FID, True);
-      {$ELSE}
-      gProberManager.TunnelOC(FPoundTunnel.FID, True);
-      {$ENDIF}
+    gProberManager.TunnelOC(FPoundTunnel.FID, True);
     {$ENDIF} //开红绿灯
 
     Timer2.Enabled := True;
@@ -1148,10 +1097,7 @@ end;
 procedure TfFrameAutoPoundItem.PlayVoice(const nStrtext: string);
 begin
   {$IFNDEF DEBUG}
-  if (Assigned(FPoundTunnel.FOptions)) and
-     (CompareText('NET', FPoundTunnel.FOptions.Values['Voice']) = 0) then
-       gNetVoiceHelper.PlayVoice(nStrtext, FPoundTunnel.FID, 'pound')
-  //xxxxx
+  gNetVoiceHelper.PlayVoice(nStrtext, FPoundTunnel.FID, 'pound')
   {$ENDIF}
 end;
 
@@ -1199,15 +1145,10 @@ end;
 
 procedure TfFrameAutoPoundItem.LEDDisplay(const nContent: string);
 begin
-  {$IFDEF BFLED}
-  WriteSysLog(Format('LEDDisplay:%s.%s', [FPoundTunnel.FID, nContent]));
-  if Assigned(FPoundTunnel.FOptions) And
-     (UpperCase(FPoundTunnel.FOptions.Values['LEDEnable'])='Y') then
-  begin
-    if FLEDContent = nContent then Exit;
-    FLEDContent := nContent;
-    gDisplayManager.Display(FPoundTunnel.FID, nContent);
-  end;
+  {$IFDEF MITTruckProber}
+  ProberShowTxt(FPoundTunnel.FID, nContent);
+  {$ELSE}
+  gProberManager.ShowTxt(FPoundTunnel.FID, nContent);
   {$ENDIF}
 end;
 

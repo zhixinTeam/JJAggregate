@@ -86,16 +86,6 @@ procedure TfFormZTMode.InitFormData(const nID: string);
 var nStr: string;
 begin
   Radio1.Checked  := True;
-  nStr := 'Select D_Value From %s Where D_Name=''%s'' And D_Memo=''%s''';
-  nStr := Format(nStr, [sTable_SysDict, sFlag_SysParam, sFlag_SanMultiBill]);
-
-  with FDM.QueryTemp(nStr) do
-  if RecordCount > 0 then
-  begin
-    Radio2.Checked := Fields[0].AsString = sFlag_Yes;
-    //允许散装多单
-  end;
-
   FMode := GetModeID;
 end;
 

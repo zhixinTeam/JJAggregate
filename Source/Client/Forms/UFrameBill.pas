@@ -46,6 +46,7 @@ type
     N9: TMenuItem;
     dxLayout1Item10: TdxLayoutItem;
     CheckDelete: TcxCheckBox;
+    N3: TMenuItem;
     procedure EditIDPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure BtnDelClick(Sender: TObject);
@@ -57,6 +58,8 @@ type
     procedure N5Click(Sender: TObject);
     procedure CheckDeleteClick(Sender: TObject);
     procedure cxView1DblClick(Sender: TObject);
+    procedure N3Click(Sender: TObject);
+    procedure PMenu1Popup(Sender: TObject);
   protected
     FStart,FEnd: TDate;
     //时间区间
@@ -255,6 +258,13 @@ begin
   //插入删除推送
 end;
 
+procedure TfFrameBill.PMenu1Popup(Sender: TObject);
+begin
+  N3.Enabled := (cxView1.DataController.GetSelectedCount > 0) and
+                (gPopedomManager.HasPopedom(sPopedom_ViewPrice, PopedomItem));
+  //xxxxx
+end;
+
 //Desc: 打印提货单
 procedure TfFrameBill.N1Click(Sender: TObject);
 var nStr: string;
@@ -290,6 +300,15 @@ begin
       ShowMsg('车牌号修改成功', sHint);
     end;
   end;
+end;
+
+//Desc: 查看价格描述
+procedure TfFrameBill.N3Click(Sender: TObject);
+var nP: TFormCommandParam;
+begin
+  nP.FCommand := cCmd_ViewData;
+  nP.FParamA := SQLQuery.FieldByName('L_PriceDesc').AsString;
+  CreateBaseFormItem(cFI_FormMemo, '', @nP);
 end;
 
 procedure TfFrameBill.cxView1DblClick(Sender: TObject);

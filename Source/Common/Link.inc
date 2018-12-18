@@ -81,8 +81,6 @@
   //微信端显示客户金额
   {$DEFINE CastMoney}
   //对吨位及金额小数位后2位四舍五入
-  {$DEFINE ProberShow}
-  //车检发送小屏
   {$DEFINE CapturePictureEx}
   //磅房抓拍模式扩展
 {$ENDIF}

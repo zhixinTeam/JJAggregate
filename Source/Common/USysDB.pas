@@ -177,14 +177,20 @@ const
   sFlag_ZKMinMoney    = 'ZhiKaMinMoney';             //纸卡最小金额
   sFlag_PrintZK       = 'PrintZK';                   //打印纸卡
   sFlag_PrintBill     = 'PrintStockBill';            //需打印订单
+  sFlag_BillMinValue  = 'LimitBillMinValue';         //显示最小开单量
   sFlag_ViaBillCard   = 'ViaBillCard';               //直接制卡
   sFlag_PayCredit     = 'Pay_Credit';                //回款冲信用
   sFlag_CreditVerify  = 'CreditVerify';              //信用审核
   sFlag_VerifyTruckP  = 'VerifyTruckP';              //校验预置皮重
-
-  sFlag_WXFactory     = 'WXFactoryID';               //微信标识
-  sFlag_WXServiceMIT  = 'WXServiceMIT';              //微信工厂服务
-  sFlag_WXSrvRemote   = 'WXServiceRemote';           //微信远程服务
+  sFlag_AutoIn        = 'Truck_AutoIn';              //自动进厂
+  sFlag_AutoOut       = 'Truck_AutoOut';             //自动出厂
+  sFlag_InTimeout     = 'InFactTimeOut';             //进厂超时(队列)
+  sFlag_NoDaiQueue    = 'NoDaiQueue';                //袋装禁用队列
+  sFlag_NoSanQueue    = 'NoSanQueue';                //散装禁用队列
+  sFlag_DelayQueue    = 'DelayQueue';                //延迟排队(厂内)
+  sFlag_PoundQueue    = 'PoundQueue';                //延迟排队(厂内依据过皮时间)
+  sFlag_NetPlayVoice  = 'NetPlayVoice';              //使用网络语音播发
+  sFlag_BatchAuto     = 'BatchAuto';                 //使用自动批次号
 
   sFlag_PDaiWuChaZ    = 'PoundDaiWuChaZ';            //袋装正误差
   sFlag_PDaiWuChaF    = 'PoundDaiWuChaF';            //袋装负误差
@@ -196,6 +202,10 @@ const
   sFlag_NFStock       = 'NoFaHuoStock';              //现场无需发货
   sFlag_StrictSanVal  = 'StrictSanVal';              //严格控制散装超发
   sFlag_PEmpTWuCha    = 'EmpTruckWuCha';             //空车出厂误差
+
+  sFlag_WXFactory     = 'WXFactoryID';               //微信标识
+  sFlag_WXServiceMIT  = 'WXServiceMIT';              //微信工厂服务
+  sFlag_WXSrvRemote   = 'WXServiceRemote';           //微信远程服务
 
   sFlag_CommonItem    = 'CommonItem';                //公共信息
   sFlag_CardItem      = 'CardItem';                  //磁卡信息项
@@ -221,18 +231,6 @@ const
 
   sFlag_HardSrvURL    = 'HardMonURL';
   sFlag_MITSrvURL     = 'MITServiceURL';             //服务地址
-
-  sFlag_AutoIn        = 'Truck_AutoIn';              //自动进厂
-  sFlag_AutoOut       = 'Truck_AutoOut';             //自动出厂
-  sFlag_InTimeout     = 'InFactTimeOut';             //进厂超时(队列)
-  sFlag_SanMultiBill  = 'SanMultiBill';              //散装预开多单
-  sFlag_NoDaiQueue    = 'NoDaiQueue';                //袋装禁用队列
-  sFlag_NoSanQueue    = 'NoSanQueue';                //散装禁用队列
-  sFlag_DelayQueue    = 'DelayQueue';                //延迟排队(厂内)
-  sFlag_PoundQueue    = 'PoundQueue';                //延迟排队(厂内依据过皮时间)
-  sFlag_NetPlayVoice  = 'NetPlayVoice';              //使用网络语音播发
-  sFlag_BatchAuto     = 'BatchAuto';                 //使用自动批次号
-  sFlag_FobiddenInMul = 'FobiddenInMul';             //禁止多次进厂
 
   sFlag_BusGroup      = 'BusFunction';               //业务编码组
   sFlag_BillNo        = 'Bus_Bill';                  //交货单号
@@ -307,7 +305,6 @@ const
   sTable_Truck        = 'S_Truck';                   //车辆表
   sTable_ZTLines      = 'S_ZTLines';                 //装车道
   sTable_ZTTrucks     = 'S_ZTTrucks';                //车辆队列
-  sTable_AuditTruck   = 'S_AuditTruck';                //车辆审核
 
   sTable_Provider     = 'P_Provider';                //客户表
   sTable_Materails    = 'P_Materails';               //物料表
@@ -323,27 +320,15 @@ const
   sTable_CusCredit    = 'Sys_CustomerCredit';        //客户信用
   sTable_SysShouJu    = 'Sys_ShouJu';                //收据记录
 
-  sTable_Invoice      = 'Sys_Invoice';               //发票列表
-  sTable_InvoiceDtl   = 'Sys_InvoiceDetail';         //发票明细
-  sTable_InvoiceWeek  = 'Sys_InvoiceWeek';           //结算周期
-  sTable_InvoiceReq   = 'Sys_InvoiceRequst';         //结算申请
-  sTable_InvReqtemp   = 'Sys_InvoiceReqtemp';        //临时申请
-  sTable_InvSettle    = 'Sys_InvoiceSettle';         //销售结算
-  sTable_DataTemp     = 'Sys_DataTemp';              //临时数据
-
   sTable_WeixinLog    = 'Sys_WeixinLog';             //微信日志
   sTable_WeixinMatch  = 'Sys_WeixinMatch';           //账号匹配
   sTable_WeixinTemp   = 'Sys_WeixinTemplate';        //信息模板
-  sTable_WebOrderMatch   = 'S_WebOrderMatch';        //商城订单映射
+  sTable_WebOrderMatch= 'S_WebOrderMatch';           //商城订单映射
 
   sTable_PoundLog     = 'Sys_PoundLog';              //过磅数据
   sTable_PoundBak     = 'Sys_PoundBak';              //过磅作废
   sTable_Picture      = 'Sys_Picture';               //存放图片
   sTable_PoundDaiWC   = 'Sys_PoundDaiWuCha';         //包装误差
-
-  sTable_K3_SyncItem  = 'DL_SyncItem';               //数据同步项
-  sTable_K3_Customer  = 'T_Organization';            //组织结构(客户)
-  sTable_K3_SalePlan  = 'S_K3_SalePlan';             //销售计划
 
   {*新建表*}
   sSQL_NewSysDict = 'Create Table $Table(D_ID $Inc, D_Name varChar(15),' +
@@ -755,13 +740,13 @@ const
        'L_LadeTime DateTime, L_LadeMan varChar(32), ' +
        'L_LadeLine varChar(15), L_LineName varChar(32), ' +
        'L_DaiTotal Integer , L_DaiNormal Integer, L_DaiBuCha Integer,' +
-       'L_OutFact DateTime, L_OutMan varChar(32), L_PrintGLF Char(1),' +
-       'L_Lading Char(1), L_IsVIP varChar(1), L_Seal varChar(100),' +
+       'L_OutFact DateTime, L_OutMan varChar(32),' +
+       'L_Lading Char(1), L_IsVIP varChar(1), ' +
        'L_HYDan varChar(15), L_PrintHY Char(1),' +
-       'L_Audit char(1) not null default(''N''),' +
-       'L_EmptyOut char(1) not null default(''N''),' +
+       'L_EmptyOut Char(1) Default ''N'',' +
        'L_Man varChar(32), L_Date DateTime,' +
-       'L_DelMan varChar(32), L_DelDate DateTime, L_Memo varChar(320))';
+       'L_DelMan varChar(32), L_DelDate DateTime,' +
+       'L_Seal varChar(100), L_PriceDesc varChar(100), L_Memo varChar(320))';
   {-----------------------------------------------------------------------------
    交货单表: Bill
    *.R_ID: 编号
@@ -777,7 +762,7 @@ const
    *.L_StockName: 物料描述
    *.L_Value: 提货量
    *.L_Price: 提货单价
-   *.L_ZKMoney: 占用纸卡限提(Y/N)
+   *.L_ZKMoney: 纸卡限提(Y/N)
    *.L_Truck: 车船号
    *.L_Status,L_NextStatus:状态控制
    *.L_InTime,L_InMan: 进厂放行
@@ -788,136 +773,17 @@ const
    *.L_DaiTotal,L_DaiNormal,L_DaiBuCha:总装,正常,补差
    *.L_OutFact,L_OutMan: 出厂放行
    *.L_Lading: 提货方式(自提,送货)
-   *.L_IsVIP:VIP单
-   *.L_PrintGLF:是否自动打印过路费
-   *.L_Seal: 封签号
+   *.L_IsVIP: VIP单
    *.L_HYDan: 化验单
    *.L_PrintHY:自动打印化验单
-   *.L_Audit: 补单审核状态Y待审核N已审核
    *.L_EmptyOut: 空车出厂标记
    *.L_Man:操作人
    *.L_Date:创建时间
    *.L_DelMan: 交货单删除人员
    *.L_DelDate: 交货单删除时间
+   *.L_Seal: 封签号
+   *.L_PriceDesc: 价格描述
    *.L_Memo: 动作备注
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewBillHK = 'Create Table $Table(R_ID $Inc, H_Bill varChar(20),' +
-       'H_ZhiKa varChar(15), H_HKBill varChar(20),' +
-       'H_Man varChar(32), H_Date DateTime)';
-  {-----------------------------------------------------------------------------
-   交货单预合卡: BillPreHK
-   *.R_ID: 编号
-   *.H_Bill: 提单号
-   *.H_ZhiKa: 纸卡号
-   *.H_HKBill: 合卡生成的单号
-   *.H_Man:操作人
-   *.H_Date:创建时间
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewOrderBase = 'Create Table $Table(R_ID $Inc, B_ID varChar(20),' +
-       'B_Value $Float, B_SentValue $Float,B_RestValue $Float,' +
-       'B_LimValue $Float, B_WarnValue $Float,B_FreezeValue $Float,' +
-       'B_BStatus Char(1),B_Area varChar(50), B_Project varChar(100),' +
-       'B_ProID varChar(32), B_ProName varChar(80), B_ProPY varChar(80),' +
-       'B_SaleID varChar(32), B_SaleMan varChar(80), B_SalePY varChar(80),' +
-       'B_StockType Char(1), B_StockNo varChar(32), B_StockName varChar(80),' +
-       'B_Man varChar(32), B_Date DateTime,' +
-       'B_DelMan varChar(32), B_DelDate DateTime, B_Memo varChar(500))';
-  {-----------------------------------------------------------------------------
-   采购申请单表: Order
-   *.R_ID: 编号
-   *.B_ID: 提单号
-   *.B_Value,B_SentValue,B_RestValue:订单量，已发量，剩余量
-   *.B_LimValue,B_WarnValue,B_FreezeValue:订单超发上限;订单预警量,订单冻结量
-   *.B_BStatus: 订单状态
-   *.B_Area,B_Project: 区域,项目
-   *.B_ProID,B_ProName,B_ProPY:供应商
-   *.B_SaleID,B_SaleMan,B_SalePY:业务员
-   *.B_StockType: 类型(袋,散)
-   *.B_StockNo: 原材料编号
-   *.B_StockName: 原材料名称
-   *.B_Man:操作人
-   *.B_Date:创建时间
-   *.B_DelMan: 采购申请单删除人员
-   *.B_DelDate: 采购申请单删除时间
-   *.B_Memo: 动作备注
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewOrder = 'Create Table $Table(R_ID $Inc, O_ID varChar(20),' +
-       'O_BID varChar(20),O_Card varChar(16), O_CType varChar(1),' +
-       'O_Value $Float,O_Area varChar(50), O_Project varChar(100),' +
-       'O_ProID varChar(32), O_ProName varChar(80), O_ProPY varChar(80),' +
-       'O_SaleID varChar(32), O_SaleMan varChar(80), O_SalePY varChar(80),' +
-       'O_Type Char(1), O_StockNo varChar(32), O_StockName varChar(80),' +
-       'O_Truck varChar(15), O_OStatus Char(1),' +
-       'O_Man varChar(32), O_Date DateTime,' +
-       'O_KFValue varChar(16), O_KFLS varChar(32),' +
-       'O_DelMan varChar(32), O_DelDate DateTime, O_Memo varChar(500))';
-  {-----------------------------------------------------------------------------
-   采购订单表: Order
-   *.R_ID: 编号
-   *.O_ID: 提单号
-   *.O_BID: 采购申请单据号
-   *.O_Card,O_CType: 磁卡号,磁卡类型(L、临时卡;G、固定卡)
-   *.O_Value:订单量，
-   *.O_OStatus: 订单状态
-   *.O_Area,O_Project: 区域,项目
-   *.O_ProID,O_ProName,O_ProPY:供应商
-   *.O_SaleID,O_SaleMan:业务员
-   *.O_Type: 类型(袋,散)
-   *.O_StockNo: 原材料编号
-   *.O_StockName: 原材料名称
-   *.O_Truck: 车船号
-   *.O_Man:操作人
-   *.O_Date:创建时间
-   *.O_KFValue:矿发数量
-   *.O_KFLS:矿发流水
-   *.O_DelMan: 采购单删除人员
-   *.O_DelDate: 采购单删除时间
-   *.O_Memo: 动作备注
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewOrderDtl = 'Create Table $Table(R_ID $Inc, D_ID varChar(20),' +
-       'D_OID varChar(20), D_PID varChar(20), D_Card varChar(16), ' +
-       'D_Area varChar(50), D_Project varChar(100),D_Truck varChar(15), ' +
-       'D_ProID varChar(32), D_ProName varChar(80), D_ProPY varChar(80),' +
-       'D_SaleID varChar(32), D_SaleMan varChar(80), D_SalePY varChar(80),' +
-       'D_Type Char(1), D_StockNo varChar(32), D_StockName varChar(80),' +
-       'D_DStatus Char(1), D_Status Char(1), D_NextStatus Char(1),' +
-       'D_InTime DateTime, D_InMan varChar(32),' +
-       'D_PValue $Float, D_PDate DateTime, D_PMan varChar(32),' +
-       'D_MValue $Float, D_MDate DateTime, D_MMan varChar(32),' +
-       'D_YTime DateTime, D_YMan varChar(32), ' +
-       'D_Value $Float,D_KZValue $Float, D_AKValue $Float,' +
-       'D_YLine varChar(15), D_YLineName varChar(32), D_Unload varChar(80),' +
-       'D_DelMan varChar(32), D_DelDate DateTime, D_YSResult Char(1), ' +
-       'D_OutFact DateTime, D_OutMan varChar(32), D_Memo varChar(500))';
-  {-----------------------------------------------------------------------------
-   采购订单明细表: OrderDetail
-   *.R_ID: 编号
-   *.D_ID: 采购明细号
-   *.D_OID: 采购单号
-   *.D_PID: 磅单号
-   *.D_Card: 采购磁卡号
-   *.D_DStatus: 订单状态
-   *.D_Area,D_Project: 区域,项目
-   *.D_ProID,D_ProName,D_ProPY:供应商
-   *.D_SaleID,D_SaleMan:业务员
-   *.D_Type: 类型(袋,散)
-   *.D_StockNo: 原材料编号
-   *.D_StockName: 原材料名称
-   *.D_Truck: 车船号
-   *.D_Status,D_NextStatus: 状态
-   *.D_InTime,D_InMan: 进厂放行
-   *.D_PValue,D_PDate,D_PMan: 称皮重
-   *.D_MValue,D_MDate,D_MMan: 称毛重
-   *.D_YTime,D_YMan: 收货时间,验收人,
-   *.D_Value,D_KZValue,D_AKValue: 收货量,验收扣除(明扣),暗扣
-   *.D_YLine,D_YLineName: 收货通道
-   *.D_UnLoad: 卸货地点/库房
-   *.D_YSResult: 验收结果
-   *.D_OutFact,D_OutMan: 出厂放行
   -----------------------------------------------------------------------------}
 
   sSQL_NewCard = 'Create Table $Table(R_ID $Inc, C_Card varChar(16),' +
@@ -945,6 +811,7 @@ const
        'T_PY varChar(15), T_Owner varChar(32), T_Phone varChar(15), T_Used Char(1), ' +
        'T_PrePValue $Float, T_PrePMan varChar(32), T_PrePTime DateTime, ' +
        'T_PrePUse Char(1), T_MinPVal $Float, T_MaxPVal $Float, ' +
+       'T_MaxNet $Float Default 0, T_MaxNetIgnore Integer Default 0,' +
        'T_PValue $Float Default 0, T_PTime Integer Default 0,' +
        'T_PlateColor varChar(12),T_Type varChar(12), T_LastTime DateTime, ' +
        'T_Card varChar(32), T_CardUse Char(1), T_Card2 varChar(32),' +
@@ -963,6 +830,8 @@ const
    *.T_PrePUse: 使用预置
    *.T_MinPVal: 历史最小皮重
    *.T_MaxPVal: 历史最大皮重
+   *.T_MaxNet: 历史最大净重
+   *.T_MaxNetIgnore: 可忽略最大净重次数
    *.T_PValue: 有效皮重
    *.T_PTime: 过皮次数
    *.T_PlateColor: 车牌颜色
@@ -1094,138 +963,109 @@ const
    *.T_HKBills: 合卡交货单列表
   -----------------------------------------------------------------------------}
 
-  sSQL_NewAuditTruck = 'Create Table $Table(R_ID $Inc, A_ID varChar(50),' +
-       'A_Serial varChar(50), A_Truck varChar(20), A_License Image,' +
-       'A_WeiXin varChar(20), A_Phone varChar(20), A_LicensePath varChar(150), ' +
-       'A_Date DateTime, A_Status Char(1), ' +
-       'A_PValue $Float, A_Man varChar(20), A_Memo varChar(200))';
+  sSQL_NewOrderBase = 'Create Table $Table(R_ID $Inc, B_ID varChar(20),' +
+       'B_Value $Float, B_SentValue $Float,B_RestValue $Float,' +
+       'B_LimValue $Float, B_WarnValue $Float,B_FreezeValue $Float,' +
+       'B_BStatus Char(1),B_Area varChar(50), B_Project varChar(100),' +
+       'B_ProID varChar(32), B_ProName varChar(80), B_ProPY varChar(80),' +
+       'B_SaleID varChar(32), B_SaleMan varChar(80), B_SalePY varChar(80),' +
+       'B_StockType Char(1), B_StockNo varChar(32), B_StockName varChar(80),' +
+       'B_Man varChar(32), B_Date DateTime,' +
+       'B_DelMan varChar(32), B_DelDate DateTime, B_Memo varChar(500))';
   {-----------------------------------------------------------------------------
-   车辆审核: AuditTruck
-   *.R_ID: 记录号
-   *.A_ID: 车辆唯一识别码
-   *.A_Serial: 车辆类型
-   *.A_Truck: 车牌号
-   *.A_License: 驾驶证图片
-   *.A_WeiXin: 提交信息的商城账户
-   *.A_Phone: 商城账户电话
-   *.A_LicensePath: 照片路径
-   *.A_Date: 审核时间
-   *.A_Status: 审核结果(0:申请中.1:通过.2:驳回)
-   *.A_PValue: 车辆皮重
-   *.A_Man: 审核人
-   *.A_Memo: 动作备注
+   采购申请单表: Order
+   *.R_ID: 编号
+   *.B_ID: 提单号
+   *.B_Value,B_SentValue,B_RestValue:订单量，已发量，剩余量
+   *.B_LimValue,B_WarnValue,B_FreezeValue:订单超发上限;订单预警量,订单冻结量
+   *.B_BStatus: 订单状态
+   *.B_Area,B_Project: 区域,项目
+   *.B_ProID,B_ProName,B_ProPY:供应商
+   *.B_SaleID,B_SaleMan,B_SalePY:业务员
+   *.B_StockType: 类型(袋,散)
+   *.B_StockNo: 原材料编号
+   *.B_StockName: 原材料名称
+   *.B_Man:操作人
+   *.B_Date:创建时间
+   *.B_DelMan: 采购申请单删除人员
+   *.B_DelDate: 采购申请单删除时间
+   *.B_Memo: 动作备注
   -----------------------------------------------------------------------------}
 
-  sSQL_NewDataTemp = 'Create Table $Table(T_SysID varChar(15))';
+  sSQL_NewOrder = 'Create Table $Table(R_ID $Inc, O_ID varChar(20),' +
+       'O_BID varChar(20),O_Card varChar(16), O_CType varChar(1),' +
+       'O_Value $Float,O_Area varChar(50), O_Project varChar(100),' +
+       'O_ProID varChar(32), O_ProName varChar(80), O_ProPY varChar(80),' +
+       'O_SaleID varChar(32), O_SaleMan varChar(80), O_SalePY varChar(80),' +
+       'O_Type Char(1), O_StockNo varChar(32), O_StockName varChar(80),' +
+       'O_Truck varChar(15), O_OStatus Char(1),' +
+       'O_Man varChar(32), O_Date DateTime,' +
+       'O_KFValue varChar(16), O_KFLS varChar(32),' +
+       'O_DelMan varChar(32), O_DelDate DateTime, O_Memo varChar(500))';
   {-----------------------------------------------------------------------------
-   临时数据表: DataTemp
-   *.T_SysID: 系统编号
+   采购订单表: Order
+   *.R_ID: 编号
+   *.O_ID: 提单号
+   *.O_BID: 采购申请单据号
+   *.O_Card,O_CType: 磁卡号,磁卡类型(L、临时卡;G、固定卡)
+   *.O_Value:订单量，
+   *.O_OStatus: 订单状态
+   *.O_Area,O_Project: 区域,项目
+   *.O_ProID,O_ProName,O_ProPY:供应商
+   *.O_SaleID,O_SaleMan:业务员
+   *.O_Type: 类型(袋,散)
+   *.O_StockNo: 原材料编号
+   *.O_StockName: 原材料名称
+   *.O_Truck: 车船号
+   *.O_Man:操作人
+   *.O_Date:创建时间
+   *.O_KFValue:矿发数量
+   *.O_KFLS:矿发流水
+   *.O_DelMan: 采购单删除人员
+   *.O_DelDate: 采购单删除时间
+   *.O_Memo: 动作备注
   -----------------------------------------------------------------------------}
 
-  sSQL_NewInvoiceWeek = 'Create Table $Table(W_ID $Inc, W_NO varChar(15),' +
-       'W_Name varChar(50), W_Begin DateTime, W_End DateTime,' +
-       'W_Man varChar(32), W_Date DateTime, W_Memo varChar(50))';
+  sSQL_NewOrderDtl = 'Create Table $Table(R_ID $Inc, D_ID varChar(20),' +
+       'D_OID varChar(20), D_PID varChar(20), D_Card varChar(16), ' +
+       'D_Area varChar(50), D_Project varChar(100),D_Truck varChar(15), ' +
+       'D_ProID varChar(32), D_ProName varChar(80), D_ProPY varChar(80),' +
+       'D_SaleID varChar(32), D_SaleMan varChar(80), D_SalePY varChar(80),' +
+       'D_Type Char(1), D_StockNo varChar(32), D_StockName varChar(80),' +
+       'D_DStatus Char(1), D_Status Char(1), D_NextStatus Char(1),' +
+       'D_InTime DateTime, D_InMan varChar(32),' +
+       'D_PValue $Float, D_PDate DateTime, D_PMan varChar(32),' +
+       'D_MValue $Float, D_MDate DateTime, D_MMan varChar(32),' +
+       'D_YTime DateTime, D_YMan varChar(32), ' +
+       'D_Value $Float,D_KZValue $Float, D_AKValue $Float,' +
+       'D_YLine varChar(15), D_YLineName varChar(32), D_Unload varChar(80),' +
+       'D_DelMan varChar(32), D_DelDate DateTime, D_YSResult Char(1), ' +
+       'D_OutFact DateTime, D_OutMan varChar(32), D_Memo varChar(500))';
   {-----------------------------------------------------------------------------
-   发票结算周期:InvoiceWeek
-   *.W_ID:记录编号
-   *.W_NO:周期编号
-   *.W_Name:名称
-   *.W_Begin:开始
-   *.W_End:结束
-   *.W_Man:创建人
-   *.W_Date:创建时间
-   *.W_Memo:备注信息
-  -----------------------------------------------------------------------------}
-  
-  sSQL_NewInvoice = 'Create Table $Table(I_ID varChar(25) PRIMARY KEY,' +
-       'I_Week varChar(15), I_CusID varChar(15), I_Customer varChar(80),' +
-       'I_SaleID varChar(15), I_SaleMan varChar(50), I_Status Char(1),' +
-       'I_Flag Char(1), I_InMan varChar(32), I_InDate DateTime,' +
-       'I_OutMan varChar(32), I_OutDate DateTime, I_Memo varChar(50))';
-  {-----------------------------------------------------------------------------
-   发票票据:Invoice
-   *.I_ID:编号
-   *.I_Week:结算周期
-   *.I_CusID:客户编号
-   *.I_Customer:客户名
-   *.I_SaleID:业务员号
-   *.I_SaleMan:业务员
-   *.I_Status:状态
-   *.I_Flag:标记
-   *.I_InMan:录入人
-   *.I_InDate:录入日期
-   *.I_OutMan:领用人
-   *.I_OutDate:领用日期
-   *.I_Memo:备注
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewInvoiceDtl = 'Create Table $Table(D_ID $Inc, D_Invoice varChar(25),' +
-       'D_Type Char(1), D_Stock varChar(30), D_Price $Float Default 0,' +
-       'D_Value $Float Default 0, D_KPrice $Float Default 0,' +
-       'D_DisCount $Float Default 0, D_DisMoney $Float Default 0)';
-  {-----------------------------------------------------------------------------
-   发票明细:InvoiceDetail
-   *.D_ID:编号
-   *.D_Invoice:票号
-   *.D_Type:类型(带,散)
-   *.D_Stock:品种
-   *.D_Price:单价
-   *.D_Value:开票量
-   *.D_KPrice:开票价
-   *.D_DisCount:折扣比
-   *.D_DisMoney:折扣钱数
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewInvoiceReq = 'Create Table $Table(R_ID $Inc, R_Week varChar(15),' +
-       'R_ZhiKa varChar(15), R_CusID varChar(15), R_Customer varChar(80),' +
-       'R_CusPY varChar(80), R_SaleID varChar(15), R_SaleMan varChar(50), ' +
-       'R_Type Char(1), R_Stock varChar(20), R_StockName varChar(80), ' +
-       'R_Price $Float, R_Value $Float, R_YunFei $Float,' +
-       'R_PreHasK $Float Default 0, R_ReqValue $Float, R_KPrice $Float,' +
-       'R_KValue $Float Default 0, R_KOther $Float Default 0,' +
-       'R_KMan varChar(32),R_KDate DateTime,R_Man varChar(32),R_Date DateTime)';
-  {-----------------------------------------------------------------------------
-   发票结算申请:InvoiceReq
-   *.R_ID:记录编号
-   *.R_Week:结算周期
-   *.R_ZhiKa: 纸卡编号
-   *.R_CusID:客户号
-   *.R_Customer,R_CusPY:客户名
-   *.R_SaleID:业务员号
-   *.R_SaleMan:业务员名
-   *.R_Type:水泥类型(D,S)
-   *.R_Stock,R_StockName:水泥品种
-   *.R_Price:单价
-   *.R_Value:提货量
-   *.R_YunFei:运费单价
-   *.R_PreHasK:之前已开量
-   *.R_ReqValue:申请量
-   *.R_KPrice:开票单价
-   *.R_KValue:申请已完成量
-   *.R_KOther:本周申请量之外已开
-   *.R_KMan,R_KDate: 结算人
-   *.R_Man:申请人
-   *.R_Date:申请时间
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewInvoiceSettle = 'Create Table $Table(R_ID $Inc, S_Week varChar(15),' +
-       'S_Bill varChar(15), S_CusID varChar(15), S_ZhiKa varChar(15),' +
-       'S_Stock varChar(20), S_Value $Float, S_Price $Float, S_YunFei $Float,' +
-       'S_OutFact DateTime, S_Man varChar(32), S_Date DateTime)';
-  {-----------------------------------------------------------------------------
-   结算结算:InvoiceSettle
-   *.R_ID:记录编号
-   *.S_Week: 结算周期
-   *.S_Bill: 交货单号
-   *.S_CusID: 客户编号
-   *.S_ZhiKa: 纸卡编号
-   *.S_Stock: 品种编号
-   *.S_Value: 发货量
-   *.S_Price: 返利单价
-   *.S_YunFei: 运费单价
-   *.S_OutFact: 出厂时间
-   *.S_Man: 结算人
-   *.S_Date: 结算时间
+   采购订单明细表: OrderDetail
+   *.R_ID: 编号
+   *.D_ID: 采购明细号
+   *.D_OID: 采购单号
+   *.D_PID: 磅单号
+   *.D_Card: 采购磁卡号
+   *.D_DStatus: 订单状态
+   *.D_Area,D_Project: 区域,项目
+   *.D_ProID,D_ProName,D_ProPY:供应商
+   *.D_SaleID,D_SaleMan:业务员
+   *.D_Type: 类型(袋,散)
+   *.D_StockNo: 原材料编号
+   *.D_StockName: 原材料名称
+   *.D_Truck: 车船号
+   *.D_Status,D_NextStatus: 状态
+   *.D_InTime,D_InMan: 进厂放行
+   *.D_PValue,D_PDate,D_PMan: 称皮重
+   *.D_MValue,D_MDate,D_MMan: 称毛重
+   *.D_YTime,D_YMan: 收货时间,验收人,
+   *.D_Value,D_KZValue,D_AKValue: 收货量,验收扣除(明扣),暗扣
+   *.D_YLine,D_YLineName: 收货通道
+   *.D_UnLoad: 卸货地点/库房
+   *.D_YSResult: 验收结果
+   *.D_OutFact,D_OutMan: 出厂放行
   -----------------------------------------------------------------------------}
 
   sSQL_NewWXLog = 'Create Table $Table(R_ID $Inc, L_UserID varChar(50), ' +
@@ -1595,18 +1435,6 @@ begin
   AddSysTableItem(sTable_CusCredit, sSQL_NewCusCredit);
   AddSysTableItem(sTable_SysShouJu, sSQL_NewSysShouJu);
 
-  AddSysTableItem(sTable_InvoiceWeek, sSQL_NewInvoiceWeek);
-  AddSysTableItem(sTable_Invoice, sSQL_NewInvoice);
-  AddSysTableItem(sTable_InvoiceDtl, sSQL_NewInvoiceDtl);
-  AddSysTableItem(sTable_InvoiceReq, sSQL_NewInvoiceReq);
-  AddSysTableItem(sTable_InvReqtemp, sSQL_NewInvoiceReq);
-  AddSysTableItem(sTable_InvSettle, sSQL_NewInvoiceSettle);
-  AddSysTableItem(sTable_DataTemp, sSQL_NewDataTemp);
-
-  AddSysTableItem(sTable_WeixinLog, sSQL_NewWXLog);
-  AddSysTableItem(sTable_WeixinMatch, sSQL_NewWXMatch);
-  AddSysTableItem(sTable_WeixinTemp, sSQL_NewWXTemplate);
-
   AddSysTableItem(sTable_ZhiKa, sSQL_NewZhiKa);
   AddSysTableItem(sTable_ZhiKaDtl, sSQL_NewZhiKaDtl);
   AddSysTableItem(sTable_Card, sSQL_NewCard);
@@ -1636,9 +1464,10 @@ begin
   AddSysTableItem(sTable_OrderBase, sSQL_NewOrderBase);
   AddSysTableItem(sTable_OrderBaseBak, sSQL_NewOrderBase);
 
-  AddSysTableItem(sTable_K3_SalePlan, sSQL_NewK3SalePlan);
+  AddSysTableItem(sTable_WeixinLog, sSQL_NewWXLog);
+  AddSysTableItem(sTable_WeixinMatch, sSQL_NewWXMatch);
+  AddSysTableItem(sTable_WeixinTemp, sSQL_NewWXTemplate);
   AddSysTableItem(sTable_WebOrderMatch,sSQL_NewWebOrderMatch);
-  AddSysTableItem(sTable_AuditTruck, sSQL_NewAuditTruck);
 end;
 
 //Desc: 清理系统表

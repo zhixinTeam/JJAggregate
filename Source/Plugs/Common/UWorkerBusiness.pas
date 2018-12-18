@@ -918,7 +918,7 @@ function TWorkerBusinessCommander.GetZhiKaValidMoney(var nData: string): Boolean
 var nStr: string;
     nMoney: Double;
 begin
-  nStr := 'Select Z_Money,Z_MoneyUsed,Z_MoneyAll,Z_Customer From %s ' +
+  nStr := 'Select Z_Money,Z_MoneyUsed,Z_MoneyAll,Z_Customer,Z_InValid From %s ' +
           'Where Z_ID=''%s''';
   nStr := Format(nStr, [sTable_ZhiKa, FIn.FData]);
   
@@ -934,12 +934,21 @@ begin
     nStr := FieldByName('Z_MoneyAll').AsString;
     if nStr = sFlag_Yes then
     begin
-      FIn.FData := FieldByName('Z_Customer').AsString;
-      FIn.FExtParam := sFlag_No;
+      FOut.FData := FieldByName('Z_Customer').AsString;
+      FOut.FExtParam := sFlag_No;
 
       Result := GetCustomerValidMoney(nData);
       Exit;
     end; //不限提,计算客户可用金
+                     
+    if FieldByName('Z_InValid').AsString = sFlag_Yes then //已无效
+    begin
+      FOut.FData := '0';
+      FOut.FExtParam := sFlag_Yes;
+
+      Result := True;
+      Exit;
+    end;
 
     nMoney := FieldByName('Z_Money').AsFloat -
               FieldByName('Z_MoneyUsed').AsFloat;
@@ -954,7 +963,7 @@ begin
     nMoney := Float2Float(nMoney, cPrecision, False);
                                          
     FOut.FData := FloatToStr(nMoney);
-    FIn.FExtParam := sFlag_Yes;
+    FOut.FExtParam := sFlag_Yes;
     Result := True;
   end;
 end;

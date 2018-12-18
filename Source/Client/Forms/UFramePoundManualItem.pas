@@ -124,8 +124,7 @@ implementation
 {$R *.dfm}
 
 uses
-  ULibFun, UAdjustForm, UFormBase, {$IFDEF HR1847}UKRTruckProber,
-  {$ELSE}UMgrTruckProbe,{$ENDIF} UMgrRemoteVoice, UMgrVoiceNet, UDataModule,
+  ULibFun, UAdjustForm, UFormBase, UMgrTruckProbe, UMgrVoiceNet, UDataModule,
   UFormWait, USysBusiness, USysConst, USysDB;
 
 const
@@ -460,11 +459,7 @@ begin
   Timer2.Enabled := False;
 
   {$IFNDEF MITTruckProber}
-    {$IFDEF HR1847}
-    gKRMgrProber.TunnelOC(FPoundTunnel.FID,False);
-    {$ELSE}
-    gProberManager.TunnelOC(FPoundTunnel.FID,False);
-    {$ENDIF}
+  gProberManager.TunnelOC(FPoundTunnel.FID,False);
   {$ENDIF} //中间件华益驱动自带关闭功能
 end;
 
@@ -489,13 +484,9 @@ begin
   //status change
 
   {$IFDEF MITTruckProber}
-    TunnelOC(FPoundTunnel.FID, N1.Checked);
+  TunnelOC(FPoundTunnel.FID, N1.Checked);
   {$ELSE}
-    {$IFDEF HR1847}
-    gKRMgrProber.TunnelOC(FPoundTunnel.FID, N1.Checked);
-    {$ELSE}
-    gProberManager.TunnelOC(FPoundTunnel.FID, N1.Checked);
-    {$ENDIF}
+  gProberManager.TunnelOC(FPoundTunnel.FID, N1.Checked);
   {$ENDIF}
 end;
 
@@ -932,11 +923,7 @@ begin
       {$IFDEF MITTruckProber}
         TunnelOC(FPoundTunnel.FID, True);
       {$ELSE}
-        {$IFDEF HR1847}
-        gKRMgrProber.TunnelOC(FPoundTunnel.FID, True);
-        {$ELSE}
-        gProberManager.TunnelOC(FPoundTunnel.FID, True);
-        {$ENDIF}
+      gProberManager.TunnelOC(FPoundTunnel.FID, True);
       {$ENDIF}
 
       //开红绿灯
@@ -959,10 +946,9 @@ end;
 
 procedure TfFrameManualPoundItem.PlayVoice(const nStrtext: string);
 begin
-  if (Assigned(FPoundTunnel.FOptions)) and
-     (CompareText('NET', FPoundTunnel.FOptions.Values['Voice']) = 0) then
-       gNetVoiceHelper.PlayVoice(nStrtext, FPoundTunnel.FID, 'pound')
-  else gVoiceHelper.PlayVoice(nStrtext);
+  {$IFNDEF DEBUG}
+  gNetVoiceHelper.PlayVoice(nStrtext, FPoundTunnel.FID, 'pound')
+  {$ENDIF}
 end;
 
 //Desc: 车将检测器判定
@@ -972,13 +958,9 @@ begin
   //default
 
   {$IFDEF MITTruckProber}
-    if not IsTunnelOK(FPoundTunnel.FID) then
+  if not IsTunnelOK(FPoundTunnel.FID) then
   {$ELSE}
-    {$IFDEF HR1847}
-    if not gKRMgrProber.IsTunnelOK(FPoundTunnel.FID) then
-    {$ELSE}
-    if not gProberManager.IsTunnelOK(FPoundTunnel.FID) then
-    {$ENDIF}
+  if not gProberManager.IsTunnelOK(FPoundTunnel.FID) then
   {$ENDIF}
   begin
     ShowMsg('车辆未站稳,请稍后', sHint);

@@ -11,7 +11,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   UFormBase, UFormNormal, cxGraphics, cxControls, cxLookAndFeels,
   cxLookAndFeelPainters, cxContainer, cxEdit, cxMaskEdit, cxDropDownEdit,
-  cxTextEdit, dxLayoutControl, StdCtrls, cxCheckBox;
+  cxTextEdit, dxLayoutControl, StdCtrls, cxCheckBox, cxLabel;
 
 type
   TfFormTruck = class(TfFormNormal)
@@ -21,7 +21,6 @@ type
     dxLayout1Item5: TdxLayoutItem;
     EditPhone: TcxTextEdit;
     dxLayout1Item3: TdxLayoutItem;
-    dxLayout1Group3: TdxLayoutGroup;
     CheckValid: TcxCheckBox;
     dxLayout1Item4: TdxLayoutItem;
     CheckVerify: TcxCheckBox;
@@ -35,6 +34,20 @@ type
     CheckGPS: TcxCheckBox;
     dxLayout1Item10: TdxLayoutItem;
     dxLayout1Group4: TdxLayoutGroup;
+    EditIgnore: TcxTextEdit;
+    dxLayout1Item11: TdxLayoutItem;
+    EditNet: TcxTextEdit;
+    dxLayout1Item12: TdxLayoutItem;
+    cxLabel1: TcxLabel;
+    dxLayout1Item13: TdxLayoutItem;
+    Label1: TcxLabel;
+    dxLayout1Item14: TdxLayoutItem;
+    Label2: TcxLabel;
+    dxLayout1Item15: TdxLayoutItem;
+    dxLayout1Group3: TdxLayoutGroup;
+    dxLayout1Item16: TdxLayoutItem;
+    Label3: TcxLabel;
+    dxLayout1Group5: TdxLayoutGroup;
     procedure BtnOKClick(Sender: TObject);
   protected
     { Protected declarations }
@@ -111,9 +124,12 @@ begin
     EditTruck.Text := FieldByName('T_Truck').AsString;     
     EditOwner.Text := FieldByName('T_Owner').AsString;
     EditPhone.Text := FieldByName('T_Phone').AsString;
-    
+
+    EditNet.Text := Format('%.2f', [FieldByName('T_MaxNet').AsFloat]);
+    EditIgnore.Text := FieldByName('T_MaxNetIgnore').AsString;
+
     CheckVerify.Checked := FieldByName('T_NoVerify').AsString = sFlag_No;
-    CheckValid.Checked := FieldByName('T_Valid').AsString = sFlag_Yes;
+    CheckValid.Checked := FieldByName('T_Valid').AsString <> sFlag_No;
     CheckUserP.Checked := FieldByName('T_PrePUse').AsString = sFlag_Yes;
 
     CheckVip.Checked   := FieldByName('T_VIPTruck').AsString = sFlag_TypeVIP;
@@ -130,6 +146,13 @@ begin
   begin
     ActiveControl := EditTruck;
     ShowMsg('请输入车牌号码', sHint);
+    Exit;
+  end;
+
+  if not IsNumber(EditIgnore.Text, False) then
+  begin
+    ActiveControl := EditIgnore;
+    ShowMsg('次数为大于0的整数', sHint);
     Exit;
   end;
 
@@ -160,6 +183,7 @@ begin
   nStr := MakeSQLByStr([SF('T_Truck', nTruck),
           SF('T_Owner', EditOwner.Text),
           SF('T_Phone', EditPhone.Text),
+          SF('T_MaxNetIgnore', EditIgnore.Text, sfVal),
           SF('T_NoVerify', nU),
           SF('T_Valid', nV),
           SF('T_PrePUse', nP),

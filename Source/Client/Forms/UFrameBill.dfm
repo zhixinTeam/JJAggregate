@@ -213,6 +213,7 @@ inherited fFrameBill: TfFrameBill
   end
   object PMenu1: TPopupMenu
     AutoHotkeys = maManual
+    OnPopup = PMenu1Popup
     Left = 4
     Top = 264
     object N1: TMenuItem
@@ -238,6 +239,10 @@ inherited fFrameBill: TfFrameBill
       Tag = 20
       Caption = #26597#35810#26410#23436#25104
       OnClick = N4Click
+    end
+    object N3: TMenuItem
+      Caption = #26597#30475#20215#26684#25551#36848
+      OnClick = N3Click
     end
   end
 end

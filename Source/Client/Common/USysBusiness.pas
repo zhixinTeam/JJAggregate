@@ -226,14 +226,6 @@ function IsEleCardVaid(const nTruckNo: string): Boolean;
 //验证车辆电子标签
 function IfStockHasLs(const nStockNo: string): Boolean;
 //验证物料是否需要输入流水
-function IsWeekValid(const nWeek: string; var nHint: string): Boolean;
-//周期是否有效
-function IsWeekHasEnable(const nWeek: string): Boolean;
-//周期是否启用
-function IsNextWeekEnable(const nWeek: string): Boolean;
-//下一周期是否启用
-function IsPreWeekOver(const nWeek: string): Integer;
-//上一周期是否结束
 function SaveCompensation(const nSaleMan,nCusID,nCusName,nPayment,nMemo: string;
  const nMoney: Double): Boolean;
 //保存用户补偿金
@@ -2204,67 +2196,6 @@ begin
   if RecordCount > 0 then
        Result := Fields[1].AsFloat
   else Result := -1;
-end;
-
-//Desc: 检测nWeek是否存在或过期
-function IsWeekValid(const nWeek: string; var nHint: string): Boolean;
-var nStr: string;
-begin
-  nStr := 'Select W_End,$Now From $W Where W_NO=''$NO''';
-  nStr := MacroValue(nStr, [MI('$W', sTable_InvoiceWeek),
-          MI('$Now', FDM.SQLServerNow), MI('$NO', nWeek)]);
-  //xxxxx
-
-  with FDM.QueryTemp(nStr) do
-  if RecordCount > 0 then
-  begin
-    Result := Fields[0].AsDateTime + 1 > Fields[1].AsDateTime;
-    if not Result then
-      nHint := '该结算周期已结束';
-    //xxxxx
-  end else
-  begin
-    Result := False;
-    nHint := '该结算周期已无效';
-  end;
-end;
-
-//Desc: 检查nWeek是否已扎账
-function IsWeekHasEnable(const nWeek: string): Boolean;
-var nStr: string;
-begin
-  nStr := 'Select Top 1 * From $Req Where R_Week=''$NO''';
-  nStr := MacroValue(nStr, [MI('$Req', sTable_InvoiceReq), MI('$NO', nWeek)]);
-  Result := FDM.QueryTemp(nStr).RecordCount > 0;
-end;
-
-//Desc: 检测nWeek后面的周期是否已扎账
-function IsNextWeekEnable(const nWeek: string): Boolean;
-var nStr: string;
-begin
-  nStr := 'Select Top 1 * From $Req Where R_Week In ' +
-          '( Select W_NO From $W Where W_Begin > (' +
-          '  Select Top 1 W_Begin From $W Where W_NO=''$NO''))';
-  nStr := MacroValue(nStr, [MI('$Req', sTable_InvoiceReq),
-          MI('$W', sTable_InvoiceWeek), MI('$NO', nWeek)]);
-  Result := FDM.QueryTemp(nStr).RecordCount > 0;
-end;
-
-//Desc: 检测nWee前面的周期是否已结算完成
-function IsPreWeekOver(const nWeek: string): Integer;
-var nStr: string;
-begin
-  nStr := 'Select Count(*) From $Req Where (R_ReqValue<>R_KValue) And ' +
-          '(R_Week In ( Select W_NO From $W Where W_Begin < (' +
-          '  Select Top 1 W_Begin From $W Where W_NO=''$NO'')))';
-  nStr := MacroValue(nStr, [MI('$Req', sTable_InvoiceReq),
-          MI('$W', sTable_InvoiceWeek), MI('$NO', nWeek)]);
-  //xxxxx
-
-  with FDM.QueryTemp(nStr) do
-  if RecordCount > 0 then
-       Result := Fields[0].AsInteger
-  else Result := 0;
 end;
 
 //Desc: 保存用户补偿金

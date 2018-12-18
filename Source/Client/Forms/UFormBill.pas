@@ -237,7 +237,7 @@ end;
 //------------------------------------------------------------------------------
 //Desc: 载入界面数据
 procedure TfFormBill.LoadFormData;
-var nStr,nTmp: string;
+var nStr: string;
     nDB: TDataSet;
     nIdx: integer;
 begin
@@ -377,7 +377,6 @@ end;
 //Dessc: 选择品种
 procedure TfFormBill.EditStockPropertiesChange(Sender: TObject);
 var nInt: Int64;
-    nIni: TIniFile;
 begin
   dxGroup2.Caption := '提单明细';
   if EditStock.ItemIndex < 0 then Exit;
@@ -460,7 +459,6 @@ end;
 //Desc: 添加
 procedure TfFormBill.BtnAddClick(Sender: TObject);
 var nIdx: Integer;
-    nSend, nMax, nVal: Double;
 begin
   if IsDataValid then
   begin
