@@ -19,7 +19,7 @@ object fFormMain: TfFormMain
     Left = 0
     Top = 48
     Width = 180
-    Height = 512
+    Height = 500
     Align = alLeft
     Color = 14408641
     ActiveGroupIndex = 0
@@ -27,7 +27,7 @@ object fFormMain: TfFormMain
     View = 8
     OptionsBehavior.Common.DragDropFlags = []
     OptionsImage.LargeImages = FDM.ImageMid
-    OptionsImage.SmallImages = FDM.ImageSmall
+    OptionsImage.SmallImages = FDM.Imagesmall
     OptionsStyle.DefaultStyles.Background.BackColor = clGray
     OptionsStyle.DefaultStyles.Background.BackColor2 = clGray
     OptionsStyle.DefaultStyles.Background.Font.Charset = DEFAULT_CHARSET
@@ -153,6 +153,7 @@ object fFormMain: TfFormMain
         Top = 0
         Align = alTop
         Caption = #29256#26435#25152#26377
+        ParentFont = False
         Properties.Alignment.Horz = taLeftJustify
         Properties.Alignment.Vert = taVCenter
         Properties.Depth = 1
@@ -197,13 +198,13 @@ object fFormMain: TfFormMain
   object PanelTitle: TPanel
     Left = 0
     Top = 0
-    Width = 884
+    Width = 876
     Height = 48
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 1
     DesignSize = (
-      884
+      876
       48)
     object ImgLeft: TImage
       Left = 0
@@ -800,7 +801,7 @@ object fFormMain: TfFormMain
     object ImgClient: TImage
       Left = 289
       Top = 0
-      Width = 595
+      Width = 587
       Height = 48
       Align = alClient
       Picture.Data = {
@@ -938,8 +939,8 @@ object fFormMain: TfFormMain
   end
   object SBar: TStatusBar
     Left = 0
-    Top = 560
-    Width = 884
+    Top = 548
+    Width = 876
     Height = 19
     Panels = <
       item
@@ -955,8 +956,8 @@ object fFormMain: TfFormMain
   object PanelWork: TPanel
     Left = 180
     Top = 48
-    Width = 704
-    Height = 512
+    Width = 696
+    Height = 500
     Align = alClient
     BevelOuter = bvNone
     DockSite = True

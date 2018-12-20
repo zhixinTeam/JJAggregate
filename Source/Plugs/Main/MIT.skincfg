@@ -1,5 +1,11 @@
 [ExpressSkins]
 Default=1
 ShowNotifications=1
-Enabled=1
+Enabled=0
 dxSkinsDefaultPainters=1
+dxSkinBlack=1
+dxSkinBlue=1
+dxSkinOffice2007Pink=1
+dxSkinOffice2010Black=1
+dxSkinOffice2010Blue=1
+dxSkinOffice2010Silver=1

@@ -90,12 +90,12 @@ MaxStackSize=1048576
 ImageBase=4194304
 ExeDescription=
 [Directories]
-OutputDir=../../Bin/Client
-UnitOutputDir=../../Dcu/Client
+OutputDir=../../Bin/SelfHelp
+UnitOutputDir=../../Dcu/SelfHelp
 PackageDLLOutputDir=
 PackageDCPOutputDir=
-SearchPath=Common;Forms;../Common
-Packages=vcl;rtl;vclx;indy;inet;xmlrtl;vclie;inetdbbde;inetdbxpress;dbrtl;dsnap;dsnapcon;vcldb;soaprtl;VclSmp;dbexpress;dbxcds;inetdb;bdertl;vcldbx;webdsnap;websnap;adortl;ibxpress;teeui;teedb;tee;dss;visualclx;visualdbclx;vclactnband;vclshlctrls;dclOfficeXP;dxGDIPlusD7;cxLibraryVCLD7;dxCoreD7;cxPageControlVCLD7;dxThemeD7;cxDataD7;FR7;mxOutlookBarPro_D7;dxComnD7;dxMasterViewD7;dxmdsD7;cxBarEditItemD7
+SearchPath=../Common
+Packages=vcl;rtl;vclx;indy;inet;xmlrtl;vclie;inetdbbde;inetdbxpress;dbrtl;dsnap;dsnapcon;vcldb;soaprtl;VclSmp;dbexpress;dbxcds;inetdb;bdertl;vcldbx;webdsnap;websnap;adortl;teeui;teedb;tee;dss;visualclx;visualdbclx;vclactnband;vclshlctrls;RemObjects_WebBroker_D7;RemObjects_Indy_D7;RemObjects_RODX_D7;RemObjects_BPDX_D7;RemObjects_Synapse_D7;ZnVCL;Comm;frxDB7;frx7;frxTee7;fsADO7;fs7;fsTee7;dxBarD7;dxSkinsCoreD7;dxSkinsdxBarPainterD7
 Conditionals=
 DebugSourceDirs=
 UsePackages=0
@@ -108,32 +108,32 @@ DebugCWD=
 [Language]
 ActiveLang=
 ProjectLang=
-RootDir=
+RootDir=C:\Program Files\Borland\Delphi7\Bin\
 [Version Info]
-IncludeVerInfo=1
+IncludeVerInfo=0
 AutoIncBuild=0
 MajorVer=1
 MinorVer=0
 Release=0
-Build=20
+Build=0
 Debug=0
 PreRelease=0
 Special=0
 Private=0
 DLL=0
-Locale=1033
-CodePage=1252
+Locale=2052
+CodePage=936
 [Version Info Keys]
 CompanyName=
 FileDescription=
-FileVersion=1.0.0.20
+FileVersion=1.0.0.0
 InternalName=
 LegalCopyright=
 LegalTrademarks=
 OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
-LastCompiledTime=2018-12-07 16:03:40
+Comments=
 [Excluded Packages]
 C:\Program Files (x86)\RemObjects Software\RemObjects SDK for Delphi\Dcu\D7\RemObjects_DataSnap_D7.bpl=RemObjects SDK - DataSnap Integration Pack
 C:\Program Files (x86)\RemObjects Software\RemObjects SDK for Delphi\Dcu\D7\RemObjects_Server_DataSnap_D7.bpl=RemObjects SDK - Server DataSnap Integration Pack
