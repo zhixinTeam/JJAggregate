@@ -4,15 +4,15 @@
 *******************************************************************************}
 unit UFormMain;
 
+{$I Link.Inc} 
 interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, cxGraphics, cxControls, cxLookAndFeels, cxLookAndFeelPainters,
-  cxContainer, cxEdit, cxLabel, ExtCtrls, CPort, UBitmapPanel, UTransGlass,
-  UBitmapButton, cxPC, cxGroupBox, Menus, StdCtrls, cxButtons, cxTextEdit,
-  cxRadioGroup, cxCheckComboBox, cxCheckListBox, cxMaskEdit, cxDropDownEdit,
-  UTransEdit, cxButtonEdit;
+  cxContainer, cxEdit, Menus, ExtCtrls, CPort, cxButtonEdit, cxTextEdit,
+  cxMaskEdit, cxDropDownEdit, UBitmapButton, StdCtrls, UTransEdit,
+  cxButtons, cxLabel, UBitmapPanel, cxPC;
 
 type
   TfFormMain = class(TForm)
@@ -59,6 +59,7 @@ type
     PanelDlg: TPanel;
     BtnDlgExit: TcxButton;
     LabelMsg: TcxLabel;
+    TimerDlg: TTimer;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure ComPort1RxChar(Sender: TObject; Count: Integer);
@@ -69,6 +70,14 @@ type
     procedure BtnCodeOKClick(Sender: TObject);
     procedure BtnZKExitClick(Sender: TObject);
     procedure BtnDlgExitClick(Sender: TObject);
+    procedure EditCodeKeyPress(Sender: TObject; var Key: Char);
+    procedure EditZKTrucksPropertiesEditValueChanged(Sender: TObject);
+    procedure EditZKValuePropertiesButtonClick(Sender: TObject;
+      AButtonIndex: Integer);
+    procedure BtnZKOKClick(Sender: TObject);
+    procedure TimerDlgTimer(Sender: TObject);
+    procedure EditZKTrucksKeyPress(Sender: TObject; var Key: Char);
+    procedure EditZKValueEnter(Sender: TObject);
   private
     { Private declarations }
     FBuffer: string;
@@ -78,14 +87,27 @@ type
     //上次查询
     FTimeCounter: Integer;
     //计时
+    FDlgTimerStatus: Boolean;
+    FDlgLastPage: TcxTabSheet;
+    //对话框跳转
     procedure ActionComPort(const nStop: Boolean);
     //串口处理
     procedure QueryCard(const nCard: string);
     //查询卡信息
+    procedure StopTimer;
+    //停止倒计时
     procedure ShowZKCodePanel(const nShow: Boolean);
-    procedure ShowDlgPanel(const nMsg: string; const nTag: Integer = 0;
+    procedure ShowDlgPanel(nMsg: string; const nTag: Integer = 0;
       const nShow: Boolean = True);
     //显示面板
+    function LoadZhiKaStocks(const nZhiKa: string): Boolean;
+    //纸卡可选品种
+    procedure CombinStockAndPrice(const nApplyPrice: Boolean);
+    //合并价格
+    procedure LoadZhiKaInfo(const nZhiKa: string);
+    //纸卡扩展信息
+    procedure MakeBill;
+    //开单
   public
     { Public declarations }
   end;
@@ -98,14 +120,8 @@ implementation
 {$R *.dfm}
 
 uses
-  IniFiles, ULibFun, CPortTypes, USysLoger, USysDB, USmallFunc, UDataModule,
-  UFormConn, UMgrTTCEDispenser, UClientWorker, USysConst;
-
-//Desc: 记录日志
-procedure WriteLog(const nEvent: string);
-begin
-  gSysLoger.AddLog(TfFormMain, '自助主窗体', nEvent);
-end;
+  IniFiles, ULibFun, CPortTypes, USmallFunc, USysLoger, USysDB, UDataModule,
+  UMgrTTCEDispenser, UFormConn, UBusinessPacker, USysConst;
 
 //Desc: 测试nConnStr是否有效
 function ConnCallBack(const nConnStr: string): Boolean;
@@ -120,16 +136,18 @@ procedure TfFormMain.FormCreate(Sender: TObject);
 var nStr: string;
     nIdx: Integer;
 begin
+  Randomize();
   gPath := ExtractFilePath(Application.ExeName);
   InitGlobalVariant(gPath, gPath+sConfigFile, gPath+sFormConfig, gPath+sDBConfig);
 
   gSysLoger := TSysLoger.Create(gPath + 'Logs\');
   gSysLoger.LogSync := False;
+  //system loger
+  gShowDlg := ShowDlgPanel;
 
-  gDispenserManager := TDispenserManager.Create;
-  gDispenserManager.LoadConfig(gPath + 'TTCE_K720.xml');
-  gDispenserManager.StartDispensers;
-
+  FLastQuery := 0;
+  FLastCard := '';
+  FTimeCounter := 0; //init
   PanelTitle.Height := LabelBill.Height;
   PanelZKTitle.Height := LabelZKCustomer.Height;
   
@@ -137,10 +155,13 @@ begin
     wPage1.Pages[nIdx].TabVisible := False;
   wPage1.ActivePage := SheetQuery;
 
+  FDlgLastPage := nil;
+  FDlgTimerStatus := False;
+
   ShowCursor(True);
   ShowZKCodePanel(False);
   ShowDlgPanel('', 0, False);
-  
+                           
   nStr := gPath + 'bg.bmp';
   if FileExists(nStr) then
   begin
@@ -155,9 +176,8 @@ begin
   FDM.ADOConn.ConnectionString := BuildConnectDBStr;
   //数据库连接
 
-  FLastQuery := 0;
-  FLastCard := '';
-  FTimeCounter := 0;
+  InitSystemObject;
+  //初始化对象
   ActionComPort(False);
   //启动读头
 end;
@@ -235,18 +255,12 @@ procedure TfFormMain.Timer1Timer(Sender: TObject);
 begin
   if FTimeCounter <= 0 then
   begin
-    Timer1.Enabled := False;
-    if wPage1.ActivePage = SheetBill then
-         BtnZKExit.Click
-    else LabelDec.Caption := '';
+    StopTimer();
+    //停止计时
 
-    LabelBill.Caption := '交货单号:';
-    LabelTruck.Caption := '车牌号码:';
-    LabelOrder.Caption := '销售订单:';
-    LabelStock.Caption := '品种名称:';
-    LabelNum.Caption := '开放道数:';
-    LabelTon.Caption := '提货数量:';
-    LabelHint.Caption := '请您刷卡';
+    if wPage1.ActivePage = SheetBill then
+      BtnZKExit.Click();
+    //xxxxx
   end else
   begin
     if wPage1.ActivePage = SheetBill then
@@ -255,6 +269,20 @@ begin
   end;
 
   Dec(FTimeCounter);
+end;
+
+procedure TfFormMain.TimerDlgTimer(Sender: TObject);
+begin
+  if (TimerDlg.Tag <= 0) then
+  begin
+    TimerDlg.Enabled := False;
+    BtnDlgExit.Click();
+    BtnDlgExit.Caption := '关闭';
+  end else
+  begin  
+    BtnDlgExit.Caption := Format('关闭(%d)', [TimerDlg.Tag]);
+    TimerDlg.Tag := TimerDlg.Tag - 1;
+  end;
 end;
 
 procedure TfFormMain.ComPort1RxChar(Sender: TObject; Count: Integer);
@@ -291,12 +319,15 @@ begin
   mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
   //close screen saver
 
+  if wPage1.ActivePage <> SheetQuery then Exit;
+  //非查询界面
+
   if (nCard = FLastCard) and (GetTickCount - FLastQuery < 8 * 1000) then
   begin
     LabelDec.Caption := '请不要频繁刷卡';
     Exit;
-  end;
-  
+  end;    
+
   try
     FTimeCounter := 10;
     Timer1.Enabled := True;
@@ -496,9 +527,28 @@ begin
 end;
 
 //------------------------------------------------------------------------------
+//Desc: 停止倒计时
+procedure TfFormMain.StopTimer;
+begin
+  Timer1.Enabled := False;
+  FTimeCounter := 0;
+
+  LabelDec.Caption := '';
+  LabelZKDesc.Caption := '';
+  
+  LabelBill.Caption := '交货单号:';
+  LabelTruck.Caption := '车牌号码:';
+  LabelOrder.Caption := '销售订单:';
+  LabelStock.Caption := '品种名称:';
+  LabelNum.Caption := '开放道数:';
+  LabelTon.Caption := '提货数量:';
+  LabelHint.Caption := '请您刷卡';
+end;
+
 //Desc: 制卡 
 procedure TfFormMain.BtnZhiKaClick(Sender: TObject);
 begin
+  StopTimer();
   ShowZKCodePanel(True);
 end;
 
@@ -528,14 +578,26 @@ begin
   end;
 end;
 
+//Desc: 提货码取消
+procedure TfFormMain.BtnCodeExitClick(Sender: TObject);
+begin
+  ShowZKCodePanel(False);
+  wPage1.ActivePage := SheetQuery;
+end;
+
 //Desc: 显示消息
-procedure TfFormMain.ShowDlgPanel(const nMsg: string; const nTag: Integer;
+procedure TfFormMain.ShowDlgPanel(nMsg: string; const nTag: Integer;
   const nShow: Boolean);
 begin
   if nShow then
   begin
+    FDlgTimerStatus := Timer1.Enabled;
+    Timer1.Enabled := False;
+    //停用计时
+    
+    FDlgLastPage := wPage1.ActivePage;
+    //备份页面,关闭时还原
     wPage1.ActivePage := SheetBG;
-    //xxxxx
 
     with PanelDlg do
     begin
@@ -547,56 +609,454 @@ begin
       Visible := True; 
     end;
 
+    if Pos('来源', nMsg) = 1 then
+    begin
+      System.Delete(nMsg, 1, Pos(#13#10, nMsg));
+      nMsg := Trim(nMsg);
+    end;
+
+    if Pos('对象', nMsg) = 1 then
+    begin
+      System.Delete(nMsg, 1, Pos(#13#10, nMsg));
+      nMsg := Trim(nMsg);
+    end;
+
     LabelMsg.Caption := nMsg;
     ActiveControl := BtnDlgExit;
     BtnDlgExit.Invalidate;
+
+    TimerDlg.Tag := cShowDlgLong;
+    TimerDlg.Enabled := True;
   end else
   begin
+    TimerDlg.Enabled := False;
+    TimerDlg.Tag := 0;
+
     PanelDlg.SendToBack;
     PanelDlg.Visible := False;
-  end;
-end;
 
-//Desc: 提货码取消
-procedure TfFormMain.BtnCodeExitClick(Sender: TObject);
-begin
-  ShowZKCodePanel(False);
-  wPage1.ActivePage := SheetQuery;
+    if Assigned(FDlgLastPage) then
+    begin
+      wPage1.ActivePage := FDlgLastPage;
+      FDlgLastPage := nil;
+
+      if not Timer1.Enabled then
+        Timer1.Enabled := FDlgTimerStatus;
+      //xxxxx
+    end;
+  end;
 end;
 
 //Desc: 对话框取消
 procedure TfFormMain.BtnDlgExitClick(Sender: TObject);
 begin
   ShowDlgPanel('', 0, False);
+  if PanelCode.Visible and (wPage1.ActivePage = SheetBG) then //输入提货码业务
+  begin
+    ActiveControl := EditCode;
+    EditCode.SelectAll;
+  end;
+
   case PanelDlg.Tag of
-   10: //输入提货码业务
+   cBus_CheckTruck: //输入车牌号
     begin
-      ActiveControl := EditCode;
-      EditCode.SelectAll;
+      ActiveControl := EditZKTrucks;
+    end;
+   cBus_CheckValue: //输入提货量
+    begin
+      ActiveControl := EditZKValue;
+      EditZKValue.SelectAll;
+    end;
+   cBus_BillDone: //办卡成功
+    begin
+      StopTimer();
+      wPage1.ActivePage := SheetQuery;
     end;
   end;
-end;
-
-//Desc: 提货码确认
-procedure TfFormMain.BtnCodeOKClick(Sender: TObject);
-begin
-  EditCode.Text := Trim(EditCode.Text);
-  if EditCode.Text = '' then
-  begin
-    ShowDlgPanel('请输入有效的提货代码', 10);
-    Exit;
-  end;
-
-  ShowZKCodePanel(False);
-  wPage1.ActivePage := SheetBill;
-  FTimeCounter := 50;
-  Timer1.Enabled := True;
 end;
 
 //Desc: 制卡返回
 procedure TfFormMain.BtnZKExitClick(Sender: TObject);
 begin
+  StopTimer();
   wPage1.ActivePage := SheetQuery;
+end;
+
+procedure TfFormMain.EditCodeKeyPress(Sender: TObject; var Key: Char);
+begin
+  if Key = Char(VK_RETURN) then
+  begin
+    Key := #0;
+    BtnCodeOK.Click();
+  end;
+end;
+
+procedure TfFormMain.EditZKTrucksKeyPress(Sender: TObject; var Key: Char);
+begin
+  if Key = Char(VK_RETURN) then
+  begin
+    Key := #0;
+    if Sender = EditZKTrucks then
+    begin
+      ActiveControl := EditZKValue;
+      EditZKValue.SelectAll;
+    end else
+
+    if Sender = EditZKValue then
+    begin
+      BtnZKOK.Click();
+    end;
+  end;
+end;
+
+procedure TfFormMain.EditZKValueEnter(Sender: TObject);
+begin
+  EditZKValue.SelectAll;
+end;
+
+//Desc: 提货码确认
+procedure TfFormMain.BtnCodeOKClick(Sender: TObject);
+var nStr,nHint: string;
+begin
+  EditCode.Text := Trim(EditCode.Text);
+  if EditCode.Text = '' then
+  begin
+    ShowDlgPanel('请输入有效的提货代码', cBus_CheckCode);
+    Exit;
+  end;
+
+  nStr := gDispenserManager.GetCardNo(sDispenser, nHint, False);
+  if nStr = '' then
+  begin
+    if nHint = '' then
+         ShowDlgPanel('发卡机中没有磁卡,请稍后再试', cBus_CheckCode)
+    else ShowDlgPanel(nHint, cBus_CheckCode);
+    Exit;
+  end;
+
+  with gZhiKa do
+  try
+    BtnCodeOK.Enabled := False;
+    FCode := EditCode.Text;
+    FZhiKa := FCode;
+    FCard := nStr;
+
+    if not IsZhiKaValid(FZhiKa, FCusID, True) then Exit;
+    //验证纸卡
+    FMoney := GetZhikaValidMoney(FZhiKa);
+    //获取纸卡可用金
+
+    if FMoney < 1 then
+    begin
+      ShowDlgPanel('客户资金余额不足,无法办理业务', cBus_CheckCode);
+      Exit;
+    end;
+
+    if not IsCustomerCreditValid(FCusID) then Exit;
+    //验证信用过期
+
+    if not LoadStockItemsPrice(FCusID, gStockTypes) then Exit;
+    //载入价格列表
+
+    if not LoadZhiKaStocks(FZhiKa) then Exit;
+    //载入可选品种
+    LoadZhiKaInfo(FZhiKa);
+    
+    ShowZKCodePanel(False);
+    wPage1.ActivePage := SheetBill;
+    ActiveControl := EditZKTrucks;
+
+    EditZKValue.Text := '';
+    EditZKTrucks.SelLength := 0;
+    EditZKTrucks.SelStart := Length(EditZKTrucks.Text);
+    
+    FTimeCounter := cMakeBillLong;
+    Timer1.Enabled := True;
+  finally
+    BtnCodeOK.Enabled := True;
+  end;
+end;
+
+procedure TfFormMain.EditZKTrucksPropertiesEditValueChanged(
+  Sender: TObject);
+begin
+  EditZKTrucks.SelLength := 0;
+  EditZKTrucks.SelStart := Length(EditZKTrucks.Text);
+end;
+
+//Date: 2018-12-20
+//Parm: 纸卡号
+//Desc: 载入nZhiKa的可用品种
+function TfFormMain.LoadZhiKaStocks(const nZhiKa: string): Boolean;
+var nStr: string;
+    nIdx,nInt,nMax: Integer;
+begin
+  SetLength(gStockList, 0);
+  nStr := 'Select * From %s Where D_ZID=''%s''';
+  nStr := Format(nStr, [sTable_ZhiKaDtl, nZhiKa]);
+
+  with FDM.SQLQuery(nStr) do
+  if RecordCount > 0 then
+  begin
+    nStr := '';
+    nIdx := 0;
+    SetLength(gStockList, RecordCount);
+
+    First;  
+    while not Eof do
+    with gStockList[nIdx] do
+    begin
+      FType := FieldByName('D_Type').AsString;
+      FStockNO := FieldByName('D_StockNo').AsString;
+      FStockName := FieldByName('D_StockName').AsString;
+
+      FPrice := 0;
+      FValue := 0;
+      FSelecte := False;
+
+      Inc(nIdx);
+      Next;
+    end;
+  end;
+  
+  if Length(gStockList) < 1 then //纸卡不限提货品种
+  begin
+    SetLength(gStockList, Length(gStockTypes));
+    for nIdx:=Low(gStockTypes) to High(gStockTypes) do
+    with gStockList[nIdx] do
+    begin
+      FType := gStockTypes[nIdx].FType;
+      FStockNO := gStockTypes[nIdx].FID;
+      FStockName := gStockTypes[nIdx].FName;
+
+      FPrice := 0;
+      FValue := 0;
+      FSelecte := False;
+    end;
+  end;
+
+  Result := Length(gStockList) > 0;
+  if not Result then
+  begin
+    ShowDlgPanel('纸卡上没有可以提货的品种,请联系管理');
+    Exit;
+  end;
+
+  CombinStockAndPrice(True);
+  //apply price
+  EditZKStocks.Properties.Items.Clear;
+  
+  for nIdx:=Low(gStockList) to High(gStockList) do
+   with gStockList[nIdx] do
+    EditZKStocks.Properties.Items.AddObject(FStockName, Pointer(nIdx));
+  EditZKStocks.ItemIndex := 0;
+
+  nStr := 'Select D_Value From %s Where D_Name=''%s'' And D_Memo=''%s''';
+  nStr := Format(nStr, [sTable_SysDict, sFlag_SysParam, sFlag_TruckItem]);
+
+  with FDM.SQLQuery(nStr) do
+  if RecordCount > 0 then
+  begin
+    EditZKTrucks.Properties.Items.Clear;
+    SplitStr(Fields[0].AsString, EditZKTrucks.Properties.Items, 0, ',');
+    EditZKTrucks.ItemIndex := 0;
+  end;
+
+  nMax := 0;
+  EditZKStocks.Canvas.Font.Assign(EditZKStocks.Style.Font);
+  for nIdx:=Low(gStockList) to High(gStockList) do
+  begin
+    nInt := EditZKStocks.Canvas.TextWidth(gStockList[nIdx].FStockName);
+    if nInt > nMax then nMax := nInt;
+  end;
+
+  if nMax > 100 then
+  begin
+    nMax := nMax + 200;
+    EditZKStocks.Width := nMax;
+    EditZKTrucks.Width := nMax;
+    EditZKValue.Width := nMax;
+  end;
+end;
+
+//Desc: 将价格合并到纸卡品种列表
+procedure TfFormMain.CombinStockAndPrice(const nApplyPrice: Boolean);
+var i,nIdx: Integer;
+begin
+  for nIdx:=Low(gStockList) to High(gStockList) do
+  begin
+    gStockList[nIdx].FPriceIndex := -1;
+    //default
+    
+    for i:=Low(gStockTypes) to High(gStockTypes) do
+    if gStockTypes[i].FID = gStockList[nIdx].FStockNO then
+    begin
+      if nApplyPrice then
+        gStockList[nIdx].FPrice := gStockTypes[i].FPrice;
+      gStockList[nIdx].FPriceIndex := i;
+      Break;
+    end;
+  end;
+end;
+
+//Desc: 获取最小提货量
+procedure TfFormMain.EditZKValuePropertiesButtonClick(Sender: TObject;
+  AButtonIndex: Integer);
+var nStr: string;
+begin
+  EditZKTrucks.Text := Trim(EditZKTrucks.Text);
+  if EditZKTrucks.Text = '' then
+  begin
+    ShowDlgPanel('请输入车牌号', cBus_CheckTruck);
+    Exit;
+  end;
+
+  nStr := 'Select T_MaxNet From %s Where T_Truck=''%s''';
+  nStr := Format(nStr, [sTable_Truck, EditZKTrucks.Text]);
+
+  with FDM.SQLQuery(nStr) do
+  if RecordCount > 0 then
+  begin
+    EditZKValue.Text := Fields[0].AsString;
+    EditZKValue.SelectAll;
+  end;
+end;
+
+//Date: 2018-12-20
+//Parm: 纸卡号
+//Desc: 载入纸卡信息
+procedure TfFormMain.LoadZhiKaInfo(const nZhiKa: string);
+var nStr: string;
+begin
+  nStr := 'Select Z_ValidDays,C_Name From %s ' +
+          ' Left Join %s On C_ID=Z_Customer ' +
+          'Where Z_ID=''%s''';
+  nStr := Format(nStr, [sTable_ZhiKa, sTable_Customer, nZhiKa]);
+
+  with FDM.SQLQuery(nStr),gZhiKa do
+  if RecordCount > 0 then
+  begin
+    LabelZK.Caption := '纸卡编号: ' + FZhiKa;
+    FCusName := FieldByName('C_Name').AsString;
+    LabelZKCustomer.Caption := '客户名称: ' + FCusName;
+
+    LabelZKDays.Caption := '有效期至: ' +
+                           Date2Str(FieldByName('Z_ValidDays').AsDateTime);
+    //xxxxx
+
+    if FMoney > 10000 then
+         LabelZKMoney.Caption := '可用金额: ' + '>10000元'
+    else LabelZKMoney.Caption := '可用金额: ' + Format('%.2f元', [FMoney]);
+  end;
+end;
+
+//Desc: 制卡
+procedure TfFormMain.BtnZKOKClick(Sender: TObject);
+begin
+  if EditZKStocks.ItemIndex < 0 then
+  begin
+    ShowDlgPanel('请选择提货品种');
+    Exit;
+  end;
+
+  if (not IsNumber(EditZKValue.Text, True)) or
+     (StrToFloat(EditZKValue.Text) <= 0) then
+  begin
+    ShowDlgPanel('提货量是大于0的数值', cBus_CheckValue);
+    Exit;
+  end;
+
+  BtnZKOK.Enabled := False;
+  try
+    Timer1.Enabled := False;
+    MakeBill;
+  finally
+    if FTimeCounter > 10 then
+      Timer1.Enabled := True;
+    BtnZKOK.Enabled := True;
+  end;   
+end;
+
+procedure TfFormMain.MakeBill;
+var nStr: string;
+    nIdx: Integer;
+    nVal: Double;
+    nList,nTmp: TStrings;
+begin
+  if not LoadStockItemsPrice(gZhiKa.FCusID, gStockTypes) then Exit;
+  //重新载入价格
+  CombinStockAndPrice(False);
+
+  with EditZKStocks do
+    nIdx := Integer(Properties.Items.Objects[ItemIndex]);
+  //选中品种
+
+  with gStockList[nIdx] do
+  begin
+    if (FPriceIndex < 0) or (FPrice <> gStockTypes[FPriceIndex].FPrice) then
+    begin
+      ShowDlgPanel('当前价格已失效(刚调价),请返回重新制卡');
+      Exit;
+    end;
+
+    FSelecte := True;
+    //选中
+
+    nVal := FPrice * StrToFloat(EditZKValue.Text);
+    nVal := Float2Float(nVal, cPrecision, True);
+    nVal := nVal - gZhiKa.FMoney;
+
+    if nVal > 0 then
+    begin
+      nStr := '当前纸卡余额不足,请补交%.2f元 或 使用其它提货代码';
+      ShowDlgPanel(Format(nStr, [nVal]), cBus_CheckValue);
+      Exit;
+    end;
+  end;
+
+  nList := TStringList.Create;
+  nTmp := TStringList.Create;
+  try
+    nList.Clear;
+    for nIdx:=Low(gStockList) to High(gStockList) do
+    with gStockList[nIdx],nTmp do
+    begin
+      if not FSelecte then Continue;
+      //xxxxx
+
+      Values['Type'] := FType;
+      Values['StockNO'] := FStockNO;
+      Values['StockName'] := FStockName;
+      Values['Price'] := FloatToStr(FPrice);
+      Values['Value'] := EditZKValue.Text;
+
+      Values['PriceDesc'] := gStockTypes[FPriceIndex].FParam;
+      //价格描述
+      nList.Add(PackerEncodeStr(nTmp.Text));
+      //new bill
+    end;
+
+    with nList do
+    begin
+      Values['Bills'] := PackerEncodeStr(nList.Text);
+      Values['ZhiKa'] := gZhiKa.FZhiKa;
+      Values['Truck'] := EditZKTrucks.Text;
+      Values['Lading'] := sFlag_TiHuo;
+      Values['IsVIP'] := sFlag_TypeCommon;
+      Values['BuDan'] := sFlag_No;
+      Values['Card'] := gZhiKa.FCard;
+    end;
+
+    gZhiKa.FBill := SaveBill(PackerEncodeStr(nList.Text));
+    if gZhiKa.FBill = '' then Exit;
+
+    if not SaveBillCard(gZhiKa.FBill, gZhiKa.FCard) then Exit;
+    gDispenserManager.SendCardOut(sDispenser, nStr);
+    ShowDlgPanel('办卡成功,请取卡', cBus_BillDone);
+  finally
+    nTmp.Free;
+    nList.Free;
+  end;
 end;
 
 end.

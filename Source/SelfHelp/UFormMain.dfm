@@ -22,7 +22,7 @@ object fFormMain: TfFormMain
     Top = 0
     Width = 1055
     Height = 814
-    ActivePage = SheetBG
+    ActivePage = SheetQuery
     Align = alClient
     Style = 10
     TabOrder = 0
@@ -51,6 +51,12 @@ object fFormMain: TfFormMain
             Top = 8
             Caption = #35831#36755#20837#25552#36135#20195#30721':'
             ParentFont = False
+            Style.Font.Charset = GB2312_CHARSET
+            Style.Font.Color = clBlack
+            Style.Font.Height = -48
+            Style.Font.Name = #23435#20307
+            Style.Font.Style = []
+            Style.IsFontAssigned = True
             Transparent = True
           end
           object BtnCodeOK: TcxButton
@@ -61,7 +67,7 @@ object fFormMain: TfFormMain
             Caption = #30830#23450
             Font.Charset = DEFAULT_CHARSET
             Font.Color = clBlack
-            Font.Height = -48
+            Font.Height = -35
             Font.Name = #23435#20307
             Font.Style = []
             ParentFont = False
@@ -78,7 +84,7 @@ object fFormMain: TfFormMain
             Caption = #21462#28040
             Font.Charset = DEFAULT_CHARSET
             Font.Color = clBlack
-            Font.Height = -48
+            Font.Height = -35
             Font.Name = #23435#20307
             Font.Style = []
             ParentFont = False
@@ -102,6 +108,7 @@ object fFormMain: TfFormMain
             ParentFont = False
             PasswordChar = '*'
             TabOrder = 3
+            OnKeyPress = EditCodeKeyPress
             Transparent = True
           end
         end
@@ -125,7 +132,7 @@ object fFormMain: TfFormMain
             Caption = #20851#38381
             Font.Charset = DEFAULT_CHARSET
             Font.Color = clBlack
-            Font.Height = -48
+            Font.Height = -35
             Font.Name = #23435#20307
             Font.Style = []
             ParentFont = False
@@ -135,21 +142,23 @@ object fFormMain: TfFormMain
           end
           object LabelMsg: TcxLabel
             Left = 12
-            Top = 16
+            Top = 12
+            Anchors = [akLeft, akTop, akRight, akBottom]
             AutoSize = False
             Caption = #28040#24687
             ParentFont = False
             Style.Font.Charset = GB2312_CHARSET
             Style.Font.Color = clBlack
-            Style.Font.Height = -35
+            Style.Font.Height = -29
             Style.Font.Name = #23435#20307
             Style.Font.Style = []
             Style.IsFontAssigned = True
             Properties.Alignment.Vert = taVCenter
+            Properties.WordWrap = True
             Transparent = True
             Height = 115
             Width = 481
-            AnchorY = 74
+            AnchorY = 70
           end
         end
       end
@@ -5071,10 +5080,6 @@ object fFormMain: TfFormMain
           Properties.DropDownListStyle = lsFixedList
           Properties.DropDownRows = 20
           Properties.ItemHeight = 80
-          Properties.Items.Strings = (
-            #39592#26009'_'#19968#23376
-            #39592#26009'_'#20799#23376
-            #39592#26009'_'#26426#21046#30722)
           TabOrder = 3
           Width = 650
         end
@@ -5132,12 +5137,16 @@ object fFormMain: TfFormMain
             2222222222222222222222222222222222222222220022222222222222222222
             222222222222222222222222222222222200}
           Properties.DropDownRows = 20
+          Properties.ImmediateDropDown = False
+          Properties.IncrementalSearch = False
           Properties.ItemHeight = 80
           Properties.Items.Strings = (
             #39592#26009'_'#19968#23376
             #39592#26009'_'#20799#23376
             #39592#26009'_'#26426#21046#30722)
+          Properties.OnEditValueChanged = EditZKTrucksPropertiesEditValueChanged
           TabOrder = 6
+          OnKeyPress = EditZKTrucksKeyPress
           Width = 650
         end
         object EditZKValue: TcxButtonEdit
@@ -5199,8 +5208,11 @@ object fFormMain: TfFormMain
               Kind = bkGlyph
               Width = 56
             end>
+          Properties.OnButtonClick = EditZKValuePropertiesButtonClick
           TabOrder = 8
           Text = '0'
+          OnEnter = EditZKValueEnter
+          OnKeyPress = EditZKTrucksKeyPress
           Width = 650
         end
         object BtnZKOK: TcxButton
@@ -5211,6 +5223,7 @@ object fFormMain: TfFormMain
           Anchors = [akTop, akRight]
           Caption = #21462#21345
           TabOrder = 9
+          OnClick = BtnZKOKClick
         end
         object BtnZKExit: TcxButton
           Left = 800
@@ -5291,12 +5304,17 @@ object fFormMain: TfFormMain
     Timeouts.ReadTotalConstant = 100
     OnRxChar = ComPort1RxChar
     Left = 674
-    Top = 8
+    Top = 24
   end
   object Timer1: TTimer
     Enabled = False
     OnTimer = Timer1Timer
     Left = 702
-    Top = 8
+    Top = 24
+  end
+  object TimerDlg: TTimer
+    OnTimer = TimerDlgTimer
+    Left = 730
+    Top = 24
   end
 end
