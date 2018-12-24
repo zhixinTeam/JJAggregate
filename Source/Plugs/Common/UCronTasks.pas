@@ -44,6 +44,8 @@ type
     FNumNextDay: Int64;
     FNumUpdateZhiKa: Integer;
     //更新纸卡
+    FNumUpdateTruckPlan: Integer;
+    //更新派车计划
     FWaiter: TWaitObject;
     //等待对象
     FSyncLock: TCrossProcWaitObject;
@@ -51,6 +53,7 @@ type
   protected
     procedure DoCheckPriceWeek;
     procedure DoUpdateZhiKa;
+    procedure DoUpdateTruckPlan;
     procedure Execute; override;
     //执行线程
   public
@@ -190,6 +193,7 @@ begin
   FNumNextDay := 0;
   FNumPriceWeek := 0;
   FNumUpdateZhiKa := 0;
+  FNumUpdateTruckPlan := 0;
   //init counter
 
   while not Terminated do
@@ -199,6 +203,7 @@ begin
 
     Inc(FNumPriceWeek);
     Inc(FNumUpdateZhiKa);
+    Inc(FNumUpdateTruckPlan);
     Dec(FNumNextDay);
     //inc&dec counter
 
@@ -211,10 +216,15 @@ begin
     //更新纸卡信息: 1次/小时 或 新一天
 
     if FNumNextDay <= 0 then
+      FNumUpdateTruckPlan := 0;
+    //更新派车计划: 每天一次
+
+    if FNumNextDay <= 0 then
       FNumNextDay := Trunc(((Date() + 1) - Now()) * 24 * 3600 * 2) + 3;
     //距离明天的计数:延迟1秒
     
-    if (FNumPriceWeek <> 0) and (FNumUpdateZhiKa <> 0) then
+    if (FNumPriceWeek <> 0) and (FNumUpdateZhiKa <> 0) and 
+       (FNumUpdateTruckPlan <> 0) then
       Continue;
     //无业务可做
 
@@ -249,6 +259,17 @@ begin
         
         if nInit > 3 * 1000 then
           WriteLog(Format('更新纸卡状态,耗时: %dms.', [nInit]));
+        //xxxxx
+      end;
+
+      if FNumUpdateTruckPlan = 0 then
+      begin
+        nInit := GetTickCount;
+        DoUpdateTruckPlan();
+        nInit := GetTickCount - nInit;
+        
+        if nInit > 3 * 1000 then
+          WriteLog(Format('更新派车计划,耗时: %dms.', [nInit]));
         //xxxxx
       end;
     finally
@@ -415,6 +436,24 @@ begin
           'Z_ValidDays<=%s%s)';
   nStr := Format(nStr, [sTable_ZhiKa, sFlag_Yes, sFlag_No,
           sField_SQLServer_Now, nMoney]);
+  gDBConnManager.WorkerExec(FDBConn, nStr);
+end;
+
+//Date: 2018-12-21
+//Desc: 更新派车计划
+procedure TTaskThread.DoUpdateTruckPlan;
+var nStr: string;
+begin
+  nStr := 'Update %s Set P_Valid=''%s'' Where P_Valid=''%s'' And (' +
+          'P_Times<1 or P_End<=%s)';
+  nStr := Format(nStr, [sTable_TruckPlan, sFlag_No, sFlag_Yes,
+          sField_SQLServer_Now]);
+  gDBConnManager.WorkerExec(FDBConn, nStr);
+
+  nStr := 'Update %s Set P_Valid=''%s'' Where P_Valid=''%s'' And (' +
+          'P_Start<=%s And P_End>%s)';
+  nStr := Format(nStr, [sTable_TruckPlan, sFlag_Yes, sFlag_Unknow,
+          sField_SQLServer_Now, sField_SQLServer_Now]);
   gDBConnManager.WorkerExec(FDBConn, nStr);
 end;
 

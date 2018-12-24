@@ -29,7 +29,7 @@ uses
   UFramePoundManual, UFramePoundAuto, UFramePMaterails, UFormPMaterails,
   UFramePProvider, UFormPProvider, UFramePoundQuery, UFrameQuerySaleDetail,
   UFrameQuerySaleTotal, UFrameZTDispatch, UFrameTrucks, UFormTruck,
-  UFormTodo, UFormTodoSend, UFrameTodo;
+  UFrameTruckPlan, UFormTruckPlan, UFormTodo, UFormTodoSend, UFrameTodo;
 
 procedure InitSystemObject;
 procedure RunSystemObject;

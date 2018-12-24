@@ -13,7 +13,7 @@ uses
 
 const
   cMakeBillLong     = 60;                            //开单时长(秒)
-  cShowDlgLong      = 5;                             //显示框(秒)
+  cShowDlgLong      = 10;                            //显示框(秒)
 
   cBus_CheckCode    = 10;                            //检查提货码
   cBus_CheckValue   = 20;                            //检查提货量
@@ -292,7 +292,7 @@ end;
 
 //------------------------------------------------------------------------------
 //Date: 2018-12-14
-//Parm: 纸卡号[in,out];提示信息[in]客户编号[out];是提货码
+//Parm: 纸卡号[in,out];提示信息[out]客户编号[out];是提货码
 //Desc: 验证nZhiKa是否有效
 function IsZhiKaValid(var nZhiKa,nHint: string;
  const nIsCode: Boolean): Boolean;

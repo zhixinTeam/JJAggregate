@@ -90,6 +90,7 @@ inherited fFormTruck: TfFormTruck
     object EditIgnore: TcxTextEdit [10]
       Left = 81
       Top = 146
+      ParentFont = False
       TabOrder = 6
       Text = '0'
       Width = 121
@@ -97,6 +98,7 @@ inherited fFormTruck: TfFormTruck
     object EditNet: TcxTextEdit [11]
       Left = 81
       Top = 121
+      ParentFont = False
       Properties.ReadOnly = True
       TabOrder = 4
       Width = 121
@@ -115,7 +117,7 @@ inherited fFormTruck: TfFormTruck
       Top = 171
       Align = alClient
       AutoSize = False
-      Caption = #27880': '#24403#24320#21333#37327#19981#33021#23567#20110#21382#21490#26368#22823#20928#37325#26102','#21487#20197#35774#32622#20363#22806#36710#27425#25968'.'
+      Caption = #27880': '#24403#24320#21333#37327#19981#33021#23567#20110#21382#21490#26368#22823#20928#37325#26102','#21487#20197#35774#32622#20363#22806#27425#25968'.'
       ParentFont = False
       Properties.WordWrap = True
       Transparent = True

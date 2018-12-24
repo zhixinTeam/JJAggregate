@@ -211,6 +211,7 @@ const
   sFlag_CardItem      = 'CardItem';                  //磁卡信息项
   sFlag_AreaItem      = 'AreaItem';                  //区域信息项
   sFlag_TruckItem     = 'TruckItem';                 //车辆信息项
+  sFlag_TruckPrefix   = 'TruckPrefix';               //车牌前缀
   sFlag_CustomerItem  = 'CustomerItem';              //客户信息项
   sFlag_BankItem      = 'BankItem';                  //银行信息项
   sFlag_UserLogItem   = 'UserLogItem';               //用户登录项
@@ -303,6 +304,7 @@ const
   sTable_StockBatcode = 'S_Batcode';                 //批次号
 
   sTable_Truck        = 'S_Truck';                   //车辆表
+  sTable_TruckPlan    = 'S_TruckPlan';               //派车单
   sTable_ZTLines      = 'S_ZTLines';                 //装车道
   sTable_ZTTrucks     = 'S_ZTTrucks';                //车辆队列
 
@@ -807,7 +809,7 @@ const
    *.C_Memo:备注信息
   -----------------------------------------------------------------------------}
 
-    sSQL_NewTruck = 'Create Table $Table(R_ID $Inc, T_Truck varChar(15), ' +
+  sSQL_NewTruck = 'Create Table $Table(R_ID $Inc, T_Truck varChar(15), ' +
        'T_PY varChar(15), T_Owner varChar(32), T_Phone varChar(15), T_Used Char(1), ' +
        'T_PrePValue $Float, T_PrePMan varChar(32), T_PrePTime DateTime, ' +
        'T_PrePUse Char(1), T_MinPVal $Float, T_MaxPVal $Float, ' +
@@ -846,6 +848,23 @@ const
 
    有效平均皮重算法:
    T_PValue = (T_PValue * T_PTime + 新皮重) / (T_PTime + 1)
+  -----------------------------------------------------------------------------}
+
+  sSQL_NewTruckPlan = 'Create Table $Table(R_ID $Inc, P_Truck varChar(15), ' +
+       'P_CusID varChar(15), P_Start DateTime, P_End DateTime,' +
+       'P_Times Integer Default 0, P_Valid Char(1) Default ''U'',' +
+       'P_Visible Char(1) Default ''Y'', P_Date DateTime, P_Man varChar(32))';
+  {-----------------------------------------------------------------------------
+   车辆信息:Truck
+   *.R_ID: 记录号
+   *.P_Truck: 车牌号
+   *.P_CusID: 客户编号
+   *.P_Start: 开始日期
+   *.P_End: 结束日期
+   *.P_Times: 有效次数
+   *.P_Valid: 是否有效(U/Y/N)
+   *.P_Visible: 在历史列表可见
+   *.P_Date,P_Man: 办理人
   -----------------------------------------------------------------------------}
 
   sSQL_NewPoundLog = 'Create Table $Table(R_ID $Inc, P_ID varChar(15),' +
@@ -1431,6 +1450,7 @@ begin
   AddSysTableItem(sTable_BillBak, sSQL_NewBill);
 
   AddSysTableItem(sTable_Truck, sSQL_NewTruck);
+  AddSysTableItem(sTable_TruckPlan, sSQL_NewTruckPlan);
   AddSysTableItem(sTable_ZTLines, sSQL_NewZTLines);
   AddSysTableItem(sTable_ZTTrucks, sSQL_NewZTTrucks);
   AddSysTableItem(sTable_PoundLog, sSQL_NewPoundLog);

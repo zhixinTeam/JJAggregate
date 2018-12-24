@@ -9,6 +9,7 @@ uses
 
 begin
   Application.Initialize;
+  Application.Title := 'зджњЗўЮё';
   Application.CreateForm(TFDM, FDM);
   Application.CreateForm(TfFormMain, fFormMain);
   Application.Run;

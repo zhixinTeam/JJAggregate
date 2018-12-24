@@ -31,11 +31,6 @@ const
   cFI_FrameMakeCard     = $0012;                     //办理磁卡
   cFI_FrameBill         = $0013;                     //开提货单
   cFI_FrameBillQuery    = $0014;                     //开单查询
-  cFI_FrameMakeOCard    = $0015;                     //办理采购磁卡
-  cFI_FrameMakeLSCard   = $0016;                     //厂内零售磁卡
-  cFI_FrameSanPreHK     = $0017;                     //散装提货前预合单
-  cFI_FrameAuditTruck   = $0018;                     //审核车辆
-  cFI_FrameBillBuDanAudit = $0019;                     //补单审核
 
   cFI_FramePayment      = $0021;                     //销售回款
   cFI_FrameShouJu       = $0020;                     //收据查询
@@ -72,7 +67,8 @@ const
   cFI_FrameSaleJS       = $0069;                     //销售结算
 
   cFI_FrameTrucks       = $0070;                     //车辆档案
-  cFI_FrameTodo         = $0071;                     //待处理事件
+  cFI_FrameTruckPlan    = $0071;                     //派车计划
+  cFI_FrameTodo         = $0072;                     //待处理事件
 
   cFI_FrameProvider     = $0102;                     //供应
   cFI_FrameProvideLog   = $0105;                     //供应日志
@@ -157,6 +153,7 @@ const
   cFI_FormAdjustPrice   = $1070;                     //纸卡调价
 
   cFI_FormTrucks        = $1071;                     //车辆档案
+  cFI_FormTruckPlan     = $1072;                     //派车计划
 
   cFI_FormInvoiceWeek   = $1075;                     //结算周期
   cFI_FormSaleInvoice   = $1076;                     //发票管理
@@ -348,7 +345,7 @@ begin
   AddMenuModuleItem('MAIN_C07', cFI_FrameShouJu);
   AddMenuModuleItem('MAIN_C08', cFI_FrameSaleZZ);
 
-  AddMenuModuleItem('MAIN_D01', -1, mtForm);
+  AddMenuModuleItem('MAIN_D01', cFI_FrameTruckPlan);
   AddMenuModuleItem('MAIN_D02', cFI_FrameMakeCard);
   AddMenuModuleItem('MAIN_D03', cFI_FormBill, mtForm);
   AddMenuModuleItem('MAIN_D04', cFI_FormBill, mtForm);
@@ -395,7 +392,7 @@ begin
 
   AddMenuModuleItem('MAIN_M01', cFI_FrameProvider);
   AddMenuModuleItem('MAIN_M02', cFI_FrameMaterails);
-  AddMenuModuleItem('MAIN_M03', cFI_FrameMakeOCard); 
+  AddMenuModuleItem('MAIN_M03', -1); 
   AddMenuModuleItem('MAIN_M04', cFI_FrameOrder);
   AddMenuModuleItem('MAIN_M08', cFI_FrameOrderDetail);
   AddMenuModuleItem('MAIN_M09', cFI_FrameOrderBase);
