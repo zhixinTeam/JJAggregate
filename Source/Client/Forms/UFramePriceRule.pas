@@ -219,9 +219,7 @@ end;
 //------------------------------------------------------------------------------
 procedure TfFramePriceRule.PMenu1Popup(Sender: TObject);
 begin
-  N3.Enabled := (cxView1.DataController.GetSelectedCount > 0) and
-                (SQLQuery.FieldByName('R_Customer').AsString <> '');
-  //xxxxx
+
 end;
 
 //Desc: 查看周期图
@@ -236,10 +234,24 @@ end;
 
 //Desc: 查看价格单
 procedure TfFramePriceRule.N3Click(Sender: TObject);
-var nTypes: TStockTypeItems;
+var nStr: string;
+    nTypes: TStockTypeItems;
+    nParam: TFormCommandParam;
 begin
-  if LoadStockItemsPrice(SQLQuery.FieldByName('R_Customer').AsString,
-    nTypes) then ShowPriceViewForm(nTypes);
+  nStr := SQLQuery.FieldByName('R_Customer').AsString;
+  if nStr = '' then
+  begin
+    nParam.FCommand := cCmd_GetData;
+    nParam.FParamA := '';
+    CreateBaseFormItem(cFI_FormGetCustom, PopedomItem, @nParam);
+
+    if (nParam.FCommand = cCmd_ModalResult) and (nParam.FParamA = mrOK) then
+         nStr := nParam.FParamB
+    else Exit;
+  end;
+
+  if LoadStockItemsPrice(nStr, nTypes) then
+    ShowPriceViewForm(nTypes);
   //xxxxx
 end;
 

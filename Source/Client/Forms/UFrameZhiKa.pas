@@ -40,11 +40,11 @@ type
     N3: TMenuItem;
     N4: TMenuItem;
     N5: TMenuItem;
-    N6: TMenuItem;
     N7: TMenuItem;
     N8: TMenuItem;
     N9: TMenuItem;
     N10: TMenuItem;
+    N6: TMenuItem;
     procedure EditIDPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure BtnAddClick(Sender: TObject);
@@ -89,6 +89,12 @@ procedure TfFrameZhiKa.OnCreateFrame;
 begin
   inherited;
   InitDateRange(Name, FStart, FEnd);
+  
+  if FStart = FEnd then
+  begin
+    FStart := Date() - 90;
+    //FEnd := Date() + 90;
+  end;
 end;
 
 procedure TfFrameZhiKa.OnDestroyFrame;

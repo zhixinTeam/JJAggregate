@@ -2,20 +2,20 @@ inherited fFormTruckPlan: TfFormTruckPlan
   Left = 586
   Top = 381
   ClientHeight = 284
-  ClientWidth = 500
+  ClientWidth = 498
   Position = poMainFormCenter
   PixelsPerInch = 96
   TextHeight = 12
   inherited dxLayout1: TdxLayoutControl
-    Width = 500
+    Width = 498
     Height = 284
     inherited BtnOK: TButton
-      Left = 354
+      Left = 352
       Top = 251
       TabOrder = 6
     end
     inherited BtnExit: TButton
-      Left = 424
+      Left = 422
       Top = 251
       TabOrder = 7
     end
@@ -31,7 +31,7 @@ inherited fFormTruckPlan: TfFormTruckPlan
       Properties.ReadOnly = True
       Properties.OnButtonClick = EditCusPropertiesButtonClick
       TabOrder = 0
-      Width = 121
+      Width = 224
     end
     object EditBegin: TcxDateEdit [3]
       Left = 81
@@ -56,14 +56,17 @@ inherited fFormTruckPlan: TfFormTruckPlan
       Top = 111
       ParentFont = False
       TabOrder = 3
+      OnDragDrop = EditTrucksDragDrop
+      OnDragOver = EditTrucksDragOver
       Height = 89
       Width = 185
     end
     object ListHistory: TcxListBox [6]
-      Left = 329
+      Left = 368
       Top = 61
       Width = 148
       Height = 172
+      DragMode = dmAutomatic
       ItemHeight = 14
       ParentFont = False
       PopupMenu = PMenu1
@@ -76,8 +79,9 @@ inherited fFormTruckPlan: TfFormTruckPlan
       TabOrder = 5
     end
     object EditTruck: TcxTextEdit [7]
-      Left = 329
+      Left = 368
       Top = 36
+      ParentFont = False
       Properties.OnChange = EditTruckPropertiesChange
       TabOrder = 4
       OnKeyPress = EditTruckKeyPress
@@ -109,7 +113,6 @@ inherited fFormTruckPlan: TfFormTruckPlan
             AutoAligns = [aaHorizontal]
             AlignVert = avClient
             Caption = #36710#36742#21015#34920':'
-            CaptionOptions.AlignVert = tavTop
             Control = EditTrucks
             ControlOptions.ShowBorder = False
           end
@@ -130,7 +133,6 @@ inherited fFormTruckPlan: TfFormTruckPlan
             AlignHorz = ahClient
             AlignVert = avClient
             Caption = #21382#21490#36710#36742':'
-            CaptionOptions.AlignVert = tavTop
             Control = ListHistory
             ControlOptions.ShowBorder = False
           end
@@ -140,8 +142,8 @@ inherited fFormTruckPlan: TfFormTruckPlan
   end
   object PMenu1: TPopupMenu
     AutoHotkeys = maManual
-    Left = 280
-    Top = 96
+    Left = 392
+    Top = 120
     object N1: TMenuItem
       Tag = 10
       Caption = #20840#37096#28155#21152

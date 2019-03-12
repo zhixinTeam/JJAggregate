@@ -40,7 +40,7 @@ type
     FCard    : string;
     FCardExt : string;
     FPrinter : string;
-    FLast    : Int64;
+    FLast    : Cardinal;
     FKeep    : Word;
     FOKTime  : Int64;
     FOptions : TStrings;          //附加参数
@@ -208,7 +208,7 @@ begin
     for nIdx:=Low(FItems) to High(FItems) do
     if CompareText(nPound, FItems[nIdx].FPound) = 0 then
     begin
-      if GetTickCount - FItems[nIdx].FLast <= FItems[nIdx].FKeep * 1000 then
+      if GetTickCountDiff(FItems[nIdx].FLast) <= FItems[nIdx].FKeep * 1000 then
         Result := FItems[nIdx].FCard;
       //xxxxx
 
@@ -590,7 +590,7 @@ begin
         //磅读头开启卡有效计时
       end else
 
-      if GetTickCount - FLast <= FKeep * 1000 then
+      if GetTickCountDiff(FLast) <= FKeep * 1000 then
       begin
         Break;
         //短时间重复刷卡无效

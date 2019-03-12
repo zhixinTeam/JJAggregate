@@ -42,7 +42,7 @@ type
     FLine       : string;      //装车线
     FBill       : string;      //交货单
     FHKBills    : string;      //合卡单
-    FInTime     : Int64;       //进队时间
+    FInTime     : Cardinal;    //进队时间
     FInFact     : Boolean;     //是否进厂
     FInLade     : Boolean;     //是否提货
     FIsVIP      : string;      //特权车
@@ -61,7 +61,7 @@ type
     FLoaded     : Boolean;     //载入标记
     FAutoIn     : Boolean;     //自动进厂
     FAutoOut    : Boolean;     //自动出厂
-    FInTimeout  : Integer;     //进厂超时
+    FInTimeout  : Cardinal;    //进厂超时
     FNoDaiQueue : Boolean;     //袋装禁用队列
     FNoSanQueue : Boolean;     //散装禁用队列
     FDelayQueue : Boolean;     //延时排队(厂内)
@@ -135,6 +135,9 @@ type
     //启停线程
   end;
 
+  TTruckLineLoaded = procedure (const nTruckLine: TList);
+  //装车线载入完毕
+
   TTruckQueueManager = class(TObject)
   private
     FDBName: string;
@@ -153,6 +156,8 @@ type
     //SQL语句
     FLastQueueVoice: string;
     //队列内容
+    FOnLineLoad: TTruckLineLoaded;
+    //装车线载入完毕
   protected
     procedure FreeLine(nItem: PLineItem; nIdx: Integer = -1);
     procedure ClearLines(const nFree: Boolean);
@@ -202,6 +207,7 @@ type
     property Lines: TList read FLines;
     property LineChanged: Int64 read FLineChanged;
     property SyncLock: TCriticalSection read FSyncLock;
+    property OnLineLoad: TTruckLineLoaded read FOnLineLoad write FOnLineLoad;
     //属性相关
   end;
 
@@ -642,8 +648,8 @@ begin
       if nIdx < 0 then Continue;
 
       nPTruck := PLineItem(FLines[i]).FTrucks[nIdx];
-      Result := (GetTickCount - nPTruck.FInTime) <
-                (FDBReader.FParam.FInTimeout * 60 * 1000);
+      Result := GetTickCountDiff(nPTruck.FInTime) <
+                FDBReader.FParam.FInTimeout * 60 * 1000;
       //车辆未超时
 
       if not Result then
@@ -990,8 +996,8 @@ begin
         FParam.FNetVoice := Fields[0].AsString = sFlag_Yes;
       //NetVoice
 
-      if CompareText(Fields[1].AsString, sFlag_FobiddenInMul) = 0 then
-        FParam.FFobiddenInMul := Fields[0].AsString = sFlag_Yes;
+      //if CompareText(Fields[1].AsString, sFlag_FobiddenInMul) = 0 then
+      //  FParam.FFobiddenInMul := Fields[0].AsString = sFlag_Yes;
       Next;
     end;
   end;
@@ -1082,6 +1088,10 @@ begin
         FLines[nIdx] := nLine;
       end;
     end;
+
+    if Assigned(FOnLineLoad) then
+      FOnLineLoad(FLines);
+    //line reload done
   end;
 end;
 
@@ -1487,7 +1497,7 @@ begin
 
       with FTruckPool[j] do
       begin
-        if (FInFact or ((GetTickCount - nTruck.FInTime) <
+        if (FInFact or (GetTickCountDiff(nTruck.FInTime) <
            FParam.FInTimeout * 60 * 1000)) or (FIsVIP = sFlag_TypeShip) then
         begin
           if FInFact and (not nTruck.FInFact) then

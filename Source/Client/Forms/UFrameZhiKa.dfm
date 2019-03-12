@@ -193,6 +193,23 @@ inherited fFrameZhiKa: TfFrameZhiKa
     object N2: TMenuItem
       Caption = '-'
     end
+    object N7: TMenuItem
+      Tag = 10
+      Caption = #20923#32467#32440#21345
+      OnClick = N8Click
+    end
+    object N8: TMenuItem
+      Tag = 20
+      Caption = #35299#38500#20923#32467
+      OnClick = N8Click
+    end
+    object N10: TMenuItem
+      Caption = #23457#26680#32440#21345
+      OnClick = N10Click
+    end
+    object N6: TMenuItem
+      Caption = '-'
+    end
     object N3: TMenuItem
       Caption = #26597#35810#36873#39033
       object N5: TMenuItem
@@ -209,23 +226,6 @@ inherited fFrameZhiKa: TfFrameZhiKa
         Tag = 30
         Caption = #26597#35810#20840#37096
         OnClick = N4Click
-      end
-    end
-    object N6: TMenuItem
-      Caption = #20854#23427#25805#20316
-      object N7: TMenuItem
-        Tag = 10
-        Caption = #20923#32467#32440#21345
-        OnClick = N8Click
-      end
-      object N8: TMenuItem
-        Tag = 20
-        Caption = #35299#38500#20923#32467
-        OnClick = N8Click
-      end
-      object N10: TMenuItem
-        Caption = #23457#26680#32440#21345
-        OnClick = N10Click
       end
     end
   end

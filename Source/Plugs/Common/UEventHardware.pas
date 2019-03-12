@@ -35,9 +35,8 @@ implementation
 uses
   SysUtils, USysLoger, UHardBusiness, UMgrTruckProbe, UMgrParam,
   UMgrQueue, UMgrLEDCard, UMgrHardHelper, UMgrRemotePrint, U02NReader,
-  {$IFDEF MultiReplay}UMultiJS_Reply, {$ELSE}UMultiJS, {$ENDIF}
-  UMgrERelay, UMgrRemoteVoice, UMgrCodePrinter, UMgrTTCEM100,
-  UMgrRFID102, UMgrVoiceNet, UBlueReader;
+  UMgrERelay, UMgrCodePrinter, UMgrTTCEM100, UMgrRFID102, UMgrVoiceNet,
+  UMgrBasisWeight;
 
 class function THardwareWorker.ModuleInfo: TPlugModuleInfo;
 begin
@@ -66,23 +65,14 @@ begin
     nStr := '远距读头';
     gHardwareHelper.LoadConfig(nCfg + '900MK.xml');
 
-    nStr := '蓝卡读卡器';
-    gBlueReader.LoadConfig(nCfg + 'BlueCardReader.XML');
-
     nStr := '近距读头';
     g02NReader.LoadConfig(nCfg + 'Readers.xml');
-
-    nStr := '计数器';
-    gMultiJSManager.LoadFile(nCfg + 'JSQ.xml');
 
     nStr := '继电器';
     gERelayManager.LoadConfig(nCfg + 'ERelay.xml');
 
     nStr := '远程打印';
     gRemotePrinter.LoadConfig(nCfg + 'Printer.xml');
-
-    nStr := '语音服务';
-    gVoiceHelper.LoadConfig(nCfg + 'Voice.xml');
 
     nStr := '网络语音服务';
     if FileExists(nCfg + 'NetVoice.xml') then
@@ -119,6 +109,12 @@ begin
       gProberManager := TProberManager.Create;
       gProberManager.LoadConfig(nCfg + 'TruckProber.xml');
     end;
+
+    {$IFDEF BasisWeight}
+    nStr := '定量装车业务';
+    gBasisWeightManager := TBasisWeightManager.Create;
+    gBasisWeightManager.LoadConfig(nCfg + 'Tunnels.xml');
+    {$ENDIF}
   except
     on E:Exception do
     begin
@@ -152,10 +148,6 @@ begin
     g02NReader := T02NReader.Create;
   //近距读头
 
-  if not Assigned(gMultiJSManager) then
-    gMultiJSManager := TMultiJSManager.Create;
-  //计数器
-
   gHardShareData := WhenBusinessMITSharedDataIn;
   //hard monitor share
 end;
@@ -168,10 +160,6 @@ begin
   gHardwareHelper.OnProce := WhenReaderCardArrived;
   gHardwareHelper.StartRead;
   //long reader
-
-  gBlueReader.OnCardArrived := WhenBlueReaderCardArrived;
-  if not gHardwareHelper.ConnHelper then gBlueReader.StartReader;
-  //blue reader, 如果不使用硬件守护服务器，则服务器独自读卡
 
   {$IFDEF HYRFID201}
   if Assigned(gHYReaderManager) then
@@ -186,18 +174,11 @@ begin
   g02NReader.StartReader;
   //near reader
 
-  gMultiJSManager.SaveDataProc := WhenSaveJS;
-  gMultiJSManager.GetTruckProc := GetJSTruck;
-  gMultiJSManager.StartJS;
-  //counter
   gERelayManager.ControlStart;
   //erelay
 
   gRemotePrinter.StartPrinter;
   //printer
-  gVoiceHelper.StartVoice;
-  //voice
-
   if Assigned(gNetVoiceHelper) then
     gNetVoiceHelper.StartVoice;
   //NetVoice
@@ -216,12 +197,16 @@ begin
     gM100ReaderManager.StartReader;
   end; //三合一读卡器
   {$ENDIF}
+
+  {$IFDEF BasisWeight}
+  gBasisWeightManager.TunnelManager.OnUserParseWeight := WhenParsePoundWeight;
+  gBasisWeightManager.OnStatusChange := WhenBasisWeightStatusChange;
+  gBasisWeightManager.StartService;
+  {$ENDIF}
 end;
 
 procedure THardwareWorker.AfterStopServer;
 begin
-  gVoiceHelper.StopVoice;
-  //voice
   gRemotePrinter.StopPrinter;
   //printer
   if Assigned(gNetVoiceHelper) then
@@ -230,8 +215,6 @@ begin
 
   gERelayManager.ControlStop;
   //erelay
-  gMultiJSManager.StopJS;
-  //counter
 
   g02NReader.StopReader;
   g02NReader.OnCardIn := nil;
@@ -240,10 +223,6 @@ begin
   gHardwareHelper.StopRead;
   gHardwareHelper.OnProce := nil;
   //reader
-
-  gBlueReader.StopReader;
-  gBlueReader.OnCardArrived := nil;
-  //blue reader
 
   {$IFDEF HYRFID201}
   if Assigned(gHYReaderManager) then
@@ -270,6 +249,11 @@ begin
 
   gTruckQueueManager.StopQueue;
   //queue
+
+  {$IFDEF BasisWeight}
+  gBasisWeightManager.StopService;
+  gBasisWeightManager.OnStatusChange := nil;
+  {$ENDIF}
 end;
 
 end.

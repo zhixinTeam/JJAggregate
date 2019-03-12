@@ -274,7 +274,7 @@ var nStr,nSQL: string;
 begin
   Result := True;
   nSQL := 'Update %s Set D_Value=''%s'' Where D_Name=''%s'' And D_Memo=''%s''';
-
+  {
   if FIn.FData = '1' then
   begin
     nStr := Format(nSQL, [sTable_SysDict, sFlag_No, sFlag_SysParam,
@@ -301,7 +301,7 @@ begin
 
     gTruckQueueManager.RefreshParam;
     //使用新调度参数
-  end;
+  end; }
 end;
 
 //Date: 2014-10-01

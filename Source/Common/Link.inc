@@ -1,5 +1,5 @@
 //----------------------------------- 通用 -------------------------------------
-{.$DEFINE DEBUG}
+{$DEFINE DEBUG}
 //调试模式
 
 {.$DEFINE TrialVersion}
@@ -23,7 +23,7 @@
 {.$DEFINE ClientMon}
 //进程守护客户端
 
-{.$DEFINE HardMon}
+{$DEFINE HardMon}
 //编译硬件守护
 
 {.$DEFINE GenRODL}
@@ -50,7 +50,7 @@
 {.$DEFINE COMMON}
 //通用版本
 
-{$DEFINE JJGL}
+{$DEFINE GLKY}
 //特定系统
 
 //金九骨料
@@ -83,4 +83,29 @@
   //对吨位及金额小数位后2位四舍五入
   {$DEFINE CapturePictureEx}
   //磅房抓拍模式扩展
+{$ENDIF}
+
+//国联矿业
+{$IFDEF GLKY}
+  {$DEFINE COMMON}
+  {$DEFINE HYRFID201}
+  //华益读头
+  {$DEFINE TTCEM100}
+  //自动收卡票箱
+  {$DEFINE MITTruckProber}
+  //车检由中间件控制
+  {.$DEFINE NoCheckOnPayment}
+  //退款时不校验资金余额
+  {$DEFINE MicroMsg}
+  //使用微信
+  {$DEFINE WxShowCusMoney}
+  //微信端显示客户金额
+  {$DEFINE CastMoney}
+  //对吨位及金额小数位后2位四舍五入
+  {$DEFINE CapturePictureEx}
+  //磅房抓拍模式扩展
+  {$DEFINE BasisWeight}
+  //启用定量装车
+  {$DEFINE BasisWeightWithPM}
+  //库底计量: 定量装车时过皮毛中
 {$ENDIF}

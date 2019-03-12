@@ -758,8 +758,9 @@ begin
   //有效纸卡占用金额
 
   nStr := 'Select Sum(L_Money) From (Select L_Value*L_Price as L_Money ' +
-          'From %s Where L_OutFact Is Null And L_ZKMoney=''%s'') t';
-  nStr := Format(nStr, [sTable_Bill, sFlag_Yes]);
+          'From %s Where L_OutFact Is Null And L_CusID=''%s'' And ' +
+          'L_ZKMoney=''%s'') t';
+  nStr := Format(nStr, [sTable_Bill, FIn.FData, sFlag_Yes]);
 
   with gDBConnManager.WorkerQuery(FDBConn, nStr) do
     nHasUsed := nHasUsed - Fields[0].AsFloat;
@@ -934,10 +935,12 @@ begin
     nStr := FieldByName('Z_MoneyAll').AsString;
     if nStr = sFlag_Yes then
     begin
-      FOut.FData := FieldByName('Z_Customer').AsString;
-      FOut.FExtParam := sFlag_No;
-
+      FIn.FData := FieldByName('Z_Customer').AsString;
+      FIn.FExtParam := sFlag_Yes; //use credit
       Result := GetCustomerValidMoney(nData);
+
+      if Result then
+        FOut.FExtParam := sFlag_No;
       Exit;
     end; //不限提,计算客户可用金
                      

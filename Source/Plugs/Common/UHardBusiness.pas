@@ -8,15 +8,13 @@ unit UHardBusiness;
 interface
 
 uses
-  Windows, Classes, Controls, SysUtils, UMgrDBConn, UMgrParam, DB,
-  UBusinessWorker, UBusinessConst, UBusinessPacker, UMgrQueue,
-  {$IFDEF MultiReplay}UMultiJS_Reply, {$ELSE}UMultiJS, {$ENDIF}
-  UMgrHardHelper, U02NReader, UMgrERelay, UMgrRemotePrint,
-  UMgrRFID102, UBlueReader, UMgrTTCEM100;
+  Windows, Classes, Controls, SysUtils, UMgrDBConn, UMgrParam, DB, IdGlobal,
+  UBusinessWorker, UBusinessConst, UBusinessPacker, UMgrQueue, UFormCtrl,
+  UMgrHardHelper, U02NReader, UMgrERelay, UMgrRemotePrint, UMgrTruckProbe,
+  UMgrRFID102, UMgrTTCEM100, UMgrBasisWeight, UMgrPoundTunnels;
 
 procedure WhenReaderCardArrived(const nReader: THHReaderItem);
 procedure WhenHYReaderCardArrived(const nReader: PHYReaderItem);
-procedure WhenBlueReaderCardArrived(nHost: TBlueReaderHost; nCard: TBlueReaderCard);
 //有新卡号到达读头
 procedure WhenTTCE_M100_ReadCard(const nItem: PM100ReaderItem);
 //票箱读卡器
@@ -26,10 +24,10 @@ procedure WhenReaderCardOut(const nCard: string; const nHost: PReaderHost);
 //现场读头卡号超时
 procedure WhenBusinessMITSharedDataIn(const nData: string);
 //业务中间件共享数据
-function GetJSTruck(const nTruck,nBill: string): string;
-//获取计数器显示车牌
-procedure WhenSaveJS(const nTunnel: PMultiJSTunnel);
-//保存计数结果
+function WhenParsePoundWeight(const nPort: PPTPortItem): Boolean;
+//地磅数据解析
+procedure WhenBasisWeightStatusChange(const nTunnel: PBWTunnel);
+//定量装车状态改变
 
 implementation
 
@@ -39,9 +37,6 @@ uses
 const
   sPost_In   = 'in';
   sPost_Out  = 'out';
-
-  sBlueCard  = 'bluecard';
-  sHyCard    = 'hycard';
 
 //Date: 2014-09-15
 //Parm: 命令;数据;参数;输出
@@ -254,33 +249,14 @@ end;
 procedure BlueOpenDoor(const nReader: string;const nReaderType: string = '');
 var nIdx: Integer;
 begin
+  if nReader = '' then Exit;
   nIdx := 0;
-  if nReader <> '' then
-  while nIdx < 5 do
-  begin
-    if nReaderType = sBlueCard then
-    begin
-      gHardwareHelper.OpenDoor(nReader);
-      WriteHardHelperLog('蓝卡读卡器抬杆:' + nReader);
-    end
-    else
-    if nReaderType = sHyCard then
-    begin
-      gHYReaderManager.OpenDoor(nReader);
-      WriteHardHelperLog('华益读卡器抬杆:' + nReader);
-    end
-    else
-    begin
-      if gHardwareHelper.ConnHelper then
-           gHardwareHelper.OpenDoor(nReader)
-      {$IFDEF BlueCard}
-      else gHYReaderManager.OpenDoor(nReader);
-      {$ELSE}
-      else gHYReaderManager.OpenDoor(nReader);
-      {$ENDIF}
-    end;
 
+  while nIdx < 3 do
+  begin
     Inc(nIdx);
+    gHYReaderManager.OpenDoor(nReader);
+    WriteHardHelperLog('华益读卡器抬杆:' + nReader);
   end;
 end;
 
@@ -716,15 +692,6 @@ begin
   end else g02NReader.ActiveELabel(nReader.FTunnel, nReader.FCard);
 end;
 
-procedure WhenBlueReaderCardArrived(nHost: TBlueReaderHost; nCard: TBlueReaderCard);
-begin
-  {$IFDEF DEBUG}
-  WriteHardHelperLog(Format('蓝卡读卡器 %s:%s', [nHost.FReaderID, nCard.FCard]));
-  {$ENDIF}
-
-  gHardwareHelper.SetReaderCard(nHost.FReaderID, nCard.FCard, False);
-end;
-
 //Date: 2018-01-08
 //Parm: 三合一读卡器
 //Desc: 处理三合一读卡器信息
@@ -760,6 +727,21 @@ end;
 procedure WriteNearReaderLog(const nEvent: string);
 begin
   gSysLoger.AddLog(T02NReader, '现场近距读卡器', nEvent);
+end;
+
+//Date: 2019-03-12
+//Parm: 通道号;提示信息;车牌号
+//Desc: 在nTunnel的小屏上显示信息
+procedure ShowLEDHint(const nTunnel: string; nHint: string;
+  const nTruck: string = '');
+begin
+  if nTruck <> '' then
+    nHint := nTruck + StringOfChar(' ', 12 - Length(nTruck)) + nHint;
+  //xxxxx
+  
+  if Length(nHint) > 24 then
+    nHint := Copy(nHint, 1, 24);
+  gERelayManager.ShowTxt(nTunnel, nHint);
 end;
 
 //Date: 2012-4-24
@@ -834,300 +816,41 @@ begin
   end;
 end;
 
-//Date: 2013-1-21
-//Parm: 通道号;交货单;
-//Desc: 在nTunnel上打印nBill防伪码
-function PrintBillCode(const nTunnel,nBill: string; var nHint: string): Boolean;
-var nStr: string;
-    nTask: Int64;
-    nOut: TWorkerBusinessCommand;
-begin
-  Result := True;
-  if not gMultiJSManager.CountEnable then Exit;
-
-  nTask := gTaskMonitor.AddTask('UHardBusiness.PrintBillCode', cTaskTimeoutLong);
-  //to mon
-  
-  if not CallHardwareCommand(cBC_PrintCode, nBill, nTunnel, @nOut) then
-  begin
-    nStr := '向通道[ %s ]发送防违流码失败,描述: %s';
-    nStr := Format(nStr, [nTunnel, nOut.FData]);  
-    WriteNearReaderLog(nStr);
-  end;
-
-  gTaskMonitor.DelTask(nTask, True);
-  //task done
-end;
-
-//Date: 2012-4-24
-//Parm: 车牌;通道;交货单;启动计数
-//Desc: 对在nTunnel的车辆开启计数器
-function TruckStartJS(const nTruck,nTunnel,nBill: string;
-  var nHint: string; const nAddJS: Boolean = True): Boolean;
-var nIdx: Integer;
-    nTask: Int64;
-    nPLine: PLineItem;
-    nPTruck: PTruckItem;
-begin
-  with gTruckQueueManager do
-  try
-    Result := False;
-    SyncLock.Enter;
-    nIdx := GetLine(nTunnel);
-
-    if nIdx < 0 then
-    begin
-      nHint := Format('通道[ %s ]无效.', [nTunnel]);
-      Exit;
-    end;
-
-    nPLine := Lines[nIdx];
-    nIdx := TruckInLine(nTruck, nPLine.FTrucks);
-
-    if nIdx < 0 then
-    begin
-      nHint := Format('车辆[ %s ]已不再队列.', [nTruck]);
-      Exit;
-    end;
-
-    Result := True;
-    nPTruck := nPLine.FTrucks[nIdx];
-
-    for nIdx:=nPLine.FTrucks.Count - 1 downto 0 do
-      PTruckItem(nPLine.FTrucks[nIdx]).FStarted := False;
-    nPTruck.FStarted := True;
-
-    if PrintBillCode(nTunnel, nBill, nHint) and nAddJS then
-    begin
-      nTask := gTaskMonitor.AddTask('UHardBusiness.AddJS', cTaskTimeoutLong);
-      //to mon
-      
-      gMultiJSManager.AddJS(nTunnel, nTruck, nBill, nPTruck.FDai, True);
-      gTaskMonitor.DelTask(nTask);
-    end;
-  finally
-    SyncLock.Leave;
-  end;
-end;
-
-//Date: 2013-07-17
-//Parm: 交货单号
-//Desc: 查询nBill上的已装量
-function GetHasDai(const nBill: string): Integer;
-var nStr: string;
-    nIdx: Integer;
-    nDBConn: PDBWorker;
-begin
-  if not gMultiJSManager.ChainEnable then
-  begin
-    Result := 0;
-    Exit;
-  end;
-
-  Result := gMultiJSManager.GetJSDai(nBill);
-  if Result > 0 then Exit;
-
-  nDBConn := nil;
-  with gParamManager.ActiveParam^ do
-  try
-    nDBConn := gDBConnManager.GetConnection(FDB.FID, nIdx);
-    if not Assigned(nDBConn) then
-    begin
-      WriteNearReaderLog('连接HM数据库失败(DBConn Is Null).');
-      Exit;
-    end;
-
-    if not nDBConn.FConn.Connected then
-      nDBConn.FConn.Connected := True;
-    //conn db
-
-    nStr := 'Select T_Total From %s Where T_Bill=''%s''';
-    nStr := Format(nStr, [sTable_ZTTrucks, nBill]);
-
-    with gDBConnManager.WorkerQuery(nDBConn, nStr) do
-    if RecordCount > 0 then
-    begin
-      Result := Fields[0].AsInteger;
-    end;
-  finally
-    gDBConnManager.ReleaseConnection(nDBConn);
-  end;
-end;
-
-//Date: 2012-4-24
-//Parm: 磁卡号;通道号
-//Desc: 对nCard执行袋装装车操作
-procedure MakeTruckLadingDai(const nCard: string; nTunnel: string);
-var nStr: string;
-    nIdx,nInt: Integer;
-    nPLine: PLineItem;
-    nPTruck: PTruckItem;
-    nTrucks: TLadingBillItems;
-
-    function IsJSRun: Boolean;
-    begin
-      Result := False;
-      if nTunnel = '' then Exit;
-      Result := gMultiJSManager.IsJSRun(nTunnel);
-
-      if Result then
-      begin
-        nStr := '通道[ %s ]装车中,业务无效.';
-        nStr := Format(nStr, [nTunnel]);
-        WriteNearReaderLog(nStr);
-      end;
-    end;
-begin
-  WriteNearReaderLog('通道[ ' + nTunnel + ' ]: MakeTruckLadingDai进入.');
-
-  if IsJSRun then Exit;
-  //tunnel is busy
-
-  if not GetLadingBills(nCard, sFlag_TruckZT, nTrucks) then
-  begin
-    nStr := '读取磁卡[ %s ]交货单信息失败.';
-    nStr := Format(nStr, [nCard]);
-
-    WriteNearReaderLog(nStr);
-    Exit;
-  end;
-
-  if Length(nTrucks) < 1 then
-  begin
-    nStr := '磁卡[ %s ]没有需要栈台提货车辆.';
-    nStr := Format(nStr, [nCard]);
-
-    WriteNearReaderLog(nStr);
-    Exit;
-  end;
-
-  if nTunnel = '' then
-  begin
-    nTunnel := gTruckQueueManager.GetTruckTunnel(nTrucks[0].FTruck);
-    //重新定位车辆所在车道
-    if IsJSRun then Exit;
-  end;
-  
-  if not IsTruckInQueue(nTrucks[0].FTruck, nTunnel, False, nStr,
-         nPTruck, nPLine, sFlag_Dai) then
-  begin
-    WriteNearReaderLog(nStr);
-    Exit;
-  end; //检查通道
-
-  nStr := '';
-  nInt := 0;
-
-  for nIdx:=Low(nTrucks) to High(nTrucks) do
-  with nTrucks[nIdx] do
-  begin
-    if (FStatus = sFlag_TruckZT) or (FNextStatus = sFlag_TruckZT) then
-    begin
-      FSelected := Pos(FID, nPTruck.FHKBills) > 0;
-      if FSelected then Inc(nInt); //刷卡通道对应的交货单
-      Continue;
-    end;
-
-    FSelected := False;
-    nStr := '车辆[ %s ]下一状态为:[ %s ],无法栈台提货.';
-    nStr := Format(nStr, [FTruck, TruckStatusToStr(FNextStatus)]);
-  end;
-
-  if nInt < 1 then
-  begin
-    WriteHardHelperLog(nStr);
-    Exit;
-  end;
-
-  for nIdx:=Low(nTrucks) to High(nTrucks) do
-  with nTrucks[nIdx] do
-  begin
-    if not FSelected then Continue;
-    if FStatus <> sFlag_TruckZT then Continue;
-
-    nStr := '袋装车辆[ %s ]再次刷卡装车.';
-    nStr := Format(nStr, [nPTruck.FTruck]);
-    WriteNearReaderLog(nStr);
-
-    if not TruckStartJS(nPTruck.FTruck, nTunnel, nPTruck.FBill, nStr,
-       GetHasDai(nPTruck.FBill) < 1) then
-      WriteNearReaderLog(nStr);
-    Exit;
-  end;
-
-  if not SaveLadingBills(sFlag_TruckZT, nTrucks) then
-  begin
-    nStr := '车辆[ %s ]栈台提货失败.';
-    nStr := Format(nStr, [nTrucks[0].FTruck]);
-
-    WriteNearReaderLog(nStr);
-    Exit;
-  end;
-
-  if not TruckStartJS(nPTruck.FTruck, nTunnel, nPTruck.FBill, nStr) then
-    WriteNearReaderLog(nStr);
-  Exit;
-end;
-
-//Date: 2012-4-25
+//Date: 2019-03-12
 //Parm: 车辆;通道
 //Desc: 授权nTruck在nTunnel车道放灰
 procedure TruckStartFH(const nTruck: PTruckItem; const nTunnel: string);
-var nStr,nTmp,nCardUse: string;
-   nField: TField;
-   nWorker: PDBWorker;
+var nStr: string;
 begin
-  nWorker := nil;
-  try
-    nTmp := '';
-    nStr := 'Select * From %s Where T_Truck=''%s''';
-    nStr := Format(nStr, [sTable_Truck, nTruck.FTruck]);
-
-    with gDBConnManager.SQLQuery(nStr, nWorker) do
-    if RecordCount > 0 then
-    begin
-      nField := FindField('T_Card');
-      if Assigned(nField) then nTmp := nField.AsString;
-
-      nField := FindField('T_CardUse');
-      if Assigned(nField) then nCardUse := nField.AsString;
-
-      if nCardUse = sFlag_No then
-        nTmp := '';
-      //xxxxx
-    end;
-
-    g02NReader.SetRealELabel(nTunnel, nTmp);
-  finally
-    gDBConnManager.ReleaseConnection(nWorker);
-  end;
-
-
   gERelayManager.LineOpen(nTunnel);
-  //打开放灰
+  //开始放灰
 
-  nStr := nTruck.FTruck + StringOfChar(' ', 12 - Length(nTruck.FTruck));
-  nTmp := nTruck.FStockName + FloatToStr(nTruck.FValue);
-  nStr := nStr + nTruck.FStockName + StringOfChar(' ', 12 - Length(nTmp)) +
-          FloatToStr(nTruck.FValue);
-  //xxxxx  
-
-  gERelayManager.ShowTxt(nTunnel, nStr);
-  //显示内容
+  nStr := Format('Truck=%s', [nTruck.FTruck]);
+  gBasisWeightManager.StartWeight(nTunnel, nTruck.FBill, nTruck.FValue, 0, nStr);
+  //开始定量装车
 end;
 
-//Date: 2012-4-24
+//Date: 2019-03-12
 //Parm: 磁卡号;通道号
 //Desc: 对nCard执行袋装装车操作
 procedure MakeTruckLadingSan(const nCard,nTunnel: string);
+begin
+
+end;
+
+//Date: 2019-03-12
+//Parm: 磁卡号;通道号
+//Desc: 对nCard执行称量操作
+procedure MakeTruckWeightFirst(const nCard,nTunnel: string);
 var nStr: string;
     nIdx: Integer;
+    nPound: TBWTunnel;
     nPLine: PLineItem;
     nPTruck: PTruckItem;
     nTrucks: TLadingBillItems;
 begin
   {$IFDEF DEBUG}
-  WriteNearReaderLog('MakeTruckLadingSan进入.');
+  WriteNearReaderLog('MakeTruckWeightFirst进入.');
   {$ENDIF}
 
   if not GetLadingBills(nCard, sFlag_TruckFH, nTrucks) then
@@ -1136,60 +859,64 @@ begin
     nStr := Format(nStr, [nCard]);
 
     WriteNearReaderLog(nStr);
+    ShowLEDHint(nTunnel, '读取交货单信息失败');
     Exit;
   end;
 
   if Length(nTrucks) < 1 then
   begin
-    nStr := '磁卡[ %s ]没有需要放灰车辆.';
+    nStr := '磁卡[ %s ]没有需要装料车辆.';
     nStr := Format(nStr, [nCard]);
 
     WriteNearReaderLog(nStr);
+    ShowLEDHint(nTunnel, '没有需要装料车辆');
     Exit;
   end;
 
   for nIdx:=Low(nTrucks) to High(nTrucks) do
   with nTrucks[nIdx] do
   begin
-    if (FStatus = sFlag_TruckFH) or (FNextStatus = sFlag_TruckFH) then Continue;
-    //未装或已装
+    if FStatus = sFlag_TruckNone then
+    begin
+      ShowLEDHint(nTunnel, '请进厂刷卡', nTrucks[0].FTruck);
+      Exit;
+    end;
+  end;
 
-    nStr := '车辆[ %s ]下一状态为:[ %s ],无法放灰.';
-    nStr := Format(nStr, [FTruck, TruckStatusToStr(FNextStatus)]);
-
-    WriteHardHelperLog(nStr);
-    Exit;
+  if gBasisWeightManager.IsTunnelBusy(nTunnel, @nPound) and
+     (nPound.FBill <> nTrucks[0].FID) then //通道忙
+  begin
+    if nPound.FValTunnel = 0 then //前车已下磅
+    begin
+      nStr := Format('%s 请等待前车', [nTrucks[0].FTruck]);
+      ShowLEDHint(nTunnel, nStr);
+      Exit;
+    end;
   end;
 
   if not IsTruckInQueue(nTrucks[0].FTruck, nTunnel, False, nStr,
          nPTruck, nPLine, sFlag_San) then
   begin
     WriteNearReaderLog(nStr);
-    //loged
-
-    nIdx := Length(nTrucks[0].FTruck);
-    nStr := nTrucks[0].FTruck + StringOfChar(' ',12 - nIdx) + '请换库装车';
-    gERelayManager.ShowTxt(nTunnel, nStr);
+    ShowLEDHint(nTunnel, '请换道装车', nTrucks[0].FTruck);
     Exit;
   end; //检查通道
 
-  if nTrucks[0].FStatus = sFlag_TruckFH then
+  if nTrucks[0].FStatus = sFlag_TruckIn then
   begin
-    nStr := '散装车辆[ %s ]再次刷卡装车.';
+    nStr := '车辆[ %s ]刷卡,等待称皮重.';
     nStr := Format(nStr, [nTrucks[0].FTruck]);
     WriteNearReaderLog(nStr);
 
-    TruckStartFH(nPTruck, nTunnel);
-    Exit;
-  end;
-
-  if not SaveLadingBills(sFlag_TruckFH, nTrucks) then
+    nStr := Format('请 %s 上磅称量皮重', [nTrucks[0].FTruck]);
+    ShowLEDHint(nTunnel, nStr);
+  end else
   begin
-    nStr := '车辆[ %s ]放灰处提货失败.';
-    nStr := Format(nStr, [nTrucks[0].FTruck]);
+    if nPound.FValTunnel > 0 then
+         nStr := '请上磅装车'
+    else nStr := '请开始装车';
 
-    WriteNearReaderLog(nStr);
-    Exit;
+    ShowLEDHint(nTunnel, nStr, nTrucks[0].FTruck);
   end;
 
   TruckStartFH(nPTruck, nTunnel);
@@ -1210,12 +937,19 @@ begin
            nStr := nHost.FOptions.Values['HYPrinter']
       else nStr := '';
       MakeTruckOut(nCard, '', nHost.FPrinter, nStr);
-    end else MakeTruckLadingDai(nCard, nHost.FTunnel);
+    end;// else MakeTruckLadingDai(nCard, nHost.FTunnel);
   end else
 
   if nHost.FType = rtKeep then
   begin
+    {$IFDEF BasisWeightWithPM}
+    MakeTruckWeightFirst(nCard, nHost.FTunnel);
+    {$ELSE}
     MakeTruckLadingSan(nCard, nHost.FTunnel);
+    {$ENDIF}
+
+    gBasisWeightManager.AppendParam(nHost.FTunnel, 'LEDText', nHost.FLEDText);
+    //附加参数
   end;
 end;
 
@@ -1237,7 +971,6 @@ begin
   Sleep(100);
 end;
 
-//------------------------------------------------------------------------------
 //Date: 2012-12-16
 //Parm: 磁卡号
 //Desc: 对nCardNo做自动出厂(模拟读头刷卡)
@@ -1266,65 +999,169 @@ begin
   //auto out
 end;
 
-//Date: 2015-01-14
-//Parm: 车牌号;交货单
-//Desc: 格式化nBill交货单需要显示的车牌号
-function GetJSTruck(const nTruck,nBill: string): string;
-var nStr: string;
-    nLen: Integer;
-    nWorker: PDBWorker;
+//------------------------------------------------------------------------------
+//Date: 2019-03-12
+//Parm: 端口
+//Desc: 解析磅站数据
+function WhenParsePoundWeight(const nPort: PPTPortItem): Boolean;
+var nIdx,nLen: Integer;
+    nVerify: Word;
+    nBuf: TIdBytes;
 begin
-  Result := nTruck;
-  if nBill = '' then Exit;
+  Result := False;
+  nBuf := ToBytes(nPort.FCOMBuff, Indy8BitEncoding);
+  nLen := Length(nBuf) - 2;
+  if nLen < 52 then Exit; //48-51为磅重数据
 
-  {$IFDEF LNYK}
-  nWorker := nil;
-  try
-    nStr := 'Select L_StockNo From %s Where L_ID=''%s''';
-    nStr := Format(nStr, [sTable_Bill, nBill]);
+  nVerify := 0;
+  nIdx := 0;
 
-    with gDBConnManager.SQLQuery(nStr, nWorker) do
-    if RecordCount > 0 then
-    begin
-      nStr := UpperCase(Fields[0].AsString);
-      if nStr <> 'BPC-02' then Exit;
-      //只处理32.5(b)
+  while nIdx < nLen do
+  begin
+    nVerify := nBuf[nIdx] + nVerify;
+    Inc(nIdx);
+  end;
 
-      nLen := cMultiJS_Truck - 2;
-      Result := 'B-' + Copy(nTruck, Length(nTruck) - nLen + 1, nLen);
-    end;
-  finally
-    gDBConnManager.ReleaseConnection(nWorker);
-  end;   
-  {$ENDIF}
+  if (nBuf[nLen] <> (nVerify shr 8 and $00ff)) or
+     (nBuf[nLen+1] <> (nVerify and $00ff)) then Exit;
+  //校验失败
+
+  nPort.FCOMData := IntToStr(StrToInt('$' +
+    IntToHex(nBuf[51], 2) + IntToHex(nBuf[50], 2) +
+    IntToHex(nBuf[49], 2) + IntToHex(nBuf[48], 2)));
+  //毛重显示数据
+
+  Result := True;
 end;
 
-//Date: 2013-07-17
-//Parm: 计数器通道
-//Desc: 保存nTunnel计数结果
-procedure WhenSaveJS(const nTunnel: PMultiJSTunnel);
+//Date: 2019-03-12
+//Parm: 交货单号;重量
+//Desc: 依据nBill状态写入nValue重量
+function SavePoundData(const nBill: string; const nValue: Double): Boolean;
 var nStr: string;
-    nDai: Word;
-    nList: TStrings;
-    nOut: TWorkerBusinessCommand;
+    nDBConn: PDBWorker;
 begin
-  nDai := nTunnel.FHasDone - nTunnel.FLastSaveDai;
-  if nDai <= 0 then Exit;
-  //invalid dai num
-
-  if nTunnel.FLastBill = '' then Exit;
-  //invalid bill
-
-  nList := nil;
+  nDBConn := nil;
   try
-    nList := TStringList.Create;
-    nList.Values['Bill'] := nTunnel.FLastBill;
-    nList.Values['Dai'] := IntToStr(nDai);
+    Result := False;
+    try
+      nStr := 'Select L_Status,L_Value From %s Where L_ID=''%s''';
+      nStr := Format(nStr, [sTable_Bill, nBill]);
 
-    nStr := PackerEncodeStr(nList.Text);
-    CallHardwareCommand(cBC_SaveCountData, nStr, '', @nOut)
+      with gDBConnManager.SQLQuery(nStr, nDBConn) do
+      begin
+        if RecordCount < 1 then
+        begin
+          WriteNearReaderLog(Format('交货单[ %s ]已丢失', [nBill]));
+          Exit;
+        end;
+
+        nStr := FieldByName('L_Status').AsString;
+        if nStr = sFlag_TruckIn then //皮重
+        begin
+          nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckBFP),
+                  SF('L_NextStatus', sFlag_TruckFH),
+                  SF('L_LadeTime', sField_SQLServer_Now, sfVal),
+                  SF('L_PValue', nValue, sfVal),
+                  SF('L_PDate', sField_SQLServer_Now, sfVal)
+            ], sTable_Bill, SF('L_ID', nBill), False);
+          //xxxxx
+
+          gDBConnManager.WorkerExec(nDBConn, nStr);
+          Result := True;
+        end else
+
+        if nStr = sFlag_TruckFH then //放灰状态,只更新重量,出厂时计算净重
+        begin
+          nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckFH),
+                  SF('L_NextStatus', sFlag_TruckBFM),
+                  SF('L_MValue', nValue, sfVal),
+                  SF('L_MDate', sField_SQLServer_Now, sfVal)
+            ], sTable_Bill, SF('L_ID', nBill), False);
+          //xxxxx
+
+          gDBConnManager.WorkerExec(nDBConn, nStr);
+          Result := True;
+        end;
+      end;
+    except
+      on nErr: Exception do
+      begin
+        WriteNearReaderLog(nErr.Message);
+      end;
+    end;  
   finally
-    nList.Free;
+    gDBConnManager.ReleaseConnection(nDBConn);
+  end;   
+end;
+
+//Date: 2019-03-11
+//Parm: 定量装车通道
+//Desc: 当nTunnel状态改变时,处理业务
+procedure WhenBasisWeightStatusChange(const nTunnel: PBWTunnel);
+var nStr: string;
+begin
+  if nTunnel.FStatusNew = bsProcess then
+  begin
+    nStr := Format('%.2f/%.2f', [nTunnel.FValue, nTunnel.FValTunnel]);
+    ShowLEDHint(nTunnel.FID, nStr, nTunnel.FParams.Values['Truck']);
+    Exit;
+  end;
+
+  case nTunnel.FStatusNew of
+   bsInit      : WriteNearReaderLog('初始化:' + nTunnel.FID);
+   bsNew       : WriteNearReaderLog('新添加:' + nTunnel.FID);
+   bsStart     : WriteNearReaderLog('开始称重:' + nTunnel.FID);
+   bsClose     : WriteNearReaderLog('称重关闭:' + nTunnel.FID);
+   bsDone      : WriteNearReaderLog('称重完成:' + nTunnel.FID);
+   bsStable    : WriteNearReaderLog('数据平稳:' + nTunnel.FID);
+  end; //log
+
+  if nTunnel.FStatusNew = bsClose then
+  begin
+    ShowLEDHint(nTunnel.FID, '装车业务关闭', nTunnel.FParams.Values['Truck']);
+    Exit;
+  end;
+
+  if nTunnel.FStatusNew = bsDone then
+  begin
+    {$IFDEF BasisWeightWithPM}
+    ShowLEDHint(nTunnel.FID, '装车完成 请等待保存称重');
+    {$ELSE}
+    ShowLEDHint(nTunnel.FID, '装车完成 请下磅');
+    gProberManager.OpenTunnel(nTunnel.FID + '_Z');
+    //打开道闸
+    {$ENDIF}
+
+    gERelayManager.LineClose(nTunnel.FID);
+    //停止装车
+    Exit;
+  end;
+
+  if nTunnel.FStatusNew = bsStable then
+  begin
+    {$IFNDEF BasisWeightWithPM}
+    Exit; //非库底计量,不保存数据
+    {$ENDIF}
+
+    if not gProberManager.IsTunnelOK(nTunnel.FID) then
+    begin
+      nTunnel.FStableDone := False;
+      //继续触发事件
+      ShowLEDHint(nTunnel.FID, '车辆未停到位 请移动车辆');
+      Exit;
+    end;
+
+    if SavePoundData(nTunnel.FBill, nTunnel.FValHas) then
+    begin
+      gProberManager.OpenTunnel(nTunnel.FID + '_Z');
+      //打开道闸
+    end else
+    begin
+      nTunnel.FStableDone := False;
+      //继续触发事件
+      ShowLEDHint(nTunnel.FID, '保存失败 请联系管理员');
+    end;
   end;
 end;
 

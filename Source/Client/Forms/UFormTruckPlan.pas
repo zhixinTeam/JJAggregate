@@ -44,6 +44,9 @@ type
     procedure N1Click(Sender: TObject);
     procedure N3Click(Sender: TObject);
     procedure N4Click(Sender: TObject);
+    procedure EditTrucksDragOver(Sender, Source: TObject; X, Y: Integer;
+      State: TDragState; var Accept: Boolean);
+    procedure EditTrucksDragDrop(Sender, Source: TObject; X, Y: Integer);
   protected
     { Protected declarations }
     FCusID,FCusName: string;
@@ -233,6 +236,27 @@ begin
   LoadTruckHistoryList();
 end;
 
+procedure TfFormTruckPlan.EditTrucksDragOver(Sender, Source: TObject; X,
+  Y: Integer; State: TDragState; var Accept: Boolean);
+begin
+  if Source = ListHistory then
+    Accept := True;
+  //xxxxx
+end;
+
+procedure TfFormTruckPlan.EditTrucksDragDrop(Sender, Source: TObject; X,
+  Y: Integer);
+var nIdx: Integer;
+begin
+  if ListHistory.ItemIndex < 0 then Exit;
+  nIdx := Integer(ListHistory.Items.Objects[ListHistory.ItemIndex]);
+
+  if EditTrucks.Lines.IndexOf(FTruckHistory[nIdx]) < 0 then
+    EditTrucks.Lines.Add(FTruckHistory[nIdx]);
+  //xxxxx
+end;
+
+//------------------------------------------------------------------------------
 procedure TfFormTruckPlan.N1Click(Sender: TObject);
 var nIdx,nInt: Integer;
 begin

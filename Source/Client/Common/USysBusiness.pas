@@ -2257,12 +2257,7 @@ begin
 
   nStr := 'Select * From %s Where D_ZID=''%s''';
   nStr := Format(nStr, [sTable_ZhiKaDtl, nZID]);
-  if FDM.QuerySQL(nStr).RecordCount < 1 then
-  begin
-    nStr := '编号为[ %s ] 的纸卡无明细';
-    nStr := Format(nStr, [nZID]);
-    ShowMsg(nStr, sHint); Exit;
-  end;
+  FDM.QuerySQL(nStr);
 
   nStr := gPath + sReportDir + 'ZhiKa.fr3';
   if not FDR.LoadReportFile(nStr) then
