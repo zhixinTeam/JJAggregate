@@ -100,6 +100,8 @@ const
   cBC_SyncProvider            = $0085;   //远程同步供应商
   cBC_SyncMaterails           = $0086;   //远程同步原材料
 
+  cBC_VerifySnapTruck         = $0087;   //车牌比对
+
   cBC_WX_VerifPrintCode       = $0501;   //微信：验证喷码信息
   cBC_WX_WaitingForloading    = $0502;   //微信：工厂待装查询
   cBC_WX_BillSurplusTonnage   = $0503;   //微信：网上订单可下单数量查询

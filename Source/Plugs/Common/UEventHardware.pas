@@ -36,7 +36,7 @@ uses
   SysUtils, USysLoger, UHardBusiness, UMgrTruckProbe, UMgrParam,
   UMgrQueue, UMgrLEDCard, UMgrHardHelper, UMgrRemotePrint, U02NReader,
   UMgrERelay, UMgrCodePrinter, UMgrTTCEM100, UMgrRFID102, UMgrVoiceNet,
-  UMgrBasisWeight;
+  UMgrBasisWeight, UMgrRemoteSnap;
 
 class function THardwareWorker.ModuleInfo: TPlugModuleInfo;
 begin
@@ -114,6 +114,15 @@ begin
     nStr := '定量装车业务';
     gBasisWeightManager := TBasisWeightManager.Create;
     gBasisWeightManager.LoadConfig(nCfg + 'Tunnels.xml');
+    {$ENDIF}
+
+    {$IFDEF RemoteSnap}
+    nStr := '海康威视远程抓拍';
+    if FileExists(nCfg + 'RemoteSnap.xml') then
+    begin
+      //gHKSnapHelper := THKSnapHelper.Create;
+      gHKSnapHelper.LoadConfig(nCfg + 'RemoteSnap.xml');
+    end;
     {$ENDIF}
   except
     on E:Exception do
@@ -203,6 +212,11 @@ begin
   gBasisWeightManager.OnStatusChange := WhenBasisWeightStatusChange;
   gBasisWeightManager.StartService;
   {$ENDIF}
+
+  {$IFDEF RemoteSnap}
+  gHKSnapHelper.StartSnap;
+  //remote snap
+  {$ENDIF}
 end;
 
 procedure THardwareWorker.AfterStopServer;
@@ -253,6 +267,11 @@ begin
   {$IFDEF BasisWeight}
   gBasisWeightManager.StopService;
   gBasisWeightManager.OnStatusChange := nil;
+  {$ENDIF}
+
+  {$IFDEF RemoteSnap}
+  gHKSnapHelper.StopSnap;
+  //remote snap
   {$ENDIF}
 end;
 

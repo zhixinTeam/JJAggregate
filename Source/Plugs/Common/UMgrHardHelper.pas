@@ -44,6 +44,8 @@ type
     FKeep    : Word;
     FOKTime  : Int64;
     FOptions : TStrings;          //附加参数
+    FPost    : string;            //所在岗位
+    FDept    : string;            //所属门岗
   end;
 
   THardwareHelper = class;
@@ -409,6 +411,16 @@ begin
         FOptions := TStringList.Create;
         SplitStr(nTP.ValueAsString, FOptions, 0, ';');
       end else FOptions := nil;
+
+      nTP := NodeByName('Post');
+      if Assigned(nTP) then
+           FPost := nTP.ValueAsString
+      else FPost := 'Sin';
+
+      nTP := NodeByName('Dept');
+      if Assigned(nTP) then
+           FDept := nTP.ValueAsString
+      else FDept := '';
 
       nTP := NodeByName('keeptime');
       if Assigned(nTP) then

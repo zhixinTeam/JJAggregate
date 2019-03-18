@@ -11,7 +11,7 @@ uses
   Windows, Classes, Controls, SysUtils, UMgrDBConn, UMgrParam, DB, IdGlobal,
   UBusinessWorker, UBusinessConst, UBusinessPacker, UMgrQueue, UFormCtrl,
   UMgrHardHelper, U02NReader, UMgrERelay, UMgrRemotePrint, UMgrTruckProbe,
-  UMgrRFID102, UMgrTTCEM100, UMgrBasisWeight, UMgrPoundTunnels;
+  UMgrRFID102, UMgrTTCEM100, UMgrBasisWeight, UMgrPoundTunnels, UMgrRemoteSnap;
 
 procedure WhenReaderCardArrived(const nReader: THHReaderItem);
 procedure WhenHYReaderCardArrived(const nReader: PHYReaderItem);
@@ -28,6 +28,9 @@ function WhenParsePoundWeight(const nPort: PPTPortItem): Boolean;
 //地磅数据解析
 procedure WhenBasisWeightStatusChange(const nTunnel: PBWTunnel);
 //定量装车状态改变
+function CheckStatus(nID:string):Boolean;
+function VerifySnapTruck(const nTruck,nBill,nPos,nDept: string;var nResult: string): Boolean;
+//车牌识别
 
 implementation
 
@@ -263,9 +266,9 @@ end;
 //Date: 2012-4-22
 //Parm: 卡号
 //Desc: 对nCard放行进厂
-procedure MakeTruckIn(const nCard,nReader: string; const nDB: PDBWorker;
+procedure MakeTruckIn(const nCard,nReader,nPost,nDept: string; const nDB: PDBWorker;
                       const nReaderType: string = '');
-var nStr,nTruck,nCardType: string;
+var nStr,nTruck,nCardType,nSnapStr: string;
     nIdx,nInt: Integer;
     nPLine: PLineItem;
     nPTruck: PTruckItem;
@@ -324,6 +327,24 @@ begin
     WriteHardHelperLog(nStr, sPost_In);
     Exit;
   end;
+
+  {$IFDEF RemoteSnap}
+  if (nTrucks[0].FStatus = sFlag_TruckNone) then//已进厂不判断
+  if not VerifySnapTruck(nTrucks[0].FTruck,nTrucks[0].FID,nPost,nDept,nSnapStr) then
+  begin
+    nStr := nSnapStr+ '进厂车牌识别失败.';
+
+    gHKSnapHelper.Display(nPost, nSnapStr, 3);
+    //小屏显示
+
+    WriteHardHelperLog(nStr+'岗位:'+nPost);
+
+    Exit;
+  end;
+  nStr := nSnapStr + ' 请进厂';
+  gHKSnapHelper.Display(nPost, nStr, 2);
+    //小屏显示
+  {$ENDIF}
 
   if nTrucks[0].FStatus = sFlag_TruckIn then
   begin
@@ -456,9 +477,9 @@ end;
 //Date: 2012-4-22
 //Parm: 卡号;读头;打印机;化验单打印机
 //Desc: 对nCard放行出厂
-function MakeTruckOut(const nCard,nReader,nPrinter: string;
+function MakeTruckOut(const nCard,nReader,nPrinter,nPost,nDept: string;
  const nHYPrinter: string = '';const nReaderType: string = ''): Boolean;
-var nStr,nCardType: string;
+var nStr,nCardType, nSnapStr: string;
     nIdx: Integer;
     nRet: Boolean;
     nTrucks: TLadingBillItems;
@@ -502,6 +523,24 @@ begin
     WriteHardHelperLog(nStr, sPost_Out);
     Exit;
   end;
+
+  {$IFDEF RemoteSnap}
+  //if (nTrucks[0].FStatus = sFlag_TruckNone) then//已进厂不判断
+  if not VerifySnapTruck(nTrucks[0].FTruck,nTrucks[0].FID,nPost,nDept,nSnapStr) then
+  begin
+    nStr := nSnapStr+ '进厂车牌识别失败.';
+
+    gHKSnapHelper.Display(nPost, nSnapStr, 3);
+    //小屏显示
+
+    WriteHardHelperLog(nStr+'岗位:'+nPost);
+
+    Exit;
+  end;
+  nStr := nSnapStr + ' 请出厂';
+  gHKSnapHelper.Display(nPost, nStr, 2);
+    //小屏显示
+  {$ENDIF}
 
   if nCardType = sFlag_Provide then
         nRet := SaveLadingOrders(sFlag_TruckOut, nTrucks)
@@ -639,7 +678,7 @@ begin
     try
       if nReader.FType = rtIn then
       begin
-        MakeTruckIn(nCard, nReader.FID, nDBConn, nReaderType);
+        MakeTruckIn(nCard, nReader.FID,nReader.FPost,nReader.FDept, nDBConn, nReaderType);
       end else
 
       if nReader.FType = rtOut then
@@ -647,7 +686,7 @@ begin
         if Assigned(nReader.FOptions) then
              nStr := nReader.FOptions.Values['HYPrinter']
         else nStr := '';
-        MakeTruckOut(nCard, nReader.FID, nReader.FPrinter, nStr, nReaderType);
+        MakeTruckOut(nCard, nReader.FID, nReader.FPrinter,nReader.FPost,nReader.FDept, nStr, nReaderType);
       end else
 
       if nReader.FType = rtGate then
@@ -711,7 +750,7 @@ begin
     if not nItem.FVirtual then Exit;
     if nItem.FVType = rtOutM100 then
     begin
-      nRetain := MakeTruckOut(nItem.FCard, nItem.FVReader, nItem.FVPrinter,
+      nRetain := MakeTruckOut(nItem.FCard, nItem.FVReader, nItem.FVPrinter,nitem.FPost,nitem.FDept,
                               nItem.FVHYPrinter);
       //xxxxx
     end else
@@ -936,7 +975,7 @@ begin
       if Assigned(nHost.FOptions) then
            nStr := nHost.FOptions.Values['HYPrinter']
       else nStr := '';
-      MakeTruckOut(nCard, '', nHost.FPrinter, nStr);
+      MakeTruckOut(nCard, '', nHost.FPrinter,'','', nStr);
     end;// else MakeTruckLadingDai(nCard, nHost.FTunnel);
   end else
 
@@ -1038,14 +1077,15 @@ end;
 //Parm: 交货单号;重量
 //Desc: 依据nBill状态写入nValue重量
 function SavePoundData(const nBill: string; const nValue: Double): Boolean;
-var nStr: string;
+var nStr, nStatus: string;
     nDBConn: PDBWorker;
+    nPValue, nNetValue: Double;
 begin
   nDBConn := nil;
   try
     Result := False;
     try
-      nStr := 'Select L_Status,L_Value From %s Where L_ID=''%s''';
+      nStr := 'Select L_Status,L_Value,L_PValue From %s Where L_ID=''%s''';
       nStr := Format(nStr, [sTable_Bill, nBill]);
 
       with gDBConnManager.SQLQuery(nStr, nDBConn) do
@@ -1056,8 +1096,10 @@ begin
           Exit;
         end;
 
-        nStr := FieldByName('L_Status').AsString;
-        if nStr = sFlag_TruckIn then //皮重
+        nStatus := FieldByName('L_Status').AsString;
+        nPValue := FieldByName('L_PValue').AsFloat;
+        nNetValue := nValue - nPValue;
+        if nStatus = sFlag_TruckIn then //皮重
         begin
           nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckBFP),
                   SF('L_NextStatus', sFlag_TruckFH),
@@ -1070,11 +1112,9 @@ begin
           gDBConnManager.WorkerExec(nDBConn, nStr);
           Result := True;
         end else
-
-        if nStr = sFlag_TruckFH then //放灰状态,只更新重量,出厂时计算净重
-        begin
-          nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckFH),
-                  SF('L_NextStatus', sFlag_TruckBFM),
+        begin            //if nStr = sFlag_TruckFH then //放灰状态,只更新重量,出厂时计算净重
+          nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckBFM),
+                  SF('L_NextStatus', sFlag_TruckOut),
                   SF('L_MValue', nValue, sfVal),
                   SF('L_MDate', sField_SQLServer_Now, sfVal)
             ], sTable_Bill, SF('L_ID', nBill), False);
@@ -1099,7 +1139,7 @@ end;
 //Parm: 定量装车通道
 //Desc: 当nTunnel状态改变时,处理业务
 procedure WhenBasisWeightStatusChange(const nTunnel: PBWTunnel);
-var nStr: string;
+var nStr, nTruck: string;
 begin
   if nTunnel.FStatusNew = bsProcess then
   begin
@@ -1120,13 +1160,15 @@ begin
   if nTunnel.FStatusNew = bsClose then
   begin
     ShowLEDHint(nTunnel.FID, '装车业务关闭', nTunnel.FParams.Values['Truck']);
+    WriteNearReaderLog(nTunnel.FID+'装车业务关闭');
     Exit;
   end;
 
   if nTunnel.FStatusNew = bsDone then
   begin
     {$IFDEF BasisWeightWithPM}
-    ShowLEDHint(nTunnel.FID, '装车完成 请等待保存称重');
+    ShowLEDHint(nTunnel.FID, '装车完成请等待保存称重');
+    WriteNearReaderLog(nTunnel.FID+'装车完成请等待保存称重');
     {$ELSE}
     ShowLEDHint(nTunnel.FID, '装车完成 请下磅');
     gProberManager.OpenTunnel(nTunnel.FID + '_Z');
@@ -1152,16 +1194,86 @@ begin
       Exit;
     end;
 
+    ShowLEDHint(nTunnel.FID, '数据平稳准备保存称重');
+    WriteNearReaderLog(nTunnel.FID+'数据平稳准备保存称重');
+
+
     if SavePoundData(nTunnel.FBill, nTunnel.FValHas) then
     begin
-      gProberManager.OpenTunnel(nTunnel.FID + '_Z');
-      //打开道闸
+      if CheckStatus(nTunnel.FBill) then
+      begin
+        ShowLEDHint(nTunnel.FID, '毛重保存完毕请下磅.');
+        WriteNearReaderLog(nTunnel.FID+'毛重保存完毕,请下磅');
+        gProberManager.OpenTunnel(nTunnel.FID + '_Z');
+      end
+      else
+      begin
+        ShowLEDHint(nTunnel.FID, '皮重保存完毕请等待装车.');
+        WriteNearReaderLog(nTunnel.FID+'皮重保存完毕,请等待装车');
+      end;
+
     end else
     begin
       nTunnel.FStableDone := False;
       //继续触发事件
-      ShowLEDHint(nTunnel.FID, '保存失败 请联系管理员');
+      ShowLEDHint(nTunnel.FID, '保存失败请联系管理员');
+      WriteNearReaderLog(nTunnel.FID+'保存失败 请联系管理员');
     end;
+  end;
+end;
+
+//判断当前状态是否允许抬起道闸
+function CheckStatus(nID:string):Boolean;
+var
+  nDBConn: PDBWorker;
+  nStr: string;
+begin
+  Result := False;
+  try
+    nDBConn := nil;
+    nStr := 'Select L_Status,L_Value From %s Where L_ID=''%s''';
+    nStr := Format(nStr, [sTable_Bill, nID]);
+
+    with gDBConnManager.SQLQuery(nStr, nDBConn) do
+    begin
+      if RecordCount < 1 then
+      begin
+        WriteNearReaderLog(Format('交货单[ %s ]已丢失', [nid]));
+        Exit;
+      end;
+      if FieldByName('L_Status').AsString = sFlag_TruckBFM then
+        Result := True;
+    end;
+  finally
+    gDBConnManager.ReleaseConnection(nDBConn);
+  end;
+end;
+
+function VerifySnapTruck(const nTruck,nBill,nPos,nDept: string;var nResult: string): Boolean;
+var nList: TStrings;
+    nOut: TWorkerBusinessCommand;
+    nID,nDefDept: string;
+begin
+  nDefDept := '门岗';
+  if nBill = '' then
+    nID := nTruck + FormatDateTime('YYMMDD',Now)
+  else
+    nID := nBill;
+  nList := nil;
+  try
+    nList := TStringList.Create;
+    nList.Values['Truck'] := nTruck;
+    nList.Values['Bill'] := nID;
+    nList.Values['Pos'] := nPos;
+    if nDept = '' then
+      nList.Values['Dept'] := nDefDept
+    else
+      nList.Values['Dept'] := nDept;
+
+    Result := CallBusinessCommand(cBC_VerifySnapTruck, nList.Text, '', @nOut);
+    nResult := nOut.FData;
+  finally
+    nList.Free;
   end;
 end;
 

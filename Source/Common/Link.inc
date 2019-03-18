@@ -108,4 +108,6 @@
   //启用定量装车
   {$DEFINE BasisWeightWithPM}
   //库底计量: 定量装车时过皮毛中
+  {$DEFINE RemoteSnap}
+  //进厂车牌识别
 {$ENDIF}

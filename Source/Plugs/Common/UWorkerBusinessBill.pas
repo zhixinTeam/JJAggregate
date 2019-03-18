@@ -1766,6 +1766,7 @@ begin
               SF('L_NextStatus', ''),
               SF('L_Card', ''),
               SF('L_OutFact', sField_SQLServer_Now, sfVal),
+              SF('L_Value', 'L_Mvalue-L_Pvalue',sfVal),
               SF('L_OutMan', FIn.FBase.FFrom.FUser)
               ], sTable_Bill, SF('L_ID', FID), False);
       FListA.Add(nSQL); //更新交货单

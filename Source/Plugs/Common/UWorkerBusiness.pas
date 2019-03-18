@@ -96,6 +96,8 @@ type
     //存取车辆称重数据
     function GetStockBatcode(var nData: string): Boolean;
     //获取品种批次号
+    function VerifySnapTruck(var nData: string): Boolean;
+    //车牌比对
   public
     constructor Create; override;
     destructor destroy; override;
@@ -338,6 +340,7 @@ begin
    cBC_UserLogin           : Result := Login(nData);
    cBC_UserLogOut          : Result := LogOut(nData);
    cBC_GetStockBatcode     : Result := GetStockBatcode(nData);
+   cBC_VerifySnapTruck     : Result := VerifySnapTruck(nData);
    else
     begin
       Result := False;
@@ -1442,6 +1445,141 @@ begin
 
   Result := True;
   FOut.FBase.FResult := True;
+end;
+
+//Date: 2017-12-2
+//Parm: 车牌号(Truck); 交货单号(Bill);岗位(Pos)
+//Desc: 抓拍比对
+function TWorkerBusinessCommander.VerifySnapTruck(var nData: string): Boolean;
+var nStr: string;
+    nTruck, nBill, nPos, nSnapTruck, nEvent, nDept, nPicName: string;
+    nUpdate, nNeedManu: Boolean;
+begin
+  Result := False;
+  FListA.Text := FIn.FData;
+  nSnapTruck:= '';
+  nEvent:= '' ;
+  nNeedManu := False;
+
+  nTruck := FListA.Values['Truck'];
+  nBill  := FListA.Values['Bill'];
+  nPos   := FListA.Values['Pos'];
+  nDept  := FListA.Values['Dept'];
+
+  nStr := 'Select D_Value From %s Where D_Name=''%s'' and D_Memo=''%s''';
+  nStr := Format(nStr, [sTable_SysDict, sFlag_TruckInNeedManu,nPos]);
+  //xxxxx
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    if RecordCount > 0 then
+    begin
+      nNeedManu := FieldByName('D_Value').AsString = sFlag_Yes;
+    end;
+  end;
+  WriteLog('车牌识别:'+'岗位:'+nPos+'事件接收部门:'+nDept);
+
+  nData := '车辆[ %s ]车牌识别失败';
+  nData := Format(nData, [nTruck]);
+  FOut.FData := nData;
+  //default
+
+  nStr := 'Select * From %s Where S_ID=''%s'' order by R_ID desc ';
+  nStr := Format(nStr, [sTable_SnapTruck, nPos]);
+  //xxxxx
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    if RecordCount < 1 then
+    begin
+      if not nNeedManu then
+        Result := True;
+      nData := '车辆[ %s ]抓拍异常';
+      nData := Format(nData, [nTruck]);
+      FOut.FData := nData;
+      Exit;
+    end;
+
+    nPicName := '';
+
+    First;
+
+    while not Eof do
+    begin
+      nSnapTruck := FieldByName('S_Truck').AsString;
+      if nPicName = '' then//默认取最新一次抓拍
+        nPicName := FieldByName('S_PicName').AsString;
+      if Pos(nTruck,nSnapTruck) > 0 then
+      begin
+        Result := True;
+        nPicName := FieldByName('S_PicName').AsString;
+        //取得匹配成功的图片路径
+
+        nData := '车辆[ %s ]识别成功';
+        nData := Format(nData, [nTruck,nSnapTruck]);
+        FOut.FData := nData;
+        Exit;
+      end;
+      //车牌识别成功
+      Next;
+    end;
+  end;
+
+  nStr := 'Select * From %s Where E_ID=''%s''';
+  nStr := Format(nStr, [sTable_ManualEvent, nBill+sFlag_ManualE]);
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    if RecordCount > 0 then
+    begin
+      if FieldByName('E_Result').AsString = 'N' then
+      begin
+        nData := '车辆[ %s ]车牌识别失败,抓拍车牌号:[ %s ],管理员禁止进厂';
+        nData := Format(nData, [nTruck,nSnapTruck]);
+        FOut.FData := nData;
+        Exit;
+      end;
+      if FieldByName('E_Result').AsString = 'Y' then
+      begin
+        Result := True;
+        nData := '车辆[ %s ]车牌识别失败,抓拍车牌号:[ %s ],管理员允许';
+        nData := Format(nData, [nTruck,nSnapTruck]);
+        FOut.FData := nData;
+        Exit;
+      end;
+      nUpdate := True;
+    end
+    else
+    begin
+      nData := '车辆[ %s ]车牌识别失败,抓拍车牌号:[ %s ]';
+      nData := Format(nData, [nTruck,nSnapTruck]);
+      FOut.FData := nData;
+      nUpdate := False;
+      if not nNeedManu then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
+
+  nEvent := '车辆[ %s ]车牌识别失败,抓拍车牌号:[ %s ]';
+  nEvent := Format(nEvent, [nTruck,nSnapTruck]);
+
+  nStr := SF('E_ID', nBill+sFlag_ManualE);
+  nStr := MakeSQLByStr([
+          SF('E_ID', nBill+sFlag_ManualE),
+          SF('E_Key', nPicName),
+          SF('E_From', nDept),
+          SF('E_Result', 'Null', sfVal),
+
+          SF('E_Event', nEvent),
+          SF('E_Solution', sFlag_Solution_YN),
+          SF('E_Departmen', nDept),
+          SF('E_Date', sField_SQLServer_Now, sfVal)
+          ], sTable_ManualEvent, nStr, (not nUpdate));
+  //xxxxx
+  gDBConnManager.WorkerExec(FDBConn, nStr);
 end;
 
 initialization

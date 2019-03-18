@@ -266,6 +266,8 @@ const
   sFlag_InOutBegin    = 'BeginTime';                 //进出厂查询起始时间
   sFlag_InOutEnd      = 'EndTime';                   //进出厂查询结束时间
 
+  sFlag_TruckInNeedManu = 'TruckNeedManu';           //车牌识别需人工干预
+
   {*数据表*}
   sTable_Group        = 'Sys_Group';                 //用户组
   sTable_User         = 'Sys_User';                  //用户表
@@ -331,6 +333,7 @@ const
   sTable_PoundBak     = 'Sys_PoundBak';              //过磅作废
   sTable_Picture      = 'Sys_Picture';               //存放图片
   sTable_PoundDaiWC   = 'Sys_PoundDaiWuCha';         //包装误差
+  sTable_SnapTruck    = 'Sys_SnapTruck';             //车辆抓拍记录
 
   {*新建表*}
   sSQL_NewSysDict = 'Create Table $Table(D_ID $Inc, D_Name varChar(15),' +
@@ -1352,6 +1355,16 @@ const
    *.WOM_BillType: 业务类型  采购 销售
   -----------------------------------------------------------------------------}
 
+  sSQL_SnapTruck = 'Create Table $Table(R_ID $Inc, S_ID varChar(20), ' +
+       'S_Truck varChar(20), S_Date DateTime)';
+  {-----------------------------------------------------------------------------
+   微信发送日志:WeixinLog
+   *.R_ID:记录编号
+   *.S_ID: 抓拍岗位
+   *.S_Truck:抓拍车牌号
+   *.S_Date: 抓拍时间
+  -----------------------------------------------------------------------------}
+
 function CardStatusToStr(const nStatus: string): string;
 //磁卡状态
 function TruckStatusToStr(const nStatus: string): string;
@@ -1477,6 +1490,8 @@ begin
   AddSysTableItem(sTable_WeixinMatch, sSQL_NewWXMatch);
   AddSysTableItem(sTable_WeixinTemp, sSQL_NewWXTemplate);
   AddSysTableItem(sTable_WebOrderMatch,sSQL_NewWebOrderMatch);
+
+  AddSysTableItem(sTable_SnapTruck,sSQL_SnapTruck);    // 车牌识别记录
 end;
 
 //Desc: 清理系统表
