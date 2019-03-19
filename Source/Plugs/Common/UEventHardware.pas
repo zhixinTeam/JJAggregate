@@ -36,7 +36,7 @@ uses
   SysUtils, USysLoger, UHardBusiness, UMgrTruckProbe, UMgrParam,
   UMgrQueue, UMgrLEDCard, UMgrHardHelper, UMgrRemotePrint, U02NReader,
   UMgrERelay, UMgrCodePrinter, UMgrTTCEM100, UMgrRFID102, UMgrVoiceNet,
-  UMgrBasisWeight, UMgrRemoteSnap;
+  UMgrBasisWeight, UMgrRemoteSnap, USendStatusToDCS;
 
 class function THardwareWorker.ModuleInfo: TPlugModuleInfo;
 begin
@@ -124,6 +124,12 @@ begin
       gHKSnapHelper.LoadConfig(nCfg + 'RemoteSnap.xml');
     end;
     {$ENDIF}
+
+    {$IFDEF SendStatusToDcs}
+    nStr := 'DCS数据发送';
+    if FileExists(nCfg + 'DcsSender.xml') then
+      gDcsStatusSender.LoadConfig(nCfg + 'DcsSender.xml');
+    {$ENDIF}
   except
     on E:Exception do
     begin
@@ -210,12 +216,18 @@ begin
   {$IFDEF BasisWeight}
   gBasisWeightManager.TunnelManager.OnUserParseWeight := WhenParsePoundWeight;
   gBasisWeightManager.OnStatusChange := WhenBasisWeightStatusChange;
+  gBasisWeightManager.EnumTunnels(GetTruckLine);
   gBasisWeightManager.StartService;
   {$ENDIF}
 
   {$IFDEF RemoteSnap}
   gHKSnapHelper.StartSnap;
   //remote snap
+  {$ENDIF}
+
+  {$IFDEF SendStatusToDcs}
+  gDcsStatusSender.StartSender;
+  //向DCS发数据
   {$ENDIF}
 end;
 
@@ -272,6 +284,11 @@ begin
   {$IFDEF RemoteSnap}
   gHKSnapHelper.StopSnap;
   //remote snap
+  {$ENDIF}
+             
+  {$IFDEF SendStatusToDcs}
+  gDcsStatusSender.StopSender;
+  //向DCS发数据
   {$ENDIF}
 end;
 
