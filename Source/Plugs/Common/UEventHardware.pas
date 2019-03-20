@@ -125,10 +125,13 @@ begin
     end;
     {$ENDIF}
 
-    {$IFDEF SendStatusToDcs}
+    {$IFDEF SendStatusToDCS}
     nStr := 'DCS数据发送';
     if FileExists(nCfg + 'DcsSender.xml') then
+    begin
+      gDcsStatusSender := TSenderHelper.Create;
       gDcsStatusSender.LoadConfig(nCfg + 'DcsSender.xml');
+    end;
     {$ENDIF}
   except
     on E:Exception do
@@ -169,6 +172,7 @@ end;
 
 procedure THardwareWorker.BeforeStartServer;
 begin
+  gTruckQueueManager.OnLineLoad := WhenTruckLineChanged;
   gTruckQueueManager.StartQueue(gParamManager.ActiveParam.FDB.FID);
   //truck queue
 
@@ -216,7 +220,6 @@ begin
   {$IFDEF BasisWeight}
   gBasisWeightManager.TunnelManager.OnUserParseWeight := WhenParsePoundWeight;
   gBasisWeightManager.OnStatusChange := WhenBasisWeightStatusChange;
-  gBasisWeightManager.EnumTunnels(GetTruckLine);
   gBasisWeightManager.StartService;
   {$ENDIF}
 
@@ -226,7 +229,8 @@ begin
   {$ENDIF}
 
   {$IFDEF SendStatusToDcs}
-  gDcsStatusSender.StartSender;
+  if Assigned(gDcsStatusSender) then
+    gDcsStatusSender.StartSender;
   //向DCS发数据
   {$ENDIF}
 end;
@@ -286,8 +290,9 @@ begin
   //remote snap
   {$ENDIF}
              
-  {$IFDEF SendStatusToDcs}
-  gDcsStatusSender.StopSender;
+  {$IFDEF SendStatusToDCS}
+  if Assigned(gDcsStatusSender) then
+    gDcsStatusSender.StopSender;
   //向DCS发数据
   {$ENDIF}
 end;

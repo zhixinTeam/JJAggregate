@@ -8,26 +8,9 @@ interface
 
 uses
   Windows, Classes, SysUtils, SyncObjs, NativeXml, IdComponent, IdTCPConnection,
-  IdTCPClient, IdUDPServer, IdGlobal, IdSocketHandle, USysLoger, UWaitItem,
-  ULibFun;
+  IdTCPClient, IdGlobal, IdSocketHandle, UMgrBasisWeight, UWaitItem,
+  ULibFun, USysLoger, USysDB;
 
-type
-  PRPDataBase = ^TRPDataBase;
-  TRPDataBase = record
-    FCommand   : Byte;     //命令字
-    FDataLen   : Word;     //数据长
-  end;
-
-  PStatusData = ^TStatusData;
-  TStatusData = record
-    FBase      : TRPDataBase;
-    FData      : TIdBytes;
-  end;
-
-const
-  cRPCmd_PrintBill  = $95;  //打印单
-  cSizeRPBase       = SizeOf(TRPDataBase);
-  
 type
   TSenderItem = record
     FID        : string;
@@ -41,8 +24,6 @@ type
   private
     FOwner: TSenderHelper;
     //拥有者
-    FBuffer: TList;
-    //发送缓冲
     FWaiter: TWaitObject;
     //等待对象
     FClient: TIdTCPClient;
@@ -51,6 +32,7 @@ type
     procedure DoExuecte;
     procedure Execute; override;
     //执行线程
+    procedure DisconnectClient;
   public
     constructor Create(AOwner: TSenderHelper);
     destructor Destroy; override;
@@ -64,15 +46,8 @@ type
   TSenderHelper = class(TObject)
   private
     FHost: TSenderItem;
-    FPrinter: TSenderConnector;
+    FSender: TSenderConnector;
     //打印对象
-    FBuffData: TList;
-    //临时缓冲
-    FSyncLock: TCriticalSection;
-    //同步锁
-  protected
-    procedure ClearBuffer(const nList: TList);
-    //清理缓冲
   public
     constructor Create;
     destructor Destroy; override;
@@ -82,8 +57,6 @@ type
     procedure StartSender;
     procedure StopSender;
     //启停读取
-    procedure SendData(const nStatusData: TIdBytes);
-    //打印单
   end;
 
 var
@@ -94,84 +67,32 @@ implementation
 
 procedure WriteLog(const nEvent: string);
 begin
-  gSysLoger.AddLog(TSenderHelper, '远程打印服务', nEvent);
+  gSysLoger.AddLog(TSenderHelper, '同步DCS状态', nEvent);
 end;
 
 constructor TSenderHelper.Create;
 begin
-  FBuffData := TList.Create;
-  FSyncLock := TCriticalSection.Create;
+  FSender := nil;
 end;
 
 destructor TSenderHelper.Destroy;
 begin
   StopSender;
-  ClearBuffer(FBuffData);
-  FBuffData.Free;
-
-  FSyncLock.Free;
   inherited;
-end;
-
-procedure TSenderHelper.ClearBuffer(const nList: TList);
-var nIdx: Integer;
-    nBase: PRPDataBase;
-begin
-  for nIdx:=nList.Count - 1 downto 0 do
-  begin
-    nBase := nList[nIdx];
-
-    case nBase.FCommand of
-     cRPCmd_PrintBill : Dispose(PStatusData(nBase));
-    end;
-
-    nList.Delete(nIdx);
-  end;
 end;
 
 procedure TSenderHelper.StartSender;
 begin
-  if not Assigned(FPrinter) then
-    FPrinter := TSenderConnector.Create(Self);
-  FPrinter.WakupMe;
+  if not Assigned(FSender) then
+    FSender := TSenderConnector.Create(Self);
+  FSender.WakupMe;
 end;
 
 procedure TSenderHelper.StopSender;
 begin
-  if Assigned(FPrinter) then
-    FPrinter.StopMe;
-  FPrinter := nil;
-end;
-
-//Desc: 对nBill执行打印操作
-procedure TSenderHelper.SendData(const nStatusData: TIdBytes);
-var nIdx: Integer;
-    nPtr: PStatusData;
-    nBase: PRPDataBase;
-begin
-  FSyncLock.Enter;
-  try
-    for nIdx:=FBuffData.Count - 1 downto 0 do
-    begin
-      nBase := FBuffData[nIdx];
-      if nBase.FCommand <> cRPCmd_PrintBill then Continue;
-
-      nPtr := PStatusData(nBase);
-      //if CompareText(nStatusData, nPtr.FData) = 0 then Exit;
-    end;
-
-    New(nPtr);
-    FBuffData.Add(nPtr);
-
-    nPtr.FBase.FCommand := cRPCmd_PrintBill;
-    nPtr.FData := nStatusData;
-
-    if Assigned(FPrinter) then
-      FPrinter.WakupMe;
-    //xxxxx
-  finally
-    FSyncLock.Leave;
-  end;
+  if Assigned(FSender) then
+    FSender.StopMe;
+  FSender := nil;
 end;
 
 //Desc: 载入nFile配置文件
@@ -202,24 +123,20 @@ begin
   inherited Create(False);
   FreeOnTerminate := False;
   FOwner := AOwner;
-  
-  FBuffer := TList.Create;
+
   FWaiter := TWaitObject.Create;
   FWaiter.Interval := 1000;
 
   FClient := TIdTCPClient.Create;
-  FClient.ReadTimeout := 5 * 1000;
-  FClient.ConnectTimeout := 5 * 1000;
+  FClient.ReadTimeout := 3 * 1000;
+  FClient.ConnectTimeout := 3 * 1000;
 end;
 
 destructor TSenderConnector.Destroy;
 begin
-  FClient.Disconnect;
+  DisconnectClient;
   FClient.Free;
-
-  FOwner.ClearBuffer(FBuffer);
-  FBuffer.Free;
-
+  
   FWaiter.Free;
   inherited;
 end;
@@ -238,45 +155,39 @@ begin
   FWaiter.Wakeup;
 end;
 
+procedure TSenderConnector.DisconnectClient;
+begin
+  FClient.Disconnect;
+  if Assigned(FClient.IOHandler) then
+    FClient.IOHandler.InputBuffer.Clear;
+  //xxxxx
+end;
+
 procedure TSenderConnector.Execute;
-var nIdx: Integer;
 begin
   while not Terminated do
   try
     FWaiter.EnterWait;
     if Terminated then Exit;
 
+    if not FClient.Connected then
     try
-      if not FClient.Connected then
-      begin
-        FClient.Host := FOwner.FHost.FHost;
-        FClient.Port := FOwner.FHost.FPort;
-        FClient.Connect;
-      end;
+      FClient.Host := FOwner.FHost.FHost;
+      FClient.Port := FOwner.FHost.FPort;
+      FClient.Connect;
     except
-      WriteLog('连接远程打印服务失败.');
-      FClient.Disconnect;
-      Continue;
-    end;
-
-    FOwner.FSyncLock.Enter;
-    try
-      for nIdx:=0 to FOwner.FBuffData.Count - 1 do
-        FBuffer.Add(FOwner.FBuffData[nIdx]);
-      FOwner.FBuffData.Clear;
-    finally
-      FOwner.FSyncLock.Leave;
+      with FOwner.FHost do
+        WriteLog(Format('连接DCS服务[ %s:%d ]失败.', [FHost, FPort]));
+      //xxxxx
+      
+      DisconnectClient();
+      raise;
     end;
 
     try
       DoExuecte;
-      FOwner.ClearBuffer(FBuffer);
     except
-      FOwner.ClearBuffer(FBuffer);
-      FClient.Disconnect;
-      
-      if Assigned(FClient.IOHandler) then
-        FClient.IOHandler.InputBuffer.Clear;
+      DisconnectClient();
       raise;
     end;
   except
@@ -287,30 +198,100 @@ begin
   end;
 end;
 
-procedure TSenderConnector.DoExuecte;
-var nIdx: Integer;
-    nBuf,nTmp: TIdBytes;
-    nPBase: PRPDataBase;
-begin
-  for nIdx:=FBuffer.Count - 1 downto 0 do
-  begin
-    nPBase := FBuffer[nIdx];
+var
+  gBuffer: TIdBytes;
+  //发送缓存
+  gSweetHeart: Boolean = False;
+  //心跳标记
 
-    if nPBase.FCommand = cRPCmd_PrintBill then
+//Date: 2019-03-19
+//Parm: 通道列表
+//Desc: 组合nTunnels数据
+procedure Callback(const nTunnels: TList);
+const cSize = 20;
+var nStr: string;
+    nFlag: Byte;
+    nIdx: Integer;
+    nBuf: TIdBytes;
+
+    procedure MakeData(const nTunnel: PBWTunnel);
     begin
-      SetLength(nTmp, 0);
-      nTmp := PStatusData(nPBase).FData;
-      nPBase.FDataLen := Length(nTmp);
+      nFlag := 0;
+      FillChar(nBuf, cSize, #0);
+      
+      if Assigned(nTunnel.FFixParams) and
+         (nTunnel.FFixParams.Values['LineStatus'] <> '') then
+           nStr := nTunnel.FFixParams.Values['LineStatus']
+      else nStr := '0';
 
-      nBuf := RawToBytes(nPBase^, cSizeRPBase);
-      AppendBytes(nBuf, nTmp);
-      FClient.Socket.Write(nBuf);
+      nFlag := SetNumberBit(nFlag, 1, StrToInt(nStr), Bit_8); //装车位状态
+      if (nTunnel.FBill = '') or (nTunnel.FValue <= 0) then
+      begin
+        nBuf[0] := nFlag;
+        Exit;
+      end;
+
+      nStr := nTunnel.FParams.Values['CanFH'];
+      if nStr <> sFlag_Yes then
+      begin
+        nFlag := SetNumberBit(nFlag, 4, 1, Bit_8); //业务终止,关闭散装机
+        nBuf[0] := nFlag;
+        Exit;
+      end;
+
+      nFlag := SetNumberBit(nFlag, 2, 1, Bit_8); //可以放灰
+      if nTunnel.FWeightDone then
+        nFlag := SetNumberBit(nFlag, 3, 1, Bit_8);
+      //装车完成
+
+      if gSweetHeart then
+        nFlag := SetNumberBit(nFlag, 5, 1, Bit_8); //心跳
+      gSweetHeart := not gSweetHeart;
+
+      nBuf[0] := nFlag;
+      nStr := IntToStr(Trunc(nTunnel.FValue * 10));
+      nStr := StrWithWidth(nStr, 4, 2, '0', True);
+
+      nBuf[4] := StrToInt(nStr[1]);
+      nBuf[5] := StrToInt(nStr[2]);
+      nBuf[6] := StrToInt(nStr[3]);
+      nBuf[7] := StrToInt(nStr[4]); //应装
+
+      nStr := IntToStr(Trunc(nTunnel.FValTunnel * 10));
+      nStr := StrWithWidth(nStr, 4, 2, '0', True);
+
+      nBuf[8] := StrToInt(nStr[1]);
+      nBuf[9] := StrToInt(nStr[2]);
+      nBuf[10] := StrToInt(nStr[3]);
+      nBuf[11] := StrToInt(nStr[4]); //已装
+
+      nStr := IntToStr(Trunc(nTunnel.FValTruckP * 10));
+      nStr := StrWithWidth(nStr, 4, 2, '0', True);
+
+      nBuf[12] := StrToInt(nStr[1]);
+      nBuf[13] := StrToInt(nStr[2]);
+      nBuf[14] := StrToInt(nStr[3]);
+      nBuf[15] := StrToInt(nStr[4]); //皮重
     end;
-  end;  
+begin
+  SetLength(gBuffer, 0);
+  SetLength(nBuf, cSize);
+
+  for nIdx:=0 to nTunnels.Count - 1 do
+  begin
+    MakeData(nTunnels[nIdx]);
+    AppendBytes(gBuffer, nBuf);
+  end;
+end;
+
+procedure TSenderConnector.DoExuecte;
+begin
+  gBasisWeightManager.EnumTunnels(Callback);
+  FClient.Socket.Write(gBuffer);
 end;
 
 initialization
-  gDcsStatusSender := TSenderHelper.Create;
+  gDcsStatusSender := nil;
 finalization
   FreeAndNil(gDcsStatusSender);
 end.

@@ -110,4 +110,6 @@
   //库底计量: 定量装车时过皮毛中
   {$DEFINE RemoteSnap}
   //进厂车牌识别
+  {$DEFINE SendStatusToDCS}
+  //发送通道状态至DCS
 {$ENDIF}

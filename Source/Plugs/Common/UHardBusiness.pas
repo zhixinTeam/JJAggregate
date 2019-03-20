@@ -11,7 +11,8 @@ uses
   Windows, Classes, Controls, SysUtils, UMgrDBConn, UMgrParam, DB, IdGlobal,
   UBusinessWorker, UBusinessConst, UBusinessPacker, UMgrQueue, UFormCtrl,
   UMgrHardHelper, U02NReader, UMgrERelay, UMgrRemotePrint, UMgrTruckProbe,
-  UMgrRFID102, UMgrTTCEM100, UMgrBasisWeight, UMgrPoundTunnels, UMgrRemoteSnap;
+  UMgrRFID102, UMgrTTCEM100, UMgrBasisWeight, UMgrPoundTunnels,
+  UMgrRemoteSnap;
 
 procedure WhenReaderCardArrived(const nReader: THHReaderItem);
 procedure WhenHYReaderCardArrived(const nReader: PHYReaderItem);
@@ -28,6 +29,9 @@ function WhenParsePoundWeight(const nPort: PPTPortItem): Boolean;
 //地磅数据解析
 procedure WhenBasisWeightStatusChange(const nTunnel: PBWTunnel);
 //定量装车状态改变
+procedure WhenTruckLineChanged(const nTruckLine: TList);
+//通道状态切换
+
 function CheckStatus(nID:string):Boolean;
 function VerifySnapTruck(const nTruck,nBill,nPos,nDept: string;var nResult: string): Boolean;
 //车牌识别
@@ -856,17 +860,23 @@ begin
 end;
 
 //Date: 2019-03-12
-//Parm: 车辆;通道
+//Parm: 车辆;通道;皮重
 //Desc: 授权nTruck在nTunnel车道放灰
-procedure TruckStartFH(const nTruck: PTruckItem; const nTunnel: string);
+procedure TruckStartFH(const nTruck: PTruckItem; const nTunnel: string;
+ const nLading: TLadingBillItem);
 var nStr: string;
 begin
   gERelayManager.LineOpen(nTunnel);
   //开始放灰
 
   nStr := Format('Truck=%s', [nTruck.FTruck]);
-  gBasisWeightManager.StartWeight(nTunnel, nTruck.FBill, nTruck.FValue, 0, nStr);
+  gBasisWeightManager.StartWeight(nTunnel, nTruck.FBill, nTruck.FValue,
+    nLading.FPData.FValue, nStr);
   //开始定量装车
+
+  if nLading.FStatus <> sFlag_TruckIn then
+    gBasisWeightManager.SetParam(nTunnel, 'CanFH', sFlag_Yes);
+  //添加可放灰标记
 end;
 
 //Date: 2019-03-12
@@ -955,10 +965,10 @@ begin
          nStr := '请上磅装车'
     else nStr := '请开始装车';
 
-    ShowLEDHint(nTunnel, nStr, nTrucks[0].FTruck);
+    ShowLEDHint(nTunnel, nStr, nTrucks[0].FTruck); 
   end;
 
-  TruckStartFH(nPTruck, nTunnel);
+  TruckStartFH(nPTruck, nTunnel, nTrucks[0]);
   //执行放灰
 end;
 
@@ -987,7 +997,7 @@ begin
     MakeTruckLadingSan(nCard, nHost.FTunnel);
     {$ENDIF}
 
-    gBasisWeightManager.AppendParam(nHost.FTunnel, 'LEDText', nHost.FLEDText);
+    gBasisWeightManager.SetParam(nHost.FTunnel, 'LEDText', nHost.FLEDText, True);
     //附加参数
   end;
 end;
@@ -1076,7 +1086,7 @@ end;
 //Date: 2019-03-12
 //Parm: 交货单号;重量
 //Desc: 依据nBill状态写入nValue重量
-function SavePoundData(const nBill: string; const nValue: Double): Boolean;
+function SavePoundData(const nTunnel: PBWTunnel; const nValue: Double): Boolean;
 var nStr, nStatus: string;
     nDBConn: PDBWorker;
     nPValue, nNetValue: Double;
@@ -1086,13 +1096,13 @@ begin
     Result := False;
     try
       nStr := 'Select L_Status,L_Value,L_PValue From %s Where L_ID=''%s''';
-      nStr := Format(nStr, [sTable_Bill, nBill]);
+      nStr := Format(nStr, [sTable_Bill, nTunnel.FBill]);
 
       with gDBConnManager.SQLQuery(nStr, nDBConn) do
       begin
         if RecordCount < 1 then
         begin
-          WriteNearReaderLog(Format('交货单[ %s ]已丢失', [nBill]));
+          WriteNearReaderLog(Format('交货单[ %s ]已丢失', [nTunnel.FBill]));
           Exit;
         end;
 
@@ -1106,18 +1116,19 @@ begin
                   SF('L_LadeTime', sField_SQLServer_Now, sfVal),
                   SF('L_PValue', nValue, sfVal),
                   SF('L_PDate', sField_SQLServer_Now, sfVal)
-            ], sTable_Bill, SF('L_ID', nBill), False);
+            ], sTable_Bill, SF('L_ID', nTunnel.FBill), False);
           //xxxxx
 
           gDBConnManager.WorkerExec(nDBConn, nStr);
           Result := True;
+          gBasisWeightManager.SetTruckPValue(nTunnel.FID, nValue);
         end else
         begin            //if nStr = sFlag_TruckFH then //放灰状态,只更新重量,出厂时计算净重
           nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckBFM),
                   SF('L_NextStatus', sFlag_TruckOut),
                   SF('L_MValue', nValue, sfVal),
                   SF('L_MDate', sField_SQLServer_Now, sfVal)
-            ], sTable_Bill, SF('L_ID', nBill), False);
+            ], sTable_Bill, SF('L_ID', nTunnel.FBill), False);
           //xxxxx
 
           gDBConnManager.WorkerExec(nDBConn, nStr);
@@ -1161,6 +1172,9 @@ begin
   begin
     ShowLEDHint(nTunnel.FID, '装车业务关闭', nTunnel.FParams.Values['Truck']);
     WriteNearReaderLog(nTunnel.FID+'装车业务关闭');
+
+    gBasisWeightManager.SetParam(nTunnel.FID, 'CanFH', sFlag_No);
+    //通知DCS关闭装车
     Exit;
   end;
 
@@ -1177,6 +1191,8 @@ begin
 
     gERelayManager.LineClose(nTunnel.FID);
     //停止装车
+    gBasisWeightManager.SetParam(nTunnel.FID, 'CanFH', sFlag_No);
+    //通知DCS关闭装车
     Exit;
   end;
 
@@ -1196,10 +1212,12 @@ begin
 
     ShowLEDHint(nTunnel.FID, '数据平稳准备保存称重');
     WriteNearReaderLog(nTunnel.FID+'数据平稳准备保存称重');
-
-
-    if SavePoundData(nTunnel.FBill, nTunnel.FValHas) then
+                                   
+    if SavePoundData(nTunnel, nTunnel.FValHas) then
     begin
+      gBasisWeightManager.SetParam(nTunnel.FID, 'CanFH', sFlag_Yes);
+      //添加可放灰标记
+
       if CheckStatus(nTunnel.FBill) then
       begin
         ShowLEDHint(nTunnel.FID, '毛重保存完毕请下磅.');
@@ -1219,6 +1237,30 @@ begin
       ShowLEDHint(nTunnel.FID, '保存失败请联系管理员');
       WriteNearReaderLog(nTunnel.FID+'保存失败 请联系管理员');
     end;
+  end;
+end;
+
+//Date: 2019-03-19
+//Parm: 通道列表
+//Desc: 装车线状态切换
+procedure WhenTruckLineChanged(const nTruckLine: TList);
+var nStr: string;
+    nIdx: Integer;
+    nLine: PLineItem;
+begin
+  for nIdx:=nTruckLine.Count - 1 downto 0 do
+  begin
+    nLine := nTruckLine[nIdx];
+    if nLine.FIsValid then
+         nStr := '1'
+    else nStr := '0';
+
+    gBasisWeightManager.SetParam(nLine.FLineID, 'LineStatus', nStr, True);
+    //更新通道状态
+
+    if nLine.FIsValid then
+         gProberManager.OpenTunnel(nLine.FLineID)
+    else gProberManager.CloseTunnel(nLine.FLineID); //同步道闸
   end;
 end;
 
