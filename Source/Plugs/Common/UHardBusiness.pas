@@ -31,9 +31,8 @@ procedure WhenBasisWeightStatusChange(const nTunnel: PBWTunnel);
 //定量装车状态改变
 procedure WhenTruckLineChanged(const nTruckLine: TList);
 //通道状态切换
-
-function CheckStatus(nID:string):Boolean;
-function VerifySnapTruck(const nTruck,nBill,nPos,nDept: string;var nResult: string): Boolean;
+function VerifySnapTruck(const nTruck,nBill,nPos,nDept: string;
+  var nResult: string): Boolean;
 //车牌识别
 
 implementation
@@ -1089,58 +1088,46 @@ end;
 function SavePoundData(const nTunnel: PBWTunnel; const nValue: Double): Boolean;
 var nStr, nStatus: string;
     nDBConn: PDBWorker;
-    nPValue, nNetValue: Double;
 begin
   nDBConn := nil;
   try
     Result := False;
-    try
-      nStr := 'Select L_Status,L_Value,L_PValue From %s Where L_ID=''%s''';
-      nStr := Format(nStr, [sTable_Bill, nTunnel.FBill]);
-
-      with gDBConnManager.SQLQuery(nStr, nDBConn) do
+    nStr := 'Select L_Status,L_Value,L_PValue From %s Where L_ID=''%s''';
+    nStr := Format(nStr, [sTable_Bill, nTunnel.FBill]);
+     
+    with gDBConnManager.SQLQuery(nStr, nDBConn) do
+    begin
+      if RecordCount < 1 then
       begin
-        if RecordCount < 1 then
-        begin
-          WriteNearReaderLog(Format('交货单[ %s ]已丢失', [nTunnel.FBill]));
-          Exit;
-        end;
-
-        nStatus := FieldByName('L_Status').AsString;
-        nPValue := FieldByName('L_PValue').AsFloat;
-        nNetValue := nValue - nPValue;
-        if nStatus = sFlag_TruckIn then //皮重
-        begin
-          nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckBFP),
-                  SF('L_NextStatus', sFlag_TruckFH),
-                  SF('L_LadeTime', sField_SQLServer_Now, sfVal),
-                  SF('L_PValue', nValue, sfVal),
-                  SF('L_PDate', sField_SQLServer_Now, sfVal)
-            ], sTable_Bill, SF('L_ID', nTunnel.FBill), False);
-          //xxxxx
-
-          gDBConnManager.WorkerExec(nDBConn, nStr);
-          Result := True;
-          gBasisWeightManager.SetTruckPValue(nTunnel.FID, nValue);
-        end else
-        begin            //if nStr = sFlag_TruckFH then //放灰状态,只更新重量,出厂时计算净重
-          nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckBFM),
-                  SF('L_NextStatus', sFlag_TruckOut),
-                  SF('L_MValue', nValue, sfVal),
-                  SF('L_MDate', sField_SQLServer_Now, sfVal)
-            ], sTable_Bill, SF('L_ID', nTunnel.FBill), False);
-          //xxxxx
-
-          gDBConnManager.WorkerExec(nDBConn, nStr);
-          Result := True;
-        end;
+        WriteNearReaderLog(Format('交货单[ %s ]已丢失', [nTunnel.FBill]));
+        Exit;
       end;
-    except
-      on nErr: Exception do
+
+      nStatus := FieldByName('L_Status').AsString;
+      if nStatus = sFlag_TruckIn then //皮重
       begin
-        WriteNearReaderLog(nErr.Message);
-      end;
-    end;  
+        nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckBFP),
+                SF('L_NextStatus', sFlag_TruckFH),
+                SF('L_LadeTime', sField_SQLServer_Now, sfVal),
+                SF('L_PValue', nValue, sfVal),
+                SF('L_PDate', sField_SQLServer_Now, sfVal)
+          ], sTable_Bill, SF('L_ID', nTunnel.FBill), False);
+        gDBConnManager.WorkerExec(nDBConn, nStr);
+
+        gBasisWeightManager.SetTruckPValue(nTunnel.FID, nValue);
+        //更新通道皮重, 确认磅重上限
+      end else
+      begin
+        nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckBFM),
+                SF('L_NextStatus', sFlag_TruckOut),
+                SF('L_MValue', nValue, sfVal),
+                SF('L_MDate', sField_SQLServer_Now, sfVal)
+          ], sTable_Bill, SF('L_ID', nTunnel.FBill), False);
+        gDBConnManager.WorkerExec(nDBConn, nStr);
+      end; //放灰状态,只更新重量,出厂时计算净重
+    end;
+
+    Result := True;
   finally
     gDBConnManager.ReleaseConnection(nDBConn);
   end;   
@@ -1154,7 +1141,10 @@ var nStr, nTruck: string;
 begin
   if nTunnel.FStatusNew = bsProcess then
   begin
-    nStr := Format('%.2f/%.2f', [nTunnel.FValue, nTunnel.FValTunnel]);
+    if nTunnel.FWeightMax > 0 then
+         nStr := Format('%.2f/%.2f', [nTunnel.FWeightMax, nTunnel.FValTunnel])
+    else nStr := Format('%.2f/%.2f', [nTunnel.FValue, nTunnel.FValTunnel]);
+
     ShowLEDHint(nTunnel.FID, nStr, nTunnel.FParams.Values['Truck']);
     Exit;
   end;
@@ -1218,18 +1208,16 @@ begin
       gBasisWeightManager.SetParam(nTunnel.FID, 'CanFH', sFlag_Yes);
       //添加可放灰标记
 
-      if CheckStatus(nTunnel.FBill) then
+      if nTunnel.FWeightDone then
       begin
         ShowLEDHint(nTunnel.FID, '毛重保存完毕请下磅.');
         WriteNearReaderLog(nTunnel.FID+'毛重保存完毕,请下磅');
         gProberManager.OpenTunnel(nTunnel.FID + '_Z');
-      end
-      else
+      end else
       begin
-        ShowLEDHint(nTunnel.FID, '皮重保存完毕请等待装车.');
-        WriteNearReaderLog(nTunnel.FID+'皮重保存完毕,请等待装车');
+        ShowLEDHint(nTunnel.FID, '保存完毕请等待装车.');
+        WriteNearReaderLog(nTunnel.FID+'保存完毕,请等待装车');
       end;
-
     end else
     begin
       nTunnel.FStableDone := False;
@@ -1258,36 +1246,15 @@ begin
     gBasisWeightManager.SetParam(nLine.FLineID, 'LineStatus', nStr, True);
     //更新通道状态
 
+    {$IFDEF ReverseTrafficLight}
+    if nLine.FIsValid then
+         gProberManager.CloseTunnel(nLine.FLineID)
+    else gProberManager.OpenTunnel(nLine.FLineID);
+    {$ELSE}
     if nLine.FIsValid then
          gProberManager.OpenTunnel(nLine.FLineID)
-    else gProberManager.CloseTunnel(nLine.FLineID); //同步道闸
-  end;
-end;
-
-//判断当前状态是否允许抬起道闸
-function CheckStatus(nID:string):Boolean;
-var
-  nDBConn: PDBWorker;
-  nStr: string;
-begin
-  Result := False;
-  try
-    nDBConn := nil;
-    nStr := 'Select L_Status,L_Value From %s Where L_ID=''%s''';
-    nStr := Format(nStr, [sTable_Bill, nID]);
-
-    with gDBConnManager.SQLQuery(nStr, nDBConn) do
-    begin
-      if RecordCount < 1 then
-      begin
-        WriteNearReaderLog(Format('交货单[ %s ]已丢失', [nid]));
-        Exit;
-      end;
-      if FieldByName('L_Status').AsString = sFlag_TruckBFM then
-        Result := True;
-    end;
-  finally
-    gDBConnManager.ReleaseConnection(nDBConn);
+    else gProberManager.CloseTunnel(nLine.FLineID);
+    {$ENDIF} //同步道闸
   end;
 end;
 

@@ -217,14 +217,20 @@ var nStr: string;
     procedure MakeData(const nTunnel: PBWTunnel);
     begin
       nFlag := 0;
-      FillChar(nBuf, cSize, #0);
+      FillChar(nBuf[0], cSize, #0);
       
       if Assigned(nTunnel.FFixParams) and
          (nTunnel.FFixParams.Values['LineStatus'] <> '') then
            nStr := nTunnel.FFixParams.Values['LineStatus']
       else nStr := '0';
 
-      nFlag := SetNumberBit(nFlag, 1, StrToInt(nStr), Bit_8); //装车位状态
+      nFlag := SetNumberBit(nFlag, 1, StrToInt(nStr), Bit_8);
+      //装车位状态
+
+      if gSweetHeart then
+        nFlag := SetNumberBit(nFlag, 5, 1, Bit_8);
+      //心跳
+      
       if (nTunnel.FBill = '') or (nTunnel.FValue <= 0) then
       begin
         nBuf[0] := nFlag;
@@ -243,10 +249,6 @@ var nStr: string;
       if nTunnel.FWeightDone then
         nFlag := SetNumberBit(nFlag, 3, 1, Bit_8);
       //装车完成
-
-      if gSweetHeart then
-        nFlag := SetNumberBit(nFlag, 5, 1, Bit_8); //心跳
-      gSweetHeart := not gSweetHeart;
 
       nBuf[0] := nFlag;
       nStr := IntToStr(Trunc(nTunnel.FValue * 10));
@@ -277,11 +279,14 @@ begin
   SetLength(gBuffer, 0);
   SetLength(nBuf, cSize);
 
-  for nIdx:=0 to nTunnels.Count - 1 do
+  for nIdx:=nTunnels.Count - 1 downto 0 do
   begin
     MakeData(nTunnels[nIdx]);
     AppendBytes(gBuffer, nBuf);
   end;
+
+  gSweetHeart := not gSweetHeart;
+  //切换心跳
 end;
 
 procedure TSenderConnector.DoExuecte;

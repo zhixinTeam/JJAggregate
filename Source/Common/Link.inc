@@ -1,5 +1,5 @@
 //----------------------------------- 通用 -------------------------------------
-{$DEFINE DEBUG}
+{.$DEFINE DEBUG}
 //调试模式
 
 {.$DEFINE TrialVersion}
@@ -94,6 +94,8 @@
   //自动收卡票箱
   {$DEFINE MITTruckProber}
   //车检由中间件控制
+  {$DEFINE ReverseTrafficLight}
+  //反转红绿灯控制信号
   {.$DEFINE NoCheckOnPayment}
   //退款时不校验资金余额
   {$DEFINE MicroMsg}
