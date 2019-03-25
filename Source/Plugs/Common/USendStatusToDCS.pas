@@ -213,6 +213,8 @@ var nStr: string;
     nFlag: Byte;
     nIdx: Integer;
     nBuf: TIdBytes;
+    nVal: Integer;
+    nValBuf: TIdBytes;
 
     procedure MakeData(const nTunnel: PBWTunnel);
     begin
@@ -251,29 +253,29 @@ var nStr: string;
       //装车完成
 
       nBuf[0] := nFlag;
-      nStr := IntToStr(Trunc(nTunnel.FValue * 10));
-      nStr := StrWithWidth(nStr, 4, 2, '0', True);
+      nVal := Trunc(nTunnel.FValue * 10);
+      nValBuf := ToBytes(nVal);
 
-      nBuf[4] := StrToInt(nStr[1]);
-      nBuf[5] := StrToInt(nStr[2]);
-      nBuf[6] := StrToInt(nStr[3]);
-      nBuf[7] := StrToInt(nStr[4]); //应装
+      nBuf[4] := nValBuf[0];
+      nBuf[5] := nValBuf[1];
+      nBuf[6] := nValBuf[2];
+      nBuf[7] := nValBuf[3]; //应装
 
-      nStr := IntToStr(Trunc(nTunnel.FValTunnel * 10));
-      nStr := StrWithWidth(nStr, 4, 2, '0', True);
+      nVal := Trunc(nTunnel.FValTunnel * 10);
+      nValBuf := ToBytes(nVal);
 
-      nBuf[8] := StrToInt(nStr[1]);
-      nBuf[9] := StrToInt(nStr[2]);
-      nBuf[10] := StrToInt(nStr[3]);
-      nBuf[11] := StrToInt(nStr[4]); //已装
+      nBuf[8] := nValBuf[0];
+      nBuf[9] := nValBuf[1];
+      nBuf[10] := nValBuf[2];
+      nBuf[11] := nValBuf[3]; //已装
 
-      nStr := IntToStr(Trunc(nTunnel.FValTruckP * 10));
-      nStr := StrWithWidth(nStr, 4, 2, '0', True);
+      nVal := Trunc(nTunnel.FValTruckP * 10);
+      nValBuf := ToBytes(nVal);
 
-      nBuf[12] := StrToInt(nStr[1]);
-      nBuf[13] := StrToInt(nStr[2]);
-      nBuf[14] := StrToInt(nStr[3]);
-      nBuf[15] := StrToInt(nStr[4]); //皮重
+      nBuf[12] := nValBuf[0];
+      nBuf[13] := nValBuf[1];
+      nBuf[14] := nValBuf[2];
+      nBuf[15] := nValBuf[3]; //皮重
     end;
 begin
   SetLength(gBuffer, 0);

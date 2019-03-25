@@ -168,6 +168,7 @@ const
   sFlag_ManualC       = 'C';                         //净重超出误差范围
   sFlag_ManualD       = 'D';                         //空车出厂
   sFlag_ManualE       = 'E';                         //车牌识别
+  sFlag_ManualF       = 'F';                         //交货单余额不足
 
   sFlag_FactoryID     = 'FactoryID';                 //工厂编号
   sFlag_SysParam      = 'SysParam';                  //系统参数
@@ -701,7 +702,7 @@ const
    *.Z_ValidDays:有效期
    *.Z_Password: 密码
    *.Z_Money:可用金
-   *.Z_MoneyUsed: 已使用
+   *.Z_MoneyUsed: 已使用(出金)
    *.Z_MoneyAll: 使用全部
    *.Z_Verified:已审核
    *.Z_VerifyMan: 审核人

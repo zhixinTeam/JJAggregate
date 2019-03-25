@@ -753,22 +753,22 @@ begin
   end;
 
   nStr := 'Select Sum(Z_Money) From %s ' +
-          'Where Z_InValid=''%s'' And Z_Customer=''%s''';
-  nStr := Format(nStr, [sTable_ZhiKa, sFlag_No, FIn.FData]);
+          'Where Z_Customer=''%s'' and Z_InValid=''%s'' and Z_Money>0';
+  nStr := Format(nStr, [sTable_ZhiKa, FIn.FData, sFlag_No]);
 
   with gDBConnManager.WorkerQuery(FDBConn, nStr) do
     nHasUsed := Fields[0].AsFloat;
   //有效纸卡占用金额
 
-  nStr := 'Select Sum(L_Money) From (Select L_Value*L_Price as L_Money ' +
-          'From %s Where L_OutFact Is Null And L_CusID=''%s'' And ' +
-          'L_ZKMoney=''%s'') t';
-  nStr := Format(nStr, [sTable_Bill, FIn.FData, sFlag_Yes]);
+  nStr := 'Select Sum(L_Value*L_Price) as L_Money ' +
+          'From %s Where L_ZhiKa In (Select Z_ID From %s ' +
+          'Where Z_Customer=''%s'' and Z_InValid=''%s'' And Z_Money>0)';
+  nStr := Format(nStr, [sTable_Bill, sTable_ZhiKa, FIn.FData, sFlag_No]);
 
   with gDBConnManager.WorkerQuery(FDBConn, nStr) do
     nHasUsed := nHasUsed - Fields[0].AsFloat;
   nHasUsed := Float2Float(nHasUsed, cPrecision, True);
-  //未出厂(冻结)占用资金,限提纸卡的冻结金不予计算
+  //由于有效纸卡的出金和冻结金已从纸卡占用金额中扣除,需要补偿
 
   nStr := 'Select * From %s Where A_CID=''%s''';
   nStr := Format(nStr, [sTable_CusAccount, FIn.FData]);
@@ -950,26 +950,19 @@ begin
     if FieldByName('Z_InValid').AsString = sFlag_Yes then //已无效
     begin
       FOut.FData := '0';
-      FOut.FExtParam := sFlag_Yes;
+      FOut.FExtParam := sFlag_Yes; //限提
 
       Result := True;
       Exit;
     end;
 
-    nMoney := FieldByName('Z_Money').AsFloat -
-              FieldByName('Z_MoneyUsed').AsFloat;
-    //已出厂剩余
+    nMoney := FieldByName('Z_Money').AsFloat;
+    //纸卡资金总额
+    GetZhiKaUsedMoney(nData);
+    //纸卡已用金额
 
-    nStr := 'Select Sum(L_Money) From (Select L_Value*L_Price as L_Money ' +
-            'From %s Where L_OutFact Is Null And L_ZhiKa=''%s'') t';
-    nStr := Format(nStr, [sTable_Bill, FIn.FData]);
-
-    with gDBConnManager.WorkerQuery(FDBConn, nStr) do
-      nMoney := nMoney - Fields[0].AsFloat; //未出厂(冻结)占用资金
-    nMoney := Float2Float(nMoney, cPrecision, False);
-                                         
-    FOut.FData := FloatToStr(nMoney);
-    FOut.FExtParam := sFlag_Yes;
+    FOut.FData := FloatToStr(nMoney - StrToFloat(FOut.FData));
+    FOut.FExtParam := sFlag_Yes; //限提
     Result := True;
   end;
 end;
@@ -979,43 +972,38 @@ end;
 //Desc: 获取纸卡已用金额
 function TWorkerBusinessCommander.GetZhiKaUsedMoney(var nData: string): Boolean;
 var nStr: string;
-    nVal,nFreeze: Double;
+    nVal,nAll: Double;
 begin
   Result := True;
-  nStr := 'Select Z_MoneyUsed,Z_MoneyAll From %s Where Z_ID=''%s''';
-  nStr := Format(nStr, [sTable_ZhiKa, FIn.FData]);
-
-  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
-  begin
-    if RecordCount < 1 then
-    begin
-      Result := False;
-      nData := Format('纸卡[ %s ]已丢失.', [FIn.FData]);
-      Exit;
-    end;
-
-    nVal := FieldByName('Z_MoneyUsed').AsFloat;
-    nVal := Float2Float(nVal, cPrecision, True);
-
-    if FieldByName('Z_MoneyAll').AsString = sFlag_Yes then
-    begin
-      FOut.FData := FloatToStr(nVal);
-      Exit;
-    end; //不限提则不用处理冻结金
-  end;
-
-  nStr := 'Select Sum(L_Money) From (Select L_Value*L_Price as L_Money ' +
-          'From %s Where L_OutFact Is Null And L_ZhiKa=''%s'') t';
+  FOut.FData := '0';
+  FOut.FExtParam := '0';
+  
+  nStr := 'Select Sum(L_Money) As Money,L_OutFact From (' +
+    'Select L_Value*L_Price as L_Money,(Case When L_OutFact Is Null ' +
+    'Then 0 Else 1 End) as L_OutFact From %s ' +
+    'Where L_ZhiKa=''%s'') t Group By L_OutFact';
   nStr := Format(nStr, [sTable_Bill, FIn.FData]);
 
   with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  if RecordCount > 0 then
   begin
-    nFreeze := Float2Float(Fields[0].AsFloat, cPrecision, True);
-    nVal := nVal + nFreeze;
+    nAll := 0;
+    First;
     
-    FOut.FData := FloatToStr(nVal);
-    FOut.FExtParam := FloatToStr(nFreeze);
-  end; //未出厂(冻结)占用资金
+    while not Eof do
+    begin
+      nVal := Float2Float(Fields[0].AsFloat, cPrecision, True);
+      if FieldByName('L_OutFact').AsInteger < 1 then
+        FOut.FExtParam := FloatToStr(nVal);
+      //冻结金
+
+      nAll := nAll + nVal;
+      Next;
+    end;
+
+    FOut.FData := FloatToStr(nAll);
+    //总额:冻结金 + 出金
+  end;
 end;
 
 //Date: 2014-09-05
