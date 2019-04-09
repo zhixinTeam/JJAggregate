@@ -32,6 +32,8 @@ type
     //数据通道
     FDataIn,FDataOut: PBWDataBase;
     //入参出参
+    FDataInNeedUnPack: Boolean;
+    FDataOutNeedPack: Boolean;
     FDataOutNeedUnPack: Boolean;
     //需要解包
     procedure GetInOutData(var nIn,nOut: PBWDataBase); virtual; abstract;
@@ -163,10 +165,15 @@ begin
       FDBConn.FConn.Connected := True;
     //conn db
 
+    FDataInNeedUnPack := True;
+    FDataOutNeedPack := True;
     FDataOutNeedUnPack := True;
-    GetInOutData(FDataIn, FDataOut);
-    FPacker.UnPackIn(nData, FDataIn);
 
+    GetInOutData(FDataIn, FDataOut);
+    if FDataInNeedUnPack then
+      FPacker.UnPackIn(nData, FDataIn);
+    //xxxxx
+    
     with FDataIn.FVia do
     begin
       FUser   := gSysParam.FAppFlag;
@@ -200,7 +207,11 @@ begin
 
       with FDataOut.FVia do
         FKpLong := GetTickCount - FWorkTimeInit;
-      nData := FPacker.PackOut(FDataOut);
+      //xxxxx
+
+      if FDataOutNeedPack then
+        nData := FPacker.PackOut(FDataOut);
+      //xxxxx
 
       {$IFDEF DEBUG}
       WriteLog('Fun: '+FunctionName+' OutData:'+ FPacker.PackOut(FDataOut, False));

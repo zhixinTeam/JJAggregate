@@ -9,7 +9,6 @@ interface
 
 uses
   Windows, Classes, Controls, DB, SysUtils, UBusinessWorker, UBusinessPacker,
-  {$IFDEF MicroMsg}UMgrRemoteWXMsg,{$ENDIF}
   UWorkerBusiness, UBusinessConst, UMgrDBConn, ULibFun, UFormCtrl, UBase64,
   USysLoger, USysDB, UMITConst;
 
@@ -688,12 +687,6 @@ begin
     Values['bill'] := FOut.FData;
     Values['company'] := gSysParam.FHintText;
   end;
-
-  if FListA.Values['BuDan'] = sFlag_Yes then
-       nStr := cWXBus_OutFact
-  else nStr := cWXBus_MakeCard;
-
-  gWXPlatFormHelper.WXSendMsg(nStr, FListC.Text);
   {$ENDIF}
 end;
 
@@ -1768,31 +1761,43 @@ begin
       //交货单列表
 
       {$IFDEF BasisWeightWithPM} //库底计量,更新净重
-      if not TWorkerBusinessCommander.CallMe(cBC_GetZhiKaMoney,
-            FZhiKa, '', @nOut) then
-        raise Exception.Create(nOut.FData);
-      //xxxxx
-
-      nVal := StrToFloat(nOut.FData) + FPrice * FValue;
-      //纸卡可用金: 剩余金额 + 冻结金额
-      nVal := Float2Float(nVal, cPrecision, False);
-
-      nStr := 'Select L_MValue-L_PValue,L_Price From %s Where L_ID=''%s''';
-      nStr := Format(nStr, [sTable_Bill, FID]);
-
-      with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+      if (FType = sFlag_San) and (FYSValid <> sFlag_Yes) then //散装,非空车出厂
       begin
-        if RecordCount < 1 then
+        nStr := 'Select L_MValue-L_PValue,L_Price From %s Where L_ID=''%s''';
+        nStr := Format(nStr, [sTable_Bill, FID]);
+
+        with gDBConnManager.WorkerQuery(FDBConn, nStr) do
         begin
-          nData := Format('交货单[ %s ]已丢失', [FID]);
-          WriteLog(nData);
-          Exit;
+          if RecordCount < 1 then
+          begin
+            nData := Format('交货单[ %s ]已丢失', [FID]);
+            WriteLog(nData);
+            Exit;
+          end;
+
+          nMVal := Fields[0].AsFloat;
+          m := Float2Float(nMVal * Fields[1].AsFloat, cPrecision, True);
+          //交货单总额
+
+          if nMVal <= 0 then
+          begin
+            nData := Format('交货单[ %s ]净重[ %.2f吨 ]异常.', [FID, nMVal]);
+            Exit;
+          end;
         end;
+      end else nMVal := 0;
 
-        nMVal := Fields[0].AsFloat;
-        m := Float2Float(nMVal * Fields[1].AsFloat, cPrecision, True);
-        //交货单总额
+      if (nMVal > 0) and (nMVal <> FValue) then //交货量有变更
+      begin
+        if not TWorkerBusinessCommander.CallMe(cBC_GetZhiKaMoney,
+              FZhiKa, '', @nOut) then
+          raise Exception.Create(nOut.FData);
+        //xxxxx
 
+        nVal := StrToFloat(nOut.FData) + FPrice * FValue;
+        //纸卡可用金: 剩余金额 + 冻结金额
+        nVal := Float2Float(nVal, cPrecision, False);
+         
         if nVal < m then
         begin
           nSQL := FID + sFlag_ManualF;
@@ -1825,18 +1830,18 @@ begin
           gDBConnManager.WorkerExec(FDBConn, nSQL);
           Exit;
         end;
-      end;
 
-      m := m - Float2Float(FPrice * FValue, cPrecision, True);
-      //出金差额: 总额 - 冻结金额
+        m := m - Float2Float(FPrice * FValue, cPrecision, True);
+        //出金差额: 总额 - 冻结金额
       
-      nSQL := 'Update %s Set A_OutMoney=A_OutMoney+(%.2f) Where A_CID=''%s''';
-      nSQL := Format(nSQL, [sTable_CusAccount, m, FCusID]);
-      FListA.Add(nSQL); //更新出金
+        nSQL := 'Update %s Set A_OutMoney=A_OutMoney+(%.2f) Where A_CID=''%s''';
+        nSQL := Format(nSQL, [sTable_CusAccount, m, FCusID]);
+        FListA.Add(nSQL); //更新出金
 
-      nSQL := 'Update %s Set Z_MoneyUsed=Z_MoneyUsed+(%.2f) Where Z_ID=''%s''';
-      nSQL := Format(nSQL, [sTable_ZhiKa, m, FZhiKa]);
-      FListA.Add(nSQL); //更新纸卡
+        nSQL := 'Update %s Set Z_MoneyUsed=Z_MoneyUsed+(%.2f) Where Z_ID=''%s''';
+        nSQL := Format(nSQL, [sTable_ZhiKa, m, FZhiKa]);
+        FListA.Add(nSQL); //更新纸卡
+      end;
       {$ENDIF}
 
       nSQL := MakeSQLByStr([SF('L_Status', sFlag_TruckOut),
@@ -2014,8 +2019,6 @@ begin
       Values['bill'] := nStr;
       Values['company'] := gSysParam.FHintText;
     end;
-
-    gWXPlatFormHelper.WXSendMsg(cWXBus_OutFact, FListA.Text);
   end;
   {$ENDIF}
 end;

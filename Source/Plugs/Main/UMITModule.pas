@@ -13,10 +13,10 @@ uses
   Windows, Forms, Classes, SysUtils, ULibFun, UBusinessWorker, UBusinessPacker,
   UTaskMonitor, UBaseObject, USysShareMem, USysLoger, UMITConst, UMITPacker,
   {$IFDEF HardMon}UEventHardware, UWorkerHardware,{$ENDIF}
-  {$IFDEF MicroMsg}UMgrRemoteWXMsg,{$ENDIF}
-  UMemDataPool, UMgrDBConn, UMgrParam, UMgrPlug, UMgrChannel, UChannelChooser,
-  USAPConnection, UCronTasks, UWorkerBusiness, UWorkerBusinessBill,
-  UMgrRemoteSnap;
+  {$IFDEF MicroMsg}UWXMessager, UWorkerBussinessWechat,{$ENDIF}
+  UMemDataPool, UObjectList, UMgrDBConn, UMgrParam, UMgrPlug, UMgrChannel,
+  UChannelChooser, USAPConnection, UCronTasks, UWorkerBusiness,
+  UWorkerBusinessBill;
 
 procedure InitSystemObject(const nMainForm: THandle);
 procedure RunSystemObject;
@@ -25,12 +25,17 @@ procedure FreeSystemObject;
 
 implementation
 
+{$IFDEF DEBUG}
+uses UFormTest, UPlugConst;
+{$ENDIF}
 type
   TMainEventWorker = class(TPlugEventWorker)
   protected
-    procedure GetExtendMenu(const nList: TList); override;
     procedure BeforeStartServer; override;
     procedure AfterStopServer; override;
+    {$IFDEF DEBUG}
+    procedure GetExtendMenu(const nList: TList); override;
+    {$ENDIF}
   public
     class function ModuleInfo: TPlugModuleInfo; override;
   end;
@@ -49,20 +54,20 @@ begin
   end;
 end;
 
+{$IFDEF DEBUG}
 procedure TMainEventWorker.GetExtendMenu(const nList: TList);
-//var nMenu: PPlugMenuItem;
+var nItem: PPlugMenuItem;
 begin
-{
-  New(nMenu);
-  nList.Add(nMenu);
+  New(nItem);
+  nList.Add(nItem);
+  nItem.FName := 'Menu_Param_2';
 
-  nMenu.FModule := ModuleInfo.FModuleID;
-  nMenu.FName := '';
-  nMenu.FCaption := '';
-  nMenu.FFormID := 0;
-  nMenu.FDefault := True;
-}
+  nItem.FModule := ModuleInfo.FModuleID;
+  nItem.FCaption := '硬件测试';
+  nItem.FFormID := cFI_FormTest1;
+  nItem.FDefault := True;
 end;
+{$ENDIF}
 
 procedure TMainEventWorker.BeforeStartServer;
 begin
@@ -92,7 +97,7 @@ begin
   {$ENDIF} //channel auto select
 
   {$IFDEF MicroMsg}
-  gWXPlatFormHelper.StartPlatConnector;
+  //gWXMessager.StartService;
   {$ENDIF} //micro message
 
   gTaskMonitor.StartMon;
@@ -124,7 +129,7 @@ begin
   {$ENDIF} //db
 
   {$IFDEF MicroMsg}
-  gWXPlatFormHelper.StopPlatConnector;
+  gWXMessager.StopService;
   {$ENDIF} //micro message
 end;
 
@@ -158,6 +163,8 @@ begin
   //任务监控器
   gMemDataManager := TMemDataManager.Create;
   //内存管理器
+  gObjectPoolManager := TObjectPoolManager.Create;
+  //对象管理器
 
   gParamManager := TParamManager.Create(gPath + 'Parameters.xml');
   if gSysParam.FParam <> '' then
@@ -167,11 +174,6 @@ begin
   TBusinessWorkerSweetHeart.RegWorker(gParamManager.URLLocal.Text);
   //for channel manager
 
-  {$IFDEF ClientMon}
-  gProcessMonitorClient := TProcessMonitorClient.Create(gSysParam.FParam);
-  //process monitor
-  {$ENDIF}
-  
   {$IFDEF DBPool}
   gDBConnManager := TDBConnManager.Create;
   FillAllDBParam;
@@ -193,7 +195,7 @@ begin
   {$ENDIF}
 
   {$IFDEF MicroMsg}
-  gWXPlatFormHelper.LoadConfig(gPath + 'Hardware\MicroMsg.XML');
+  gWXMessager := TWXMessager.Create;
   {$ENDIF} //micro message
 
   with nParam do
@@ -227,27 +229,6 @@ end;
 procedure RunSystemObject;
 var nStr: string;
 begin
-  {$IFDEF ClientMon}
-  if Assigned(gParamManager.ActiveParam) and
-     Assigned(gParamManager.ActiveParam.FPerform) then
-  with gParamManager.ActiveParam.FPerform^ do
-  begin
-    if Assigned(gProcessMonitorSapMITClient) then
-    begin
-      gProcessMonitorSapMITClient.UpdateHandle(gPlugManager.RunParam.FMainForm,
-                                               GetCurrentProcessId, nStr);
-      gProcessMonitorSapMITClient.StartMonitor(nStr, FMonInterval);
-    end;
-
-    if Assigned(gProcessMonitorClient) then
-    begin
-      gProcessMonitorClient.UpdateHandle(gPlugManager.RunParam.FMainForm,
-                                               GetCurrentProcessId, nStr);
-      gProcessMonitorClient.StartMonitor(nStr, FMonInterval);
-    end;
-  end;
-  {$ENDIF}
-
   gPlugManager.RunSystemObject;
   //插件对象开始运行
 end;

@@ -328,7 +328,6 @@ const
   sTable_WeixinLog    = 'Sys_WeixinLog';             //微信日志
   sTable_WeixinMatch  = 'Sys_WeixinMatch';           //账号匹配
   sTable_WeixinTemp   = 'Sys_WeixinTemplate';        //信息模板
-  sTable_WebOrderMatch= 'S_WebOrderMatch';           //商城订单映射
 
   sTable_PoundLog     = 'Sys_PoundLog';              //过磅数据
   sTable_PoundBak     = 'Sys_PoundBak';              //过磅作废
@@ -1337,35 +1336,6 @@ const
    *.$ID:信息标识
   -----------------------------------------------------------------------------}
 
-  sSQL_NewWebOrderMatch = 'Create Table $Table(R_ID $Inc,'
-      +'WOM_WebOrderID varchar(32) null,'
-      +'WOM_LID varchar(20) null,'
-      +'WOM_StatusType Integer,'
-      +'WOM_MsgType Integer,'
-      +'WOM_BillType char(1),'
-      +'WOM_SyncNum Integer default 0,'
-      +'WOM_deleted char(1) default ''N'')';
-  {-----------------------------------------------------------------------------
-   商城订单与提货单对照表: WebOrderMatch
-   *.R_ID: 记录编号
-   *.WOM_WebOrderID: 商城订单
-   *.WOM_LID: 提货单
-   *.WOM_StatusType: 订单状态 0.开卡  1.完成
-   *.WOM_MsgType: 消息类型 开单  出厂  报表 删单
-   *.WOM_SyncNum: 发送次数
-   *.WOM_BillType: 业务类型  采购 销售
-  -----------------------------------------------------------------------------}
-
-  sSQL_SnapTruck = 'Create Table $Table(R_ID $Inc, S_ID varChar(20), ' +
-       'S_Truck varChar(20), S_Date DateTime)';
-  {-----------------------------------------------------------------------------
-   微信发送日志:WeixinLog
-   *.R_ID:记录编号
-   *.S_ID: 抓拍岗位
-   *.S_Truck:抓拍车牌号
-   *.S_Date: 抓拍时间
-  -----------------------------------------------------------------------------}
-
 function CardStatusToStr(const nStatus: string): string;
 //磁卡状态
 function TruckStatusToStr(const nStatus: string): string;
@@ -1490,9 +1460,6 @@ begin
   AddSysTableItem(sTable_WeixinLog, sSQL_NewWXLog);
   AddSysTableItem(sTable_WeixinMatch, sSQL_NewWXMatch);
   AddSysTableItem(sTable_WeixinTemp, sSQL_NewWXTemplate);
-  AddSysTableItem(sTable_WebOrderMatch,sSQL_NewWebOrderMatch);
-
-  AddSysTableItem(sTable_SnapTruck,sSQL_SnapTruck);    // 车牌识别记录
 end;
 
 //Desc: 清理系统表

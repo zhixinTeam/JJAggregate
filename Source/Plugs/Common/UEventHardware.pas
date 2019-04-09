@@ -21,9 +21,6 @@ type
     //服务启动之前调用
     procedure AfterStopServer; override;
     //服务关闭之后调用
-    {$IFDEF DEBUG}
-    procedure GetExtendMenu(const nList: TList); override;
-    {$ENDIF}
   end;
 
 var
@@ -141,21 +138,6 @@ begin
     end;
   end;
 end;
-
-{$IFDEF DEBUG}
-procedure THardwareWorker.GetExtendMenu(const nList: TList);
-var nItem: PPlugMenuItem;
-begin
-  New(nItem);
-  nList.Add(nItem);
-  nItem.FName := 'Menu_Param_2';
-
-  nItem.FModule := ModuleInfo.FModuleID;
-  nItem.FCaption := '硬件测试';
-  nItem.FFormID := cFI_FormTest2;
-  nItem.FDefault := False;
-end;
-{$ENDIF}
 
 procedure THardwareWorker.InitSystemObject;
 begin
