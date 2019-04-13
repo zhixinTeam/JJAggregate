@@ -64,6 +64,9 @@ type
 
     FDisplayDPI : Integer;                           //屏幕分辨率
     FAutoMin    : Boolean;                           //自动最小化
+
+    FWXFactoryID  : string;                          //微信工厂代码
+    FWXServiceURL : string;                          //微信服务地址
   end;
   //系统参数
 

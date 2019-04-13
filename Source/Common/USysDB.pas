@@ -234,6 +234,9 @@ const
   sFlag_HardSrvURL    = 'HardMonURL';
   sFlag_MITSrvURL     = 'MITServiceURL';             //服务地址
 
+  sFlag_WXSrvURL      = 'WXServiceURL';
+  sFlag_WXFactoryID   = 'WXFactoryID';               //微信服务
+
   sFlag_BusGroup      = 'BusFunction';               //业务编码组
   sFlag_BillNo        = 'Bus_Bill';                  //交货单号
   sFlag_PoundID       = 'Bus_Pound';                 //称重记录

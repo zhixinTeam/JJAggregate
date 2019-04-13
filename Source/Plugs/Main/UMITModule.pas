@@ -25,9 +25,9 @@ procedure FreeSystemObject;
 
 implementation
 
-{$IFDEF DEBUG}
-uses UFormTest, UPlugConst;
-{$ENDIF}
+uses
+  {$IFDEF DEBUG}UFormTest, UPlugConst,{$ENDIF}USysDB;
+
 type
   TMainEventWorker = class(TPlugEventWorker)
   protected
@@ -69,6 +69,41 @@ begin
 end;
 {$ENDIF}
 
+procedure LoadSystemParameters;
+var nStr: string;
+    nWorker: PDBWorker;
+begin
+  nWorker := nil;
+  try
+    nStr := 'Select * From %s Where D_Name=''%s''';
+    nStr := Format(nStr, [sTable_SysDict, sFlag_SysParam]);
+
+    with gDBConnManager.SQLQuery(nStr, nWorker),gSysParam do
+    if RecordCount > 0 then
+    begin
+      First;
+      while not Eof do
+      begin
+        nStr := FieldByName('D_Memo').AsString;
+        if CompareText(nStr, sFlag_WXSrvURL) = 0 then
+        begin
+          FWXServiceURL := FieldByName('D_Value').AsString +
+                           FieldByName('D_ParamB').AsString;
+          //host + path
+        end else
+
+        if CompareText(nStr, sFlag_WXFactory) = 0 then
+          FWXFactoryID := FieldByName('D_Value').AsString;
+        //xxxxx
+        
+        Next;
+      end;
+    end;
+  finally
+    gDBConnManager.ReleaseConnection(nWorker);
+  end;
+end;
+
 procedure TMainEventWorker.BeforeStartServer;
 begin
   {$IFDEF DBPool}
@@ -76,6 +111,7 @@ begin
   begin
     gDBConnManager.DefaultConnection := ActiveParam.FDB.FID;
     gDBConnManager.MaxConn := ActiveParam.FDB.FNumWorker;
+    LoadSystemParameters();
   end;
   {$ENDIF} //db
 

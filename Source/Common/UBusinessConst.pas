@@ -17,6 +17,7 @@ const
   {*channel type*}
   cBus_Channel_Connection     = $0002;
   cBus_Channel_Business       = $0005;
+  cBus_Channel_Wechat         = $0008;
 
   {*query field define*}
   cQF_Bill                    = $0001;
@@ -103,7 +104,10 @@ const
   cBC_VerifySnapTruck         = $0087;   //车牌比对
 
   cBC_WX_SQLQuery             = $0501;   //执行SQL查询
-  
+  cBC_WX_GetCustomers         = $0502;   //获取注册用户列表
+  cBC_WX_ForMakeZhiKa         = $0503;   //办理纸卡准备数据
+  cBC_WX_MakeZhiKa            = $0504;   //办理纸卡
+
 type
   PWorkerQueryFieldData = ^TWorkerQueryFieldData;
   TWorkerQueryFieldData = record
