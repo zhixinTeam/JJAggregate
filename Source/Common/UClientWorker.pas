@@ -337,7 +337,7 @@ end;
 //------------------------------------------------------------------------------
 class function TClientBusinessWechat.FunctionName: string;
 begin
-  Result := sCLI_BusinessWebchat;
+  Result := sCLI_BusinessWechat;
 end;
 
 function TClientBusinessWechat.GetFlagStr(const nFlag: Integer): string;
@@ -345,8 +345,8 @@ begin
   Result := inherited GetFlagStr(nFlag);
 
   case nFlag of
-   cWorker_GetPackerName : Result := sBus_BusinessWebchat;
-   cWorker_GetMITName    : Result := sBus_BusinessWebchat;
+   cWorker_GetPackerName : Result := sBus_BusinessCommand;
+   cWorker_GetMITName    : Result := sBus_BusinessWechat;
   end;
 end;
 

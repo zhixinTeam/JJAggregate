@@ -10,7 +10,8 @@ interface
 uses
   Windows, Classes, Controls, SysUtils, DB, ADODB, NativeXml, UBusinessWorker,
   UBusinessPacker, UBusinessConst, UMgrDBConn, UMgrParam, UFormCtrl, USysLoger,
-  ULibFun, USysDB, UMITConst, UMgrChannel, UWorkerBusiness, UObjectList, IdHTTP;
+  ULibFun, USysDB, UMITConst, UMgrChannel, UWorkerBusiness, UObjectList,
+  IdGlobal, IdStream, IdHTTP, IdMultipartFormData, ZnMD5;
 
 type
   TBusWorkerBusinessWechat = class(TMITDBWorker)
@@ -30,12 +31,23 @@ type
     function ParseRemoteOut(var nData: string): Boolean;
     {*解析输入*}
     function SQLQuery(var nData: string): Boolean;
+    function RemoteSQLQuery(var nData: string): Boolean;
     {*远程查询*}
+    function SQLExecute(var nData: string): Boolean;
+    {*远程写入*}
     function GetCustomers(var nData: string): Boolean;
+    function GetCustomersByID(var nData: string): Boolean;
     {*已注册用户*}
     function ForMakeZhiKa(var nData: string): Boolean;
     function MakeZhiKa(var nData: string): Boolean;
     {*办理纸卡*}
+    function ChangeZhiKaPwd(var nData: string): Boolean;
+    {*修改密码*}
+    function BindAccount(var nData: string): Boolean;
+    function UnbindAccount(var nData: string): Boolean;
+    {*绑定解绑*}
+    function SendWXMessage(var nData: string): Boolean;
+    {*发送消息*}
   public
     constructor Create; override;
     destructor destroy; override;
@@ -121,21 +133,57 @@ end;
 //Parm: 输入XML
 //Desc: 解析输入数据
 function TBusWorkerBusinessWechat.ParseRemoteIn(var nData: string): Boolean;
-var nNode: TXmlNode;
+var nStr: string;
+    nIdx: Integer;
+    nNode: TXmlNode;
 begin
   with FPacker.XMLBuilder do
   begin
     Result := True;
+    {$IFDEF DEBUG}WriteLog('WX Recv-Base64:' + nData);{$ENDIF}
+    nData := UTF8Decode( DecodeBase64(nData) );
+    {$IFDEF DEBUG}WriteLog('WX Recv:' + nData);{$ENDIF}
+
     ReadFromString(nData);
     nNode := Root.NodeByNameR('head');
-
     FIn.FCommand := StrToInt('$' + nNode.NodeByNameR('Command').ValueAsString);
     FIn.FData := nNode.NodeByNameR('Data').ValueAsString;
 
-    nNode := nNode.NodeByName('Param');
+    nNode := nNode.NodeByName('ExtParam');
     if Assigned(nNode) then
          FIn.FExtParam := nNode.ValueAsString
     else FIn.FExtParam := '';
+
+    if FIn.FCommand = cBC_WX_SQLExecute then //验证加密信息
+    begin
+      if Length(FIn.FExtParam) < 32 then
+      begin
+        nData := '验证信息无效';
+        Result := False;
+        Exit;
+      end;
+
+      nIdx := 0;
+      while nIdx < 3 do
+      begin
+        case nIdx of
+         0: nStr := Date2Str(Date());     //今天
+         1: nStr := Date2Str(Date() + 1); //明天
+         2: nStr := Date2Str(Date() - 1); //昨天
+        end;
+
+        Inc(nIdx);
+        nStr := StringReplace(nData, FIn.FExtParam, nStr + '_WXService', []);
+        nStr := MD5Print(MD5String(nStr));
+
+        WriteLog(nStr + ' ' + FIn.FExtParam);
+        if nStr = FIn.FExtParam then Exit;
+        //通过验证
+      end;
+
+      Result := False;
+      nData := '信息验证失败,操作已取消';
+    end;
   end;
 end;
 
@@ -162,21 +210,127 @@ end;
 //Desc: 本地调用业务对象
 class function TBusWorkerBusinessWechat.CallMe(const nCmd: Integer;
   const nData, nExt: string; var nResult: string): Boolean;
-var nWorker: TBusinessWorkerBase;
+var nStr: string;
+    nWorker: TBusinessWorkerBase;
 begin
   nWorker := nil;
   try
     nWorker := gBusinessWorkerManager.LockWorker(FunctionName);
     nResult := '<xml><head><command>%s</command><data>%s</data>' +
-               '<param>%s</param></head></xml>';
+               '<ExtParam>%s</ExtParam></head></xml>';
     //xxxxx
-    
-    nResult := Format(nResult, [IntToHex(nCmd, 2),
-               EscapeString(nData), EscapeString(nExt)]);
+
+    if nCmd = cBC_WX_SQLExecute then
+         nStr := Date2Str(Date()) + '_WXService'
+    else nStr := EscapeString(nExt);
+    nResult := Format(nResult, [IntToHex(nCmd, 2), EscapeString(nData), nStr]);
+
+    if nCmd = cBC_WX_SQLExecute then
+      nResult := StringReplace(nResult, nStr, MD5Print(MD5String(nResult)), []);
+    //xxxxx
+
+    {$IFDEF DEBUG}
+    nResult := nData;
+    {$ELSE}
+    nResult := EncodeBase64(UTF8Encode(nResult));
+    {$ENDIF}
     Result := nWorker.WorkActive(nResult);
   finally
     gBusinessWorkerManager.RelaseWorker(nWorker);
   end;
+end;
+
+//------------------------------------------------------------------------------
+type
+  TIdFormDataStream = class(TIdMultiPartFormDataStream)
+  protected
+    function IdRead(var VBuffer: TIdBytes; AOffset,
+     ACount: Longint): Longint; override;
+  end;
+
+function TIdFormDataStream.IdRead(var VBuffer: TIdBytes;
+ AOffset, ACount: Longint): Longint;
+var
+  LTotalRead: Integer;
+  LCount: Integer;
+  LBufferCount: Integer;
+  LRemaining : Integer;
+  LItem: TIdFormDataField;
+begin
+  if not FInitialized then begin
+    FInitialized := True;
+    FCurrentItem := 0;
+    SetLength(FInternalBuffer, 0);
+  end;
+
+  LTotalRead := 0;
+  LBufferCount := 0;
+
+  while (LTotalRead < ACount) and ((FCurrentItem < FFields.Count) or
+   (Length(FInternalBuffer) > 0)) do begin
+    if (Length(FInternalBuffer) = 0) and not Assigned(FInputStream) then begin
+      LItem := FFields.Items[FCurrentItem];
+      AppendString(FInternalBuffer, LItem.FormatField, -1, TIdTextEncoding.UTF8);
+
+      if Assigned(LItem.FieldObject) then begin
+        if (LItem.FieldObject is TStream) then begin
+          FInputStream := TStream(LItem.FieldObject);
+          FInputStream.Position := 0;
+        end else begin
+          if (LItem.FieldObject is TStrings) then begin
+            AppendString(FInternalBuffer, TStrings(LItem.FieldObject).Text,
+              -1, TIdTextEncoding.UTF8);
+            Inc(FCurrentItem);
+          end;
+        end;
+      end else begin
+        Inc(FCurrentItem);
+      end;
+    end;
+
+    if Length(FInternalBuffer) > 0 then begin
+      if Length(FInternalBuffer) > (ACount - LBufferCount) then begin
+        LCount := ACount - LBufferCount;
+      end else begin
+        LCount := Length(FInternalBuffer);
+      end;
+
+      if LCount > 0 then begin
+        LRemaining := Length(FInternalBuffer) - LCount;
+        CopyTIdBytes(FInternalBuffer, 0, VBuffer, LBufferCount, LCount);
+        if LRemaining > 0 then begin
+          CopyTIdBytes(FInternalBuffer, LCount, FInternalBuffer, 0, LRemaining);
+        end;
+        SetLength(FInternalBuffer, LRemaining);
+        LBufferCount := LBufferCount + LCount;
+        FPosition := FPosition + LCount;
+        LTotalRead := LTotalRead + LCount;
+      end;
+    end;
+
+    if Assigned(FInputStream) and (LTotalRead < ACount) then begin
+      LCount := TIdStreamHelper.ReadBytes(FInputStream,VBuffer,
+        ACount - LTotalRead, LBufferCount);
+      if LCount < (ACount - LTotalRead) then begin
+        FInputStream.Position := 0;
+        FInputStream := nil;
+        Inc(FCurrentItem);
+        SetLength(FInternalBuffer, 0);
+        AppendString(FInternalBuffer, #13#10);
+      end;
+
+      LBufferCount := LBufferCount + LCount;
+      LTotalRead := LTotalRead + LCount;
+      FPosition := FPosition + LCount;
+    end;
+
+    if FCurrentItem = FFields.Count then begin
+      AppendString(FInternalBuffer, PrepareStreamForDispatch,
+        -1, TIdTextEncoding.UTF8);
+      Inc(FCurrentItem);
+    end;
+  end;
+  Result := LTotalRead;
 end;
 
 //Date: 2015-03-03
@@ -184,18 +338,14 @@ end;
 function NewPool(const nClass: TClass): TObject;
 begin
   Result := nil;
-  if nClass = TIdHTTP then Result := TIdHTTP.Create(nil) else
-  if nClass = TStrings then Result := TStringList.Create() else
-  if nClass = TStringStream then Result := TStringStream.Create('');
+  if nClass = TIdHTTP then Result := TIdHTTP.Create(nil);
 end;
 
 //Date: 2015-03-03
 //Desc: 释放对象
 procedure FreePool(const nObject: TObject);
 begin
-  if nObject is TIdHTTP then TIdHTTP(nObject).Free else
-  if nObject is TStringList then TStringList(nObject).Free else
-  if nObject is TStringStream then TStringStream(nObject).Free;
+  if nObject is TIdHTTP then TIdHTTP(nObject).Free;
 end;
 
 //Date: 2019-04-09
@@ -203,35 +353,24 @@ end;
 //Desc: 调用远程nAPI执行业务
 class function TBusWorkerBusinessWechat.CallRemote(const nAPI,
  nData: string; var nResult: string): Boolean;
-var nList: TStrings;
-    nChannel: TIdHTTP;
-    nStream: TStringStream;
-    nPList,nPStream,nPChannel: PObjectPoolItem;
+var nChannel: TIdHTTP;
+    nPChannel: PObjectPoolItem;
+    nStream: TIdFormDataStream;
 begin
-  nPList := nil;
-  nPStream := nil;
+  nStream := nil;
   nPChannel := nil;
   try
     if InterlockedExchange(gWXURLInited, 10) < 1 then
     begin
       gObjectPoolManager.RegClass(TIdHTTP, NewPool, FreePool);
-      gObjectPoolManager.RegClass(TStrings, NewPool, FreePool);
-      gObjectPoolManager.RegClass(TStringStream, NewPool, FreePool);
     end; //reg pool
 
-    nPList := gObjectPoolManager.LockObject(TStrings);
     nPChannel := gObjectPoolManager.LockObject(TIdHTTP);
-    nPStream := gObjectPoolManager.LockObject(TStringStream);
-
-    nList := nPList.FObject as TStrings;
     nChannel := nPChannel.FObject as TIdHTTP;
-    nStream := nPStream.FObject as TStringStream;
-    
-    nList.Text := nData;
-    nStream.Size := 0;
-    nChannel.Post(gSysParam.FWXServiceURL + nAPI, nList, nStream);
 
-    nResult := nStream.DataString;
+    nStream := TIdFormDataStream.Create;
+    nStream.AddFormField('requestParameters', nData);
+    nResult := nChannel.Post(gSysParam.FWXServiceURL + nAPI, nStream);
     Result := True;
   except
     on nErr: Exception do
@@ -241,8 +380,7 @@ begin
     end;
   end;
 
-  gObjectPoolManager.ReleaseObject(nPList);
-  gObjectPoolManager.ReleaseObject(nPStream);
+  nStream.Free;
   gObjectPoolManager.ReleaseObject(nPChannel);
 end;
 
@@ -252,35 +390,47 @@ end;
 //Desc: 执行nData业务指令
 function TBusWorkerBusinessWechat.DoDBWork(var nData: string): Boolean;
 begin
+  Result := False;
   try
-    ParseRemoteIn(nData);
-    //解析输入
-    BuildDefaultXML('0', 'ok');
-    //初始化输出
+    try
+      Result := ParseRemoteIn(nData); //解析输入
+      if not Result then Exit;
+      BuildDefaultXML('0', 'ok');     //初始化输出
 
-    case FIn.FCommand of
-      cBC_WX_SQLQuery        : Result := SQLQuery(nData);
-      cBC_WX_GetCustomers    : Result := GetCustomers(nData);
-      cBC_WX_ForMakeZhiKa    : Result := ForMakeZhiKa(nData);
-      cBC_WX_MakeZhiKa       : Result := MakeZhiKa(nData)
-     else
+      case FIn.FCommand of
+       cBC_WX_SQLQuery        : Result := SQLQuery(nData);
+       cBC_WX_SQLExecute      : Result := SQLExecute(nData);
+       cBC_WX_GetCustomers    : Result := GetCustomers(nData);
+       cBC_WX_ForMakeZhiKa    : Result := ForMakeZhiKa(nData);
+       cBC_WX_MakeZhiKa       : Result := MakeZhiKa(nData);
+       cBC_WX_ChangeZhiKaPwd  : Result := ChangeZhiKaPwd(nData);
+       cBC_WX_BindAccount     : Result := BindAccount(nData);
+       cBC_WX_UnbindAccount   : Result := UnbindAccount(nData);
+       cBC_WX_SendWXMessage   : Result := SendWXMessage(nData)
+       else
+        begin
+          Result := False;
+          nData := '无效的业务代码(Code: %d Invalid Command).';
+          nData := Format(nData, [FIn.FCommand]);
+        end;
+      end;
+    except
+      on nErr: Exception do
       begin
         Result := False;
-        nData := '无效的业务代码(Code: %d Invalid Command).';
-        nData := Format(nData, [FIn.FCommand]);
+        nData := nErr.Message;
       end;
     end;
-  except
-    on nErr: Exception do
+  finally
+    if not Result then
     begin
-      Result := False;
-      nData := nErr.Message;
+      WriteLog(nData);
+      BuildDefaultXML(IntToStr(FIn.FCommand), nData);
     end;
-  end;
 
-  if not Result then
-    BuildDefaultXML(IntToStr(FIn.FCommand), nData);
-  nData := #10#13 + FPacker.XMLBuilder.WriteToString; //远程结果
+    nData := #10#13 + FPacker.XMLBuilder.WriteToString;
+    //远程结果
+  end;
 end;
 
 //Date: 2019-04-04
@@ -349,17 +499,95 @@ begin
   end;
 end;
 
+//Date: 2019-04-16
+//Parm: SQL语句
+//Desc: 在远程执行SQL查询
+function TBusWorkerBusinessWechat.RemoteSQLQuery(var nData: string): Boolean;
+begin
+  nData := Format('<?xml version="1.0" encoding="UTF-8"?>' +
+    '<xml><head><methodComand>ZX1005</methodComand></head>' +
+    '<data><querySql>%s</querySql></data></xml>', [EscapeString(nData)]);
+  //xxxxx
+
+  Result := CallRemote('provideInterface', nData, nData);
+  if not Result then Exit;
+
+  Result := ParseRemoteOut(nData);
+  if not Result then Exit;
+end;
+
+//Date: 2019-04-13
+//Parm: SQL语句[FIn.FParam];加密结果[FIn.FExtParam]
+//Desc: 验证加密是否有效,然后执行远程发送的写操作.
+function TBusWorkerBusinessWechat.SQLExecute(var nData: string): Boolean;
+const
+  cGood: array[0..2] of string = ('insert', 'update', 'delete');
+var nStr: string;
+    nIdx: Integer;
+    nBool: Boolean;
+begin
+  Result := False;
+  FIn.FData := TrimLeft(FIn.FData);
+
+  nIdx := Pos(' ', FIn.FData);
+  if nIdx < 2 then
+  begin
+    nData := '无效的查询语句';
+    Exit;
+  end;
+
+  nStr := Copy(FIn.FData, 1, nIdx - 1);
+  nStr := LowerCase(nStr);
+  nBool := False;
+  
+  for nIdx:=Low(cGood) to High(cGood) do
+  if cGood[nIdx] = nStr then
+  begin
+    nBool := True;
+    Break;
+  end;
+
+  if not nBool then
+  begin
+    nData := '权限不足';
+    Exit;
+  end;
+
+  nIdx := gDBConnManager.WorkerExec(FDBConn, FIn.FData);
+  Result := True;
+
+  with FPacker.XMLBuilder.Root.NodeNew('Result') do
+  begin
+    NodeNew('Rows').ValueAsInteger := nIdx;
+    NodeNew('SQL').ValueAsString := FIn.FData;
+  end;
+end;
+
 //Date: 2019-04-11
 //Parm: 无
 //Desc: 获取本厂已注册的微信用户
 function TBusWorkerBusinessWechat.GetCustomers(var nData: string): Boolean;
 begin
-  nData := 'sql=SELECT IC.real_name,IC.phone,IC.serial_no FROM info_customer IC ' +
-    'LEFT JOIN info_factory IFC ON IC.factory_id = IFC.factory_id ' +
+  nData := 'SELECT IC.real_name,IC.phone,IC.serial_no FROM info_customer IC ' +
+    ' LEFT JOIN info_factory IFC ON IC.factory_id = IFC.factory_id ' +
     'WHERE IFC.factory_unique_code=''%s'' AND IC.status=1 AND IFC.status=1';
+  //xxxxx
+  
+  nData := Format(nData, [gSysParam.FWXFactoryID]);
+  Result := RemoteSQLQuery(nData);
+end;
+
+//Date: 2019-04-18
+//Parm: 无
+//Desc: 获取本厂已注册的微信用户
+function TBusWorkerBusinessWechat.GetCustomersByID(var nData: string): Boolean;
+begin
+  nData := '<?xml version="1.0" encoding="UTF-8"?><xml>' +
+    '<head><methodComand>ZX1001</methodComand></head><data>' +
+    '<factoryUniqueCode>%s</factoryUniqueCode></data></xml>';
   nData := Format(nData, [gSysParam.FWXFactoryID]);
 
-  Result := CallRemote('apiQuerySql', nData, nData);
+  Result := CallRemote('provideInterface', nData, nData);
   if not Result then Exit;
 
   Result := ParseRemoteOut(nData);
@@ -410,8 +638,297 @@ begin
   end;
 end;
 
+//Date: 2019-04-18
+//Parm: 创单数据[FIn.FData]
+//Desc: 创建新纸卡
 function TBusWorkerBusinessWechat.MakeZhiKa(var nData: string): Boolean;
+var nStr,nCID,nSMan,nZID,nPwd: string;
+    nIdx: Integer;
+    nVal: Double;
+    nNode: TXmlNode;
+    nOut: TWorkerBusinessCommand;
 begin
+  with FPacker.XMLBuilder do
+  begin
+    Result := False;
+    ReadFromString(FIn.FData);
+    
+    nNode := Root.NodeByNameR('head');
+    nCID := nNode.NodeByNameR('clientNo').ValueAsString;
+    nStr := nNode.NodeByNameR('unlimitedAmount').ValueAsString;
+
+    if CompareText(nStr, 'yes') <> 0 then //纸卡限额
+    begin
+      nVal := nNode.NodeByNameR('paperCardAmount').ValueAsFloat;
+      nVal := Float2Float(nVal, cPrecision, True);
+      if nVal <= 0 then
+      begin
+        nData := '纸卡金额无效';
+        Exit;
+      end;   
+
+      if not TWorkerBusinessCommander.CallMe(cBC_GetCustomerMoney, nCID,
+        sFlag_Yes, @nOut) then  //get customer valid money,include credit
+      begin
+        nData := nOut.FData;
+        Exit;
+      end;
+
+      if FloatRelation(nVal, StrToFloat(nOut.FData), rtGreater) then
+      begin
+        nData := '客户资金余额不足';
+        Exit;
+      end;
+    end;
+
+    nStr := 'Select C_SaleMan From %s Where C_ID=''%s''';
+    nStr := Format(nStr, [sTable_Customer, nCID]);
+    with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+    begin
+      if RecordCount < 1 then
+      begin
+        nData := '客户信息已丢失';
+        Exit;
+      end;
+
+      nSMan := FieldByName('C_SaleMan').AsString;
+    end;
+
+    nNode := Root.NodeByNameR('Items');
+    if nNode.NodeCount > 0 then //纸卡明细
+    begin
+      nStr := 'Select D_Memo,D_ParamB From %s Where D_Name=''%s''';
+      nStr := Format(nStr, [sTable_SysDict, sFlag_StockItem]);
+      with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+      begin
+        if RecordCount < 1 then
+        begin
+          nData := '基础物料信息丢失';
+          Exit;
+        end;
+          
+        for nIdx:=nNode.NodeCount-1 downto 0 do
+        with nNode.Nodes[nIdx] do
+        begin
+          nStr := NodeByNameR('materialNo').ValueAsString;
+          First;
+
+          while not Eof do
+          begin
+            if FieldByName('D_ParamB').AsString = nStr then //物料号匹配
+            begin
+              NodeNew('materialType').ValueAsString := FieldByName('D_Memo').AsString;
+              Break;
+            end;
+            
+            Next;
+          end;
+        end;
+      end;
+    end;
+
+    with FListC do
+    begin
+      Clear;
+      Values['Group'] := sFlag_BusGroup;
+      Values['Object'] := sFlag_ZhiKa;
+    end;
+
+    Result := TWorkerBusinessCommander.CallMe(cBC_GetSerialNO, FListC.Text,
+      sFlag_No, @nOut);
+    //new zhika id
+    if not Result then 
+    begin
+      nData := nOut.FData;
+      Exit;
+    end else nZID := nOut.FData;
+
+    Result := TWorkerBusinessCommander.CallMe(cBC_MakeZhiKaPassword, '', '', @nOut);
+    if not Result then //new zhika password
+    begin
+      nData := nOut.FData;
+      Exit;
+    end else nPwd := nOut.FData;
+
+    //--------------------------------------------------------------------------
+    with Root.NodeByNameR('head') do
+    nStr := MakeSQLByStr([
+      SF('Z_Name', Trim(NodeByNameR('cardName').ValueAsString)),
+      SF('Z_Project', Trim(NodeByNameR('entryName').ValueAsString)),
+      SF('Z_Lading', sFlag_TiHuo),
+      SF('Z_InValid', sFlag_No),
+      SF('Z_ValidDays', NodeByNameR('termOfValidity').ValueAsString),
+      SF('Z_Password', nOut.FData),
+      SF('Z_Money', NodeByNameR('paperCardAmount').ValueAsString, sfVal),
+     
+      SF('Z_ID', nZID),
+      SF('Z_Customer', nCID),
+      SF('Z_SaleMan', nSMan),
+      SF('Z_MoneyUsed', 0, sfVal),
+      SF('Z_Freeze', sFlag_No),
+      SF('Z_Man', '微信办理'),
+      SF('Z_Date', sField_SQLServer_Now, sfVal),
+
+      SF_IF([SF('Z_MoneyAll', sFlag_Yes), SF('Z_MoneyAll', sFlag_No)],
+        CompareText(NodeByNameR('unlimitedAmount').ValueAsString, 'yes') = 0),
+      //all money
+      SF('Z_Verified', sFlag_Yes)
+      ], sTable_ZhiKa, '', True);
+    FListA.Add(nStr);
+
+    nNode := Root.NodeByNameR('Items');
+    for nIdx:=nNode.NodeCount-1 downto 0 do
+    with nNode.Nodes[nIdx] do
+    begin
+      nStr := MakeSQLByStr([SF('D_ZID', nZID),
+              SF('D_Type', NodeByNameR('materialType').ValueAsString),
+              SF('D_StockNo', NodeByNameR('materialNo').ValueAsString),
+              SF('D_StockName', NodeByNameR('materialName').ValueAsString),
+              SF('D_Price', 0, sfVal),
+              SF('D_Value', 0, sfVal),
+              SF('D_FLPrice', 0, sfVal),
+              SF('D_YunFei', 0, sfVal),
+              SF('D_PPrice', 0, sfVal),
+              SF('D_TPrice', sFlag_Yes)
+              ], sTable_ZhiKaDtl, '', True);
+      FListA.Add(nStr);
+    end;
+
+    FDBConn.FConn.BeginTrans;
+    try
+      for nIdx:=0 to FListA.Count-1 do
+        gDBConnManager.WorkerExec(FDBConn, FListA[nIdx]);
+      FDBConn.FConn.CommitTrans;
+
+      Result := True;
+      BuildDefaultXML('0', 'ok');
+      Root.NodeNew('ZhiKa').ValueAsString := nZID;
+    except
+      FDBConn.FConn.RollbackTrans;
+      raise;
+    end;  
+  end;
+end;
+
+//Date: 2019-04-18
+//Parm: 纸卡号[FIn.FData]
+//Desc: 修改纸卡密码,返回新密码
+function TBusWorkerBusinessWechat.ChangeZhiKaPwd(var nData: string): Boolean;
+var nStr: string;
+    nOut: TWorkerBusinessCommand;
+begin
+  Result := TWorkerBusinessCommander.CallMe(cBC_MakeZhiKaPassword, '', '', @nOut);
+  if not Result then
+  begin
+    nData := nOut.FData;
+    Exit;
+  end;
+
+  nStr := 'Select Count(*) From %s Where Z_ID=''%s''';
+  nStr := Format(nStr, [sTable_ZhiKa, FIn.FData]);
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  if Fields[0].AsInteger <> 1 then
+  begin
+    Result := False;
+    nData := '单据号无效';
+    Exit;
+  end;
+
+  nStr := 'Update %s Set Z_Password=''%s'' Where Z_ID=''%s''';
+  nStr := Format(nStr, [sTable_ZhiKa, nOut.FData, FIn.FData]);
+  gDBConnManager.WorkerExec(FDBConn, nStr);
+
+  with FPacker.XMLBuilder.Root do
+  begin
+    NodeNew('NewPassword').ValueAsString := nOut.FData;
+  end;
+end;
+
+//Date: 2019-04-18
+//Desc: 绑定商城账户
+function TBusWorkerBusinessWechat.BindAccount(var nData: string): Boolean;
+begin
+  nData := '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<xml><head><methodComand>ZX1002</methodComand></head><data>' +
+    '<clientNo>$CusID</clientNo><clientName>$CusName</clientName>' +
+    '<factoryUniqueCode>$Code</factoryUniqueCode>' +
+    '<serialNo>$No</serialNo></data></xml>';
+  //xxxxx
+
+  FListA.Text := DecodeBase64(FIn.FData);
+  nData := MacroValue(nData, [MI('$CusID', FListA.Values['CusID']),
+    MI('$CusName', EscapeString(FListA.Values['CusName'])),
+    MI('$Code', gSysParam.FWXFactoryID),
+    MI('$No', FListA.Values['SerialNo'])]);
+  //xxxxx
+
+  Result := CallRemote('provideInterface', nData, nData);
+  if not Result then Exit;
+
+  Result := ParseRemoteOut(nData);
+  if not Result then Exit;
+
+  nData := 'Update %s Set C_Phone=''%s'',C_WeiXin=''%s'' Where  ';
+  nData := Format(nData, [sTable_Customer]);
+end;
+
+//Date: 2019-04-18
+//Desc: 解除商城绑定
+function TBusWorkerBusinessWechat.UnbindAccount(var nData: string): Boolean;
+begin
+  nData := '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<xml><head><methodComand>ZX1003</methodComand></head><data>' +
+    '<clientNo>$CusID</clientNo>' +
+    '<factoryUniqueCode>$Code</factoryUniqueCode></data></xml>';
+  //xxxxx
+
+  FListA.Text := DecodeBase64(FIn.FData);
+  nData := MacroValue(nData, [MI('$CusID', FListA.Values['CusID']),
+    MI('$Code', gSysParam.FWXFactoryID)]);
+  //xxxxx
+
+  Result := CallRemote('provideInterface', nData, nData);
+  if not Result then Exit;
+
+  Result := ParseRemoteOut(nData);
+  if not Result then Exit;
+end;
+
+//Date: 2019-04-18
+//Desc: 推送微信消息
+function TBusWorkerBusinessWechat.SendWXMessage(var nData: string): Boolean;
+begin
+  if FIn.FExtParam = sFlag_Yes then //立即发送
+  begin
+    Result := CallRemote('provideInterface', FIn.FData, nData);
+    if not Result then Exit;
+
+    Result := ParseRemoteOut(nData);
+    Exit;
+  end;
+
+  nData := '<?xml version="1.0" encoding="UTF-8"?>' +
+    '<xml><head><methodComand>ZX1004</methodComand></head><data>' +
+    '<serialNo>$No</serialNo><msgEventKey>$Key</msgEventKey>' +
+    '<factoryUniqueCode>$Code</factoryUniqueCode>' +
+    '<l_StockName>$SName</l_StockName><z_Name>$ZName</z_Name>' +
+    '<l_Id>$Bill</l_Id><l_Truck>$Truck</l_Truck>' +
+    '<l_value>$Value</l_value><c_Name>$CName</c_Name></data></xml>';
+  //xxxxx
+
+  FListA.Text := DecodeBase64(FIn.FData);
+  nData := MacroValue(nData, [MI('$No', FListA.Values['SerialNo']),
+    MI('$Key',    FListA.Values['Key']),
+    MI('$SName',  FListA.Values['SName']),
+    MI('$ZName',  FListA.Values['ZName']),
+    MI('$Bill',   FListA.Values['Bill']),
+    MI('$Truck',  FListA.Values['Truck']),
+    MI('$Value',  FListA.Values['Value']),
+    MI('$CName',  EscapeString(FListA.Values['CName'])),
+    MI('$Code', gSysParam.FWXFactoryID)]);
+  //xxxxx
+
 
 end;
 

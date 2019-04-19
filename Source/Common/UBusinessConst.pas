@@ -104,9 +104,14 @@ const
   cBC_VerifySnapTruck         = $0087;   //车牌比对
 
   cBC_WX_SQLQuery             = $0501;   //执行SQL查询
-  cBC_WX_GetCustomers         = $0502;   //获取注册用户列表
-  cBC_WX_ForMakeZhiKa         = $0503;   //办理纸卡准备数据
-  cBC_WX_MakeZhiKa            = $0504;   //办理纸卡
+  cBC_WX_SQLExecute           = $0502;   //执行写操作
+  cBC_WX_GetCustomers         = $0511;   //获取注册用户列表
+  cBC_WX_ForMakeZhiKa         = $0512;   //办理纸卡准备数据
+  cBC_WX_MakeZhiKa            = $0513;   //办理纸卡
+  cBC_WX_ChangeZhiKaPwd       = $0514;   //修改纸卡密码
+  cBC_WX_BindAccount          = $0520;   //绑定账号
+  cBC_WX_UnbindAccount        = $0521;   //解除绑定
+  cBC_WX_SendWXMessage        = $0522;   //发送消息
 
 type
   PWorkerQueryFieldData = ^TWorkerQueryFieldData;
@@ -223,6 +228,7 @@ resourcestring
   sCLI_BusinessSaleBill       = 'CLI_BusinessSaleBill'; //交货单业务
   sCLI_BusinessCommand        = 'CLI_BusinessCommand';  //业务指令
   sCLI_HardwareCommand        = 'CLI_HardwareCommand';  //硬件指令
+  sCLI_BusinessWechat         = 'CLI_BusinessWechat';   //微信服务
   sCLI_BusinessPurchaseOrder  = 'CLI_BusinessPurchaseOrder'; //采购单相关
 
 implementation

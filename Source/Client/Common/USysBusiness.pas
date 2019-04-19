@@ -267,7 +267,7 @@ function VerifyManualEventRecord(const nEID: string; var nHint: string;
  const nWant: string = sFlag_Yes; const nUpdateHint: Boolean = True): Boolean;
 //检查事件是否通过处理
 
-function getCustomerInfo(const nData: string): string;
+function WXGetCustomers(const nData: string): string;
 //获取客户注册信息
 function get_Bindfunc(const nData: string): string;
 //客户与微信账号绑定
@@ -281,16 +281,6 @@ function get_shoporders(const nData: string): string;
 //获取订单信息
 function complete_shoporders(const nData: string): string;
 //更新订单状态
-function getAuditTruck(const nData: string): string;
-//获取审核车辆
-function UploadAuditTruck(const nData: string): string;
-//审核车辆结果上传
-function DownLoadPic(const nData: string): string;
-//下载照片
-function GetshoporderbyTruck(const nData: string): string;
-//根据车牌号获取订单
-procedure SaveWebOrderDelMsg(const nLID, nBillType: string);
-//插入推送消息
 
 implementation
 
@@ -492,9 +482,9 @@ end;
 //Date: 2017-10-26
 //Parm: 命令;数据;参数;服务地址;输出
 //Desc: 调用中间件上的销售单据对象
-function CallBusinessWechat(const nCmd: Integer; const nData,nExt,nSrvURL: string;
-  const nOut: PWorkerWebChatData; const nWarn: Boolean = True): Boolean;
-var nIn: TWorkerWebChatData;
+function CallBusinessWechat(const nCmd: Integer; const nData,nExt: string;
+  const nOut: PWorkerBusinessCommand; const nWarn: Boolean = True): Boolean;
+var nIn: TWorkerBusinessCommand;
     nWorker: TBusinessWorkerBase;
 begin
   nWorker := nil;
@@ -502,7 +492,6 @@ begin
     nIn.FCommand := nCmd;
     nIn.FData := nData;
     nIn.FExtParam := nExt;
-    nIn.FRemoteUL := nSrvURL;
 
     if nWarn then
          nIn.FBase.FParam := ''
@@ -512,7 +501,7 @@ begin
       nIn.FBase.FParam := sParam_NoHintOnError;
     //close hint param
     
-    nWorker := gBusinessWorkerManager.LockWorker(sCLI_BusinessWebchat);
+    nWorker := gBusinessWorkerManager.LockWorker(sCLI_BusinessWechat);
     //get worker
     Result := nWorker.WorkActive(@nIn, nOut);
 
@@ -2804,10 +2793,10 @@ end;
 
 //------------------------------------------------------------------------------
 //获取客户注册信息
-function getCustomerInfo(const nData: string): string;
+function WXGetCustomers(const nData: string): string;
 var nOut: TWorkerBusinessCommand;
 begin
-  if CallBusinessWechat(cBC_WX_getCustomerInfo, nData, '', '', @nOut) then
+  if CallBusinessWechat(cBC_WX_GetCustomers, nData, '', @nOut) then
        Result := nOut.FData
   else Result := '';
 end;
@@ -2816,96 +2805,56 @@ end;
 function get_Bindfunc(const nData: string): string;
 var nOut: TWorkerBusinessCommand;
 begin
-  if CallBusinessWechat(cBC_WX_get_Bindfunc, nData, '', '', @nOut) then
+  //if CallBusinessWechat(cBC_WX_get_Bindfunc, nData, '', '', @nOut) then
        Result := nOut.FData
-  else Result := '';
+  //else Result := '';
 end;
 
 //发送消息
 function send_event_msg(const nData: string): string;
 var nOut: TWorkerBusinessCommand;
 begin
-  if CallBusinessWechat(cBC_WX_send_event_msg, nData, '', '', @nOut,false) then
+  //if CallBusinessWechat(cBC_WX_send_event_msg, nData, '', '', @nOut,false) then
        Result := nOut.FData
-  else Result := '';
+ // else Result := '';
 end;
 
 //新增商城用户
 function edit_shopclients(const nData: string): string;
 var nOut: TWorkerBusinessCommand;
 begin
-  if CallBusinessWechat(cBC_WX_edit_shopclients, nData, '', '', @nOut) then
+  //if CallBusinessWechat(cBC_WX_edit_shopclients, nData, '', '', @nOut) then
        Result := nOut.FData
-  else Result := '';
+  //else Result := '';
 end;
 
 //添加商品
 function edit_shopgoods(const nData: string): string;
 var nOut: TWorkerBusinessCommand;
 begin
-  if CallBusinessWechat(cBC_WX_edit_shopgoods, nData, '', '', @nOut) then
+  //if CallBusinessWechat(cBC_WX_edit_shopgoods, nData, '', '', @nOut) then
        Result := nOut.FData
-  else Result := '';
+  //else Result := '';
 end;
 
 //获取订单信息
 function get_shoporders(const nData: string): string;
 var nOut: TWorkerBusinessCommand;
 begin
-  if CallBusinessWechat(cBC_WX_get_shoporders, nData, '', '', @nOut) then
+  //if CallBusinessWechat(cBC_WX_get_shoporders, nData, '', '', @nOut) then
        Result := nOut.FData
-  else Result := '';
+  //else Result := '';
 end;
 
 //更新订单状态
 function complete_shoporders(const nData: string): string;
 var nOut: TWorkerBusinessCommand;
 begin
-  if CallBusinessWechat(cBC_WX_complete_shoporders, nData, '', '', @nOut) then
+  //if CallBusinessWechat(cBC_WX_complete_shoporders, nData, '', '', @nOut) then
        Result := nOut.FData
-  else Result := '';
+  //else Result := '';
 end;
-
-//------------------------------------------------------------------------------
-//获取车辆审核信息
-function getAuditTruck(const nData: string): string;
-var nOut: TWorkerBusinessCommand;
-begin
-  if CallBusinessWechat(cBC_WX_GetAuditTruck, nData, '', '', @nOut) then
-       Result := nOut.FData
-  else Result := '';
-end;
-
-//------------------------------------------------------------------------------
-//车辆审核结果上传
-function UpLoadAuditTruck(const nData: string): string;
-var nOut: TWorkerWebChatData;
-begin
-  if CallBusinessWechat(cBC_WX_UpLoadAuditTruck, nData, '', '', @nOut) then
-       Result := nOut.FData
-  else Result := '';
-end;
-
-//------------------------------------------------------------------------------
-//下载图片
-function DownLoadPic(const nData: string): string;
-var nOut: TWorkerBusinessCommand;
-begin
-  if CallBusinessWechat(cBC_WX_DownLoadPic, nData, '', '', @nOut) then
-       Result := nOut.FData
-  else Result := '';
-end;
-
-//------------------------------------------------------------------------------
-//根据车牌号获取订单
-function GetshoporderbyTruck(const nData: string): string;
-var nOut: TWorkerBusinessCommand;
-begin
-  if CallBusinessWechat(cBC_WX_get_shoporderbyTruck, nData, '', '', @nOut) then
-       Result := nOut.FData
-  else Result := '';
-end;
-
+{
 //Date: 2017-11-22
 //Parm: 交货单号,商城申请单
 //Desc: 插入删除推送消息
@@ -2940,7 +2889,7 @@ begin
     if not nBool then FDM.ADOConn.RollbackTrans;
   end;
 end;
-
+}
 //------------------------------------------------------------------------------
 //Date: 2017-10-17
 //Parm: 车牌号;保留长度

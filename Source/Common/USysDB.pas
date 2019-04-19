@@ -565,7 +565,7 @@ const
 
   sSQL_NewCustomer = 'Create Table $Table(R_ID $Inc, C_ID varChar(15), ' +
        'C_Name varChar(80), C_PY varChar(80), C_Addr varChar(100), ' +
-       'C_FaRen varChar(50), C_LiXiRen varChar(50), C_WeiXin varChar(15),' +
+       'C_FaRen varChar(50), C_LiXiRen varChar(50), C_WeiXin varChar(50),' +
        'C_Phone varChar(15), C_Fax varChar(15), C_Tax varChar(32),' +
        'C_Bank varChar(35), C_Account varChar(18), C_SaleMan varChar(15),' +
        'C_Param varChar(32), C_Memo varChar(50), C_XuNi Char(1),' +
