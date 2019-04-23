@@ -10,7 +10,7 @@ uses
   Windows, DB, Classes, Controls, SysUtils, UBusinessPacker, UBusinessWorker,
   UBusinessConst, ULibFun, UAdjustForm, UFormCtrl, UDataModule, UDataReport,
   UFormBase, cxMCListBox, UMgrPoundTunnels, UMgrCamera, UBase64, USysConst,
-  USysDB, USysLoger;
+  USysDB, USysLoger, NativeXml;
 
 type
   PZTLineItem = ^TZTLineItem;
@@ -230,6 +230,10 @@ function SaveCompensation(const nSaleMan,nCusID,nCusName,nPayment,nMemo: string;
  const nMoney: Double): Boolean;
 //保存用户补偿金
 
+function CallBusinessWechat(const nCmd: Integer; const nData,nExt: string;
+  var nResult: string): Boolean;
+//微信业务
+
 //------------------------------------------------------------------------------
 function PrintZhiKaReport(const nZID: string; const nAsk: Boolean): Boolean;
 //打印纸卡
@@ -267,10 +271,6 @@ function VerifyManualEventRecord(const nEID: string; var nHint: string;
  const nWant: string = sFlag_Yes; const nUpdateHint: Boolean = True): Boolean;
 //检查事件是否通过处理
 
-function WXGetCustomers(const nData: string): string;
-//获取客户注册信息
-function get_Bindfunc(const nData: string): string;
-//客户与微信账号绑定
 function send_event_msg(const nData: string): string;
 //发送消息
 function edit_shopclients(const nData: string): string;
@@ -478,36 +478,31 @@ begin
   end;
 end;
 
-
 //Date: 2017-10-26
 //Parm: 命令;数据;参数;服务地址;输出
 //Desc: 调用中间件上的销售单据对象
 function CallBusinessWechat(const nCmd: Integer; const nData,nExt: string;
-  const nOut: PWorkerBusinessCommand; const nWarn: Boolean = True): Boolean;
-var nIn: TWorkerBusinessCommand;
-    nWorker: TBusinessWorkerBase;
+  var nResult: string): Boolean;
+var nWorker: TBusinessWorkerBase;
 begin
   nWorker := nil;
   try
-    nIn.FCommand := nCmd;
-    nIn.FData := nData;
-    nIn.FExtParam := nExt;
-
-    if nWarn then
-         nIn.FBase.FParam := ''
-    else nIn.FBase.FParam := sParam_NoHintOnError;
-
-    if gSysParam.FAutoPound and (not gSysParam.FIsManual) then
-      nIn.FBase.FParam := sParam_NoHintOnError;
-    //close hint param
-    
     nWorker := gBusinessWorkerManager.LockWorker(sCLI_BusinessWechat);
-    //get worker
-    Result := nWorker.WorkActive(@nIn, nOut);
-
-    if not Result then
-      WriteLog(nOut.FBase.FErrDesc);
+    nResult := '<xml><head><command>%s</command><data>%s</data>' +
+               '<ExtParam>%s</ExtParam></head></xml>';
     //xxxxx
+
+    nResult := Format(nResult, [IntToHex(nCmd, 2), EscapeString(nData),
+      EscapeString(nExt)]);
+    nResult := EncodeBase64(UTF8Encode(nResult));
+    Result := nWorker.WorkActive(nResult);
+
+    if Pos('errcode', nResult) < 1 then //无效结构
+    begin
+      nResult := Format('<xml><head><errcode>%s</errcode><errmsg>%s</errmsg>' +
+        '</head></xml>', [IntToHex(nCmd, 2), EscapeString(nResult)]);
+      //xxxxx
+    end;
   finally
     gBusinessWorkerManager.RelaseWorker(nWorker);
   end;
@@ -2792,24 +2787,6 @@ begin
 end;
 
 //------------------------------------------------------------------------------
-//获取客户注册信息
-function WXGetCustomers(const nData: string): string;
-var nOut: TWorkerBusinessCommand;
-begin
-  if CallBusinessWechat(cBC_WX_GetCustomers, nData, '', @nOut) then
-       Result := nOut.FData
-  else Result := '';
-end;
-
-//客户与微信账号绑定
-function get_Bindfunc(const nData: string): string;
-var nOut: TWorkerBusinessCommand;
-begin
-  //if CallBusinessWechat(cBC_WX_get_Bindfunc, nData, '', '', @nOut) then
-       Result := nOut.FData
-  //else Result := '';
-end;
-
 //发送消息
 function send_event_msg(const nData: string): string;
 var nOut: TWorkerBusinessCommand;

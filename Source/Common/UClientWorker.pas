@@ -28,7 +28,8 @@ type
     constructor Create; override;
     destructor destroy; override;
     //创建释放
-    function DoWork(const nIn, nOut: Pointer): Boolean; override;
+    function DoWork(var nData: string): Boolean; override;
+    function DoWork(const nIn, nOut: Pointer): Boolean; override; 
     //执行业务
   end;
 
@@ -169,6 +170,11 @@ begin
       ShowDlg(nStr, sWarn, Screen.ActiveForm.Handle);
     end;
   end;
+end;
+
+function TClient2MITWorker.DoWork(var nData: string): Boolean;
+begin
+  Result := MITWork(nData);
 end;
 
 //Date: 2012-3-20

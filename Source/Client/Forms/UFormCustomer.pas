@@ -259,11 +259,11 @@ begin
     LoadSaleMan(EditSaleMan.Properties.Items);
   //xxxxx
 
-  nStr := 'M_ID=Select M_ID,M_WXName From %s Order By M_ID DESC';
+  {nStr := 'M_ID=Select M_ID,M_WXName From %s Order By M_ID DESC';
   nStr := Format(nStr, [sTable_WeixinMatch]);
-  
+
   FDM.FillStringsData(EditWX.Properties.Items, nStr, 6, '.');
-  AdjustStringsItem(EditWX.Properties.Items, False);
+  AdjustStringsItem(EditWX.Properties.Items, False);}
 
   if nID <> '' then
   begin

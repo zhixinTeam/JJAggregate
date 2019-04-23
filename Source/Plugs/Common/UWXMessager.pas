@@ -9,8 +9,7 @@ interface
 
 uses
   Windows, Classes, SysUtils, DateUtils, NativeXml, UBusinessConst, UMgrDBConn,
-  UBusinessWorker, UBusinessPacker, UWorkerBussinessWechat, UWaitItem,
-  ULibFun, USysDB, UMITConst, USysLoger;
+  UBusinessWorker, UBusinessPacker, UWaitItem;
 
 type
   TWXMessager = class;
@@ -22,14 +21,17 @@ type
     //数据对象
     FListA,FListB: TStrings;
     //列表对象
+    FXML: TNativeXml;
+    //XML解析
     FWaiter: TWaitObject;
     //等待对象
     FSyncLock: TCrossProcWaitObject;
     //同步锁定
   protected
-    procedure DoExecute;
     procedure Execute; override;
     //执行线程
+    function SendMessage(var nData: string): Boolean;
+    //发送消息
   public
     constructor Create(AOwner: TWXMessager);
     destructor Destroy; override;
@@ -52,6 +54,8 @@ type
     procedure StartService;
     procedure StopService;
     //起停上传
+    procedure SendNow();
+    //立即发送
   end;
 
 var
@@ -60,6 +64,9 @@ var
 
 implementation
 
+uses
+  UWorkerBussinessWechat, UFormCtrl, ULibFun, USysDB, UMITConst, USysLoger;
+  
 procedure WriteLog(const nMsg: string);
 begin
   gSysLoger.AddLog(TWXMessager, '微信延时推送', nMsg);
@@ -91,6 +98,13 @@ begin
   FThread := nil;
 end;
 
+procedure TWXMessager.SendNow;
+begin
+  if Assigned(FThread) then
+    FThread.Wakeup;
+  //xxxx
+end;
+
 //------------------------------------------------------------------------------
 constructor TWXMessageSender.Create(AOwner: TWXMessager);
 begin
@@ -98,11 +112,12 @@ begin
   FreeOnTerminate := False;
 
   FOwner := AOwner;  
+  FXML   := TNativeXml.Create;
   FListA := TStringList.Create;
   FListB := TStringList.Create;
 
   FWaiter := TWaitObject.Create;
-  FWaiter.Interval := 30 * 1000;
+  FWaiter.Interval := 10 * 1000;
   FSyncLock := TCrossProcWaitObject.Create('WXService_Messager');
 end;
 
@@ -113,6 +128,7 @@ begin
 
   FListA.Free;
   FListB.Free;
+  FXML.Free;
   inherited;
 end;
 
@@ -131,7 +147,8 @@ begin
 end;
 
 procedure TWXMessageSender.Execute;
-var nStr: string;
+var nStr,nResult: string;
+    nInt: Integer;
 begin
   while not Terminated do
   try
@@ -143,17 +160,46 @@ begin
 
     FDBConn := nil;
     try
-      nStr:= 'Select Top 100 * from %s ' +
-             'Where WOM_SyncNum <= %d And WOM_deleted <> ''%s''';
-      //nStr:= Format(nStr,[sTable_WebOrderMatch, FOwner.FSyncTime, sFlag_Yes]);
+      nStr:= 'Select DateDiff(n,IsNull(L_LastSend,%s-1),%s) as L_LastSend,' +
+             'L_Count,L_Data,R_ID from %s ' +
+             'Where L_Status=''%s'' And L_Count<%d';
+      nStr:= Format(nStr, [sField_SQLServer_Now, sField_SQLServer_Now,
+             sTable_WeixinLog, sFlag_No, FOwner.FSyncTime]);
+      //xxxxx
 
       with gDBConnManager.SQLQuery(nStr, FDBConn) do
-      if RecordCount > 0 then
       begin
+        if RecordCount < 1 then Continue;
+        FListA.Clear;
         nStr := '共查询到[ %d ]条数据,开始推送...';
         WriteLog(Format(nStr, [RecordCount]));
-        DoExecute;
+
+        First;
+        while not Eof do
+        begin
+          nInt := FieldByName('L_LastSend').AsInteger;
+          if nInt >= FieldByName('L_Count').AsInteger * 3 then
+          begin
+            nResult := FieldByName('L_Data').AsString;
+            if SendMessage(nResult) then
+                 nStr := sFlag_Yes
+            else nStr := sFlag_No;
+            
+            nStr := MakeSQLByStr([SF('L_Count', 'L_Count+1', sfVal),
+              SF('L_LastSend', sField_SQLServer_Now, sfVal),
+              SF('L_Status', nStr),
+              SF('L_Result', nResult)], sTable_WeixinLog,
+              SF('R_ID', FieldByName('R_ID').AsString, sfVal), False);
+            FListA.Add(nStr);
+          end;
+
+          Next;
+        end;
       end;
+
+      for nInt:=FListA.Count-1 downto 0 do
+        gDBConnManager.WorkerExec(FDBConn, FListA[nInt]);
+      //xxxxx
     finally
       gDBConnManager.ReleaseConnection(FDBConn);
       FSyncLock.SyncLockLeave();
@@ -166,9 +212,21 @@ begin
   end;
 end;
 
-procedure TWXMessageSender.DoExecute;
+//Date: 2019-04-22
+//Parm: 记录标识;数据
+//Desc: 发送微信数据
+function TWXMessageSender.SendMessage(var nData: string): Boolean;
+var nNode: TXmlNode;
 begin
+  with TBusWorkerBusinessWechat do
+    Result := CallRemote('provideInterface', nData, nData);
+  if not Result then Exit;
 
+  FXML.ReadFromString(nData);
+  nNode := FXML.Root.NodeByNameR('head');
+
+  Result := nNode.NodeByNameR('errcode').ValueAsString = '0';
+  nData := nNode.NodeByNameR('errmsg').ValueAsString;
 end;
 
 initialization

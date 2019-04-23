@@ -259,37 +259,6 @@ begin
   end;
 end;
 
-//Date: 2017-10-26
-//Parm: 命令;数据;参数;服务地址;输出
-//Desc: 调用中间件上的销售单据对象
-function CallBusinessWechat(const nCmd: Integer; const nData,nExt,nSrvURL: string;
-  const nOut: PWorkerWebChatData; const nWarn: Boolean = True): Boolean;
-var nIn: TWorkerWebChatData;
-    nWorker: TBusinessWorkerBase;
-begin
-  nWorker := nil;
-  try
-    nIn.FCommand := nCmd;
-    nIn.FData := nData;
-    nIn.FExtParam := nExt;
-    nIn.FRemoteUL := nSrvURL;
-    nIn.FBase.FParam := sParam_NoHintOnError;
-
-    nWorker := gBusinessWorkerManager.LockWorker(sCLI_BusinessWebchat);
-    //get worker
-    Result := nWorker.WorkActive(@nIn, nOut);
-
-    if not Result then
-    begin
-      if nWarn then
-        gShowDlg(nOut.FBase.FErrDesc);
-      WriteLog(nOut.FBase.FErrDesc);
-    end;
-  finally
-    gBusinessWorkerManager.RelaseWorker(nWorker);
-  end;
-end;
-
 //------------------------------------------------------------------------------
 //Date: 2018-12-14
 //Parm: 纸卡号[in,out];提示信息[out]客户编号[out];是提货码

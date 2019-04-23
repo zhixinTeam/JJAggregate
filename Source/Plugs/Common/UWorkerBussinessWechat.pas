@@ -11,7 +11,7 @@ uses
   Windows, Classes, Controls, SysUtils, DB, ADODB, NativeXml, UBusinessWorker,
   UBusinessPacker, UBusinessConst, UMgrDBConn, UMgrParam, UFormCtrl, USysLoger,
   ULibFun, USysDB, UMITConst, UMgrChannel, UWorkerBusiness, UObjectList,
-  IdGlobal, IdStream, IdHTTP, IdMultipartFormData, ZnMD5;
+  IdGlobal, IdStream, IdHTTP, IdMultipartFormData, UWXMessager, ZnMD5;
 
 type
   TBusWorkerBusinessWechat = class(TMITDBWorker)
@@ -369,7 +369,7 @@ begin
     nChannel := nPChannel.FObject as TIdHTTP;
 
     nStream := TIdFormDataStream.Create;
-    nStream.AddFormField('requestParameters', nData);
+    nStream.AddFormField('requestParameters', EncodeBase64(nData));
     nResult := nChannel.Post(gSysParam.FWXServiceURL + nAPI, nStream);
     Result := True;
   except
@@ -446,6 +446,7 @@ var nStr: string;
     nNode,nTmp: TXmlNode;
 begin
   Result := False;
+  WriteLog('RemoteQuery:' + FIn.FData);
   nBool := True;
   SplitStr(FIn.FData, FListA, 0, #32);
 
@@ -527,6 +528,7 @@ var nStr: string;
     nBool: Boolean;
 begin
   Result := False;
+  WriteLog('RemoteQuery:' + FIn.FData);
   FIn.FData := TrimLeft(FIn.FData);
 
   nIdx := Pos(' ', FIn.FData);
@@ -774,7 +776,7 @@ begin
       //all money
       SF('Z_Verified', sFlag_Yes)
       ], sTable_ZhiKa, '', True);
-    FListA.Add(nStr);
+    FListA.Text := nStr;
 
     nNode := Root.NodeByNameR('Items');
     for nIdx:=nNode.NodeCount-1 downto 0 do
@@ -853,13 +855,14 @@ begin
     '<xml><head><methodComand>ZX1002</methodComand></head><data>' +
     '<clientNo>$CusID</clientNo><clientName>$CusName</clientName>' +
     '<factoryUniqueCode>$Code</factoryUniqueCode>' +
-    '<serialNo>$No</serialNo></data></xml>';
+    '<serialNo>$No</serialNo><type>$Type</type></data></xml>';
   //xxxxx
 
   FListA.Text := DecodeBase64(FIn.FData);
   nData := MacroValue(nData, [MI('$CusID', FListA.Values['CusID']),
     MI('$CusName', EscapeString(FListA.Values['CusName'])),
     MI('$Code', gSysParam.FWXFactoryID),
+    MI('$Type', FListA.Values['Type']),
     MI('$No', FListA.Values['SerialNo'])]);
   //xxxxx
 
@@ -869,8 +872,14 @@ begin
   Result := ParseRemoteOut(nData);
   if not Result then Exit;
 
-  nData := 'Update %s Set C_Phone=''%s'',C_WeiXin=''%s'' Where  ';
-  nData := Format(nData, [sTable_Customer]);
+  nData := 'Update %s Set C_Phone=''%s'',C_WeiXin=''%s'',C_LiXiRen=''%s'' ' +
+           'Where C_ID=''%s''';
+  //xxxxx
+
+  nData := Format(nData, [sTable_Customer, FListA.Values['Phone'],
+    FListA.Values['SerialNo'], FListA.Values['RealName'],
+    FListA.Values['CusID']]);
+  gDBConnManager.WorkerExec(FDBConn, nData);
 end;
 
 //Date: 2019-04-18
@@ -893,18 +902,73 @@ begin
 
   Result := ParseRemoteOut(nData);
   if not Result then Exit;
+
+  nData := 'Update %s Set C_WeiXin='''' Where C_ID=''%s''';
+  nData := Format(nData, [sTable_Customer, FListA.Values['CusID']]);
+  gDBConnManager.WorkerExec(FDBConn, nData);
 end;
 
 //Date: 2019-04-18
 //Desc: 推送微信消息
 function TBusWorkerBusinessWechat.SendWXMessage(var nData: string): Boolean;
+var nStr: string;
+    nIdx: Integer;
 begin
-  if FIn.FExtParam = sFlag_Yes then //立即发送
+  if FIn.FExtParam = sFlag_Yes then //使用交货单号发送
   begin
-    Result := CallRemote('provideInterface', FIn.FData, nData);
-    if not Result then Exit;
+    nStr := AdjustListStrFormat(FIn.FData, '''', True, ',');
+    nData := 'Select Z_Name,C_WeiXin,L_ID,L_CusID,L_CusName,L_StockName,' +
+      'L_Value,L_Truck,L_Status From %s ' +
+      ' Left Join %s On Z_ID=L_ZhiKa ' +
+      ' Left Join %s On C_ID=L_CusID ' +
+      'Where L_ID In (%s)';
+    nData := Format(nData, [sTable_Bill, sTable_ZhiKa, sTable_Customer, nStr]);
 
-    Result := ParseRemoteOut(nData);
+    with gDBConnManager.WorkerQuery(FDBConn, nData) do
+    if RecordCount > 0 then
+    begin
+      FListB.Clear;
+      FListC.Clear;
+      First;
+
+      while not Eof do
+      begin
+        with FListC do
+        begin
+          nStr := FieldByName('L_Status').AsString;
+          if nStr = sFlag_TruckNone then nStr := '2' else
+          if nStr = sFlag_TruckIn then nStr := '3' else
+          if nStr = sFlag_TruckOut then nStr := '4' else
+          begin
+            Next;
+            Continue;
+          end;
+
+          Values['SerialNo'] := FieldByName('C_WeiXin').AsString;
+          Values['Key']      := nStr;
+          Values['SName']    := FieldByName('L_StockName').AsString;
+          Values['ZName']    := FieldByName('Z_Name').AsString;
+          Values['Bill']     := FieldByName('L_ID').AsString;
+          Values['Truck']    := FieldByName('L_Truck').AsString;
+          Values['Value']    := FieldByName('L_Value').AsString;
+          Values['CName']    := FieldByName('L_CusName').AsString;
+          Values['CusID']    := FieldByName('L_CusID').AsString;
+
+          FListB.Add(EncodeBase64(FListC.Text));
+        end;
+
+        Next;
+      end;
+
+      FIn.FExtParam := sFlag_No; //准备发送
+      for nIdx:=FListB.Count-1 downto 0 do
+      begin
+        FIn.FData := FListB[nIdx];
+        SendWXMessage(nData);
+      end;
+    end;
+
+    Result := True;
     Exit;
   end;
 
@@ -920,16 +984,27 @@ begin
   FListA.Text := DecodeBase64(FIn.FData);
   nData := MacroValue(nData, [MI('$No', FListA.Values['SerialNo']),
     MI('$Key',    FListA.Values['Key']),
-    MI('$SName',  FListA.Values['SName']),
-    MI('$ZName',  FListA.Values['ZName']),
+    MI('$SName',  EscapeString(FListA.Values['SName'])),
+    MI('$ZName',  EscapeString(FListA.Values['ZName'])),
     MI('$Bill',   FListA.Values['Bill']),
-    MI('$Truck',  FListA.Values['Truck']),
+    MI('$Truck',  EscapeString(FListA.Values['Truck'])),
     MI('$Value',  FListA.Values['Value']),
     MI('$CName',  EscapeString(FListA.Values['CName'])),
     MI('$Code', gSysParam.FWXFactoryID)]);
   //xxxxx
 
+  nStr := Format('%s_%s', [FListA.Values['Bill'], FListA.Values['Key']]);
+  nData := MakeSQLByStr([SF('L_UserID', FListA.Values['CusID']),
+    SF('L_MsgID', nStr),
+    SF('L_Count', 0, sfVal),
+    SF('L_Status', sFlag_No),
+    SF('L_Data', gDBConnManager.EncodeSQL(nData, True)),
+    SF('L_Date', sField_SQLServer_Now, sfVal)
+    ], sTable_WeixinLog, '', True);
+  gDBConnManager.WorkerExec(FDBConn, nData);
 
+  gWXMessager.SendNow();
+  Result := True;
 end;
 
 initialization

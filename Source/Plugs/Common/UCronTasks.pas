@@ -54,6 +54,9 @@ type
     procedure DoCheckPriceWeek;
     procedure DoUpdateZhiKa;
     procedure DoUpdateTruckPlan;
+    //执行业务
+    procedure PrepareDBConnection;
+    //准备连接
     procedure Execute; override;
     //执行线程
   public
@@ -184,8 +187,7 @@ begin
 end;
 
 procedure TTaskThread.Execute;
-var nErr: Integer;
-    nInit: Int64;
+var nInit: Int64;
 begin
   FLoadPriceWeek := False;
   //init data
@@ -234,9 +236,6 @@ begin
 
     FDBConn := nil;
     try
-      FDBConn := gDBConnManager.GetConnection(FDB, nErr);
-      if not Assigned(FDBConn) then Continue;
-
       FWorker := nil;
       FPacker := nil;
 
@@ -254,6 +253,7 @@ begin
       if FNumUpdateZhiKa = 0 then
       begin
         nInit := GetTickCount;
+        PrepareDBConnection();
         DoUpdateZhiKa();
         nInit := GetTickCount - nInit;
         
@@ -265,6 +265,7 @@ begin
       if FNumUpdateTruckPlan = 0 then
       begin
         nInit := GetTickCount;
+        PrepareDBConnection();
         DoUpdateTruckPlan();
         nInit := GetTickCount - nInit;
         
@@ -284,6 +285,22 @@ begin
   end;
 end;
 
+procedure TTaskThread.PrepareDBConnection;
+var nErr: Integer;
+begin
+  if not Assigned(FDBConn) then
+  begin
+    FDBConn := gDBConnManager.GetConnection(FDB, nErr);
+    if not Assigned(FDBConn) then
+      raise Exception.Create('');
+    //xxxxx
+  end;
+
+  if not FDBConn.FConn.Connected then
+    FDBConn.FConn.Connected := True;
+  //conn db
+end;
+
 //Date: 2018-12-06
 //Desc: 打开价格周期
 procedure TTaskThread.DoCheckPriceWeek;
@@ -295,10 +312,7 @@ begin
     FLoadPriceWeek := True;
     SetLength(FWeekItems, 0);
 
-    if not FDBConn.FConn.Connected then
-      FDBConn.FConn.Connected := True;
-    //conn db
-    
+    PrepareDBConnection();
     FDBConn.FConn.BeginTrans;
     try
       nStr := 'Update %s Set W_Valid=''%s'' Where W_Valid=''%s''';
@@ -394,6 +408,8 @@ begin
     begin
       nStr := 'Update %s Set W_Valid=''%s'' Where W_NO=''%s''';
       nStr := Format(nStr, [sTable_PriceWeek, sFlag_No, FID]);
+
+      PrepareDBConnection();
       gDBConnManager.WorkerExec(FDBConn, nStr);
 
       FValid := False;
@@ -405,6 +421,8 @@ begin
     begin
       nStr := 'Update %s Set W_Valid=''%s'',W_ValidTime=%s Where W_NO=''%s''';
       nStr := Format(nStr, [sTable_PriceWeek, sFlag_Yes, sField_SQLServer_Now, FID]);
+
+      PrepareDBConnection();
       gDBConnManager.WorkerExec(FDBConn, nStr);
 
       FValid := True;

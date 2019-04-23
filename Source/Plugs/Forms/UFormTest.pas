@@ -187,21 +187,41 @@ end;
 function TBaseForm1.WXQueryData(const nSQL: string): string;
 var nOut: TWorkerBusinessCommand;
 begin
-  TBusWorkerBusinessWechat.CallMe(cBC_WX_MakeZhiKa, nSQL, '', Result);
+  TBusWorkerBusinessWechat.CallMe(cBC_WX_SendWXMessage, Trim(nSQL), sFlag_Yes, Result);
   Result := UnEscapeStringANSI(Result);
 end;
 
 //------------------------------------------------------------------------------
 procedure TBaseForm1.Button1Click(Sender: TObject);
 begin
-  Memo1.Text := WXQueryData(Edit1.Text);
+  with FListA do
+  begin
+    Clear;
+    Values['SerialNo'] := 'oSzLmw3YFlcQ2HQsCcXooI_rFeNk';
+    Values['Key']      := '2';
+    Values['SName']    := '物料名称';
+    Values['ZName']    := '纸卡名称';
+    Values['Bill']     := 'TH001';
+    Values['Truck']    := '豫A123';
+    Values['Value']    := '10';
+    Values['CName']    := '客户名称';
+    Values['CusID']    := 'KH0055';
+  end;
+
+  Memo1.Text := WXQueryData(Memo1.Text);
 end;
 
 procedure TBaseForm1.Button2Click(Sender: TObject);
-var nStr: string;
+var nXML: TNativeXml;
+    nStream: TStringStream;
 begin
-  TBusWorkerBusinessWechat.CallRemote('apiQuerySql', Edit1.Text, nStr);
-  Memo1.Text := nStr;
+  nStream := TStringStream.Create(Memo1.Text);
+  nXML := TNativeXml.Create;
+  nXML.LoadFromStream(nStream);
+  Memo1.Text := nXML.Root.NodeByName('head').NodeByName('data').ValueAsString;
+
+  nXML.Free;
+  nStream.Free;
 end;
 
 initialization

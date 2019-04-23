@@ -290,6 +290,7 @@ const
   sTable_WorkePC      = 'Sys_WorkePC';               //验证授权
   sTable_Factorys     = 'Sys_Factorys';              //工厂列表
   sTable_ManualEvent  = 'Sys_ManualEvent';           //人工干预
+  sTable_WeixinLog    = 'Sys_WeixinLog';             //微信日志
 
   sTable_PriceWeek    = 'S_PriceWeek';               //价格周期
   sTable_PriceRule    = 'S_PriceRule';               //价格规则
@@ -327,10 +328,6 @@ const
   sTable_InOutMoney   = 'Sys_CustomerInOutMoney';    //资金明细
   sTable_CusCredit    = 'Sys_CustomerCredit';        //客户信用
   sTable_SysShouJu    = 'Sys_ShouJu';                //收据记录
-
-  sTable_WeixinLog    = 'Sys_WeixinLog';             //微信日志
-  sTable_WeixinMatch  = 'Sys_WeixinMatch';           //账号匹配
-  sTable_WeixinTemp   = 'Sys_WeixinTemplate';        //信息模板
 
   sTable_PoundLog     = 'Sys_PoundLog';              //过磅数据
   sTable_PoundBak     = 'Sys_PoundBak';              //过磅作废
@@ -1094,49 +1091,20 @@ const
   -----------------------------------------------------------------------------}
 
   sSQL_NewWXLog = 'Create Table $Table(R_ID $Inc, L_UserID varChar(50), ' +
-       'L_Data varChar(2000), L_MsgID varChar(20), L_Result varChar(150),' +
-       'L_Count Integer Default 0, L_Status Char(1), ' +
-       'L_Comment varChar(100), L_Date DateTime)';
+       'L_MsgID varChar(20), L_Count Integer Default 0, L_Status varChar(1), ' +
+       'L_Data Text, L_Result Text, L_Comment Text,' +
+       'L_LastSend DateTime, L_Date DateTime)';
   {-----------------------------------------------------------------------------
    微信发送日志:WeixinLog
    *.R_ID:记录编号
    *.L_UserID: 接收者ID
-   *.L_Data:微信数据
-   *.L_Count:发送次数
    *.L_MsgID: 微信返回标识
+   *.L_Count:发送次数
+   *.L_Status:发送状态(N待发送,Y已发送)
+   *.L_Data:微信数据
    *.L_Result:发送返回信息
-   *.L_Status:发送状态(N待发送,I发送中,Y已发送)
    *.L_Comment:备注
-   *.L_Date: 发送时间
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewWXMatch = 'Create Table $Table(R_ID $Inc, M_ID varChar(15), ' +
-       'M_WXID varChar(50), M_WXName varChar(64), M_WXFactory varChar(15), ' +
-       'M_IsValid Char(1), M_Comment varChar(100), ' +
-       'M_AttentionID varChar(32), M_AttentionType Char(1))';
-  {-----------------------------------------------------------------------------
-   微信账户:WeixinMatch
-   *.R_ID:记录编号
-   *.M_ID: 微信编号
-   *.M_WXID:开发ID
-   *.M_WXName:微信名
-   *.M_WXFactory:微信注册工厂编码
-   *.M_IsValid: 是否有效
-   *.M_Comment: 备注             
-   *.M_AttentionID,M_AttentionType: 微信关注客户ID,类型(S、业务员;C、客户;G、管理员)
-  -----------------------------------------------------------------------------}
-
-  sSQL_NewWXTemplate = 'Create Table $Table(R_ID $Inc, W_Type varChar(15), ' +
-       'W_TID varChar(50), W_TFields varChar(64), ' +
-       'W_TComment Char(300), W_IsValid Char(1))';
-  {-----------------------------------------------------------------------------
-   微信账户:WeixinMatch
-   *.R_ID:记录编号
-   *.W_Type:类型
-   *.W_TID:标识
-   *.W_TFields:数据域段
-   *.W_IsValid: 是否有效
-   *.W_TComment: 备注
+   *.L_LastSend,L_Date: 发送,创建时间
   -----------------------------------------------------------------------------}
 
   sSQL_NewProvider = 'Create Table $Table(R_ID $Inc, P_ID varChar(32),' +
@@ -1419,6 +1387,7 @@ begin
   AddSysTableItem(sTable_WorkePC, sSQL_NewWorkePC);
   AddSysTableItem(sTable_Factorys, sSQL_NewFactorys);
   AddSysTableItem(sTable_ManualEvent, sSQL_NewManualEvent);
+  AddSysTableItem(sTable_WeixinLog, sSQL_NewWXLog);
 
   AddSysTableItem(sTable_PriceWeek, sSQL_NewPriceWeek);
   AddSysTableItem(sTable_PriceRule, sSQL_NewPriceRule);
@@ -1459,10 +1428,6 @@ begin
   AddSysTableItem(sTable_OrderDtlBak, sSQL_NewOrderDtl);
   AddSysTableItem(sTable_OrderBase, sSQL_NewOrderBase);
   AddSysTableItem(sTable_OrderBaseBak, sSQL_NewOrderBase);
-
-  AddSysTableItem(sTable_WeixinLog, sSQL_NewWXLog);
-  AddSysTableItem(sTable_WeixinMatch, sSQL_NewWXMatch);
-  AddSysTableItem(sTable_WeixinTemp, sSQL_NewWXTemplate);
 end;
 
 //Desc: 清理系统表

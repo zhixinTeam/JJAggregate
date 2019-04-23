@@ -14,7 +14,7 @@ uses
   UFrameLog, UFrameSysLog, UFormIncInfo, UFormBackupSQL, UFormRestoreSQL,
   UFormPassword, UFrameAuthorize, UFormAuthorize, UFormOptions,
   {$IFDEF MicroMsg}
-  UFrameWeiXinAccount, UFormWeiXinAccount,
+  {UFrameWeiXinAccount, UFormWeiXinAccount,}
   UFrameWeiXinSendlog, UFormWeiXinSendlog, UFormGetWechartAccount,
   {$ENDIF}
   UFramePriceWeek, UFormPriceWeek, UFormPriceView, UFramePriceRule,

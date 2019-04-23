@@ -9,8 +9,9 @@ interface
 
 uses
   Windows, Classes, Controls, DB, SysUtils, UBusinessWorker, UBusinessPacker,
-  UWorkerBusiness, UBusinessConst, UMgrDBConn, ULibFun, UFormCtrl, UBase64,
-  USysLoger, USysDB, UMITConst;
+  UWorkerBusiness, {$IFDEF MicroMsg}UWorkerBussinessWechat,{$ENDIF}
+  UBusinessConst, UMgrDBConn, ULibFun, UFormCtrl, UBase64, USysLoger,
+  USysDB, UMITConst;
 
 type
   TStockMatchItem = record
@@ -681,12 +682,9 @@ begin
   end;
 
   {$IFDEF MicroMsg}
-  with FListC do
-  begin
-    Clear;
-    Values['bill'] := FOut.FData;
-    Values['company'] := gSysParam.FHintText;
-  end;
+  TBusWorkerBusinessWechat.CallMe(cBC_WX_SendWXMessage, FOut.FData,
+    sFlag_Yes, nStr);
+  //xxxxx
   {$ENDIF}
 end;
 
@@ -2006,19 +2004,16 @@ begin
   end;
 
   {$IFDEF MicroMsg}
-  nStr := '';
-  for nIdx:=Low(nBills) to High(nBills) do
-    nStr := nStr + nBills[nIdx].FID + ',';
-  //xxxxx
-
   if FIn.FExtParam = sFlag_TruckOut then
   begin
-    with FListA do
-    begin
-      Clear;
-      Values['bill'] := nStr;
-      Values['company'] := gSysParam.FHintText;
-    end;
+    nStr := '';
+    for nIdx:=Low(nBills) to High(nBills) do
+      nStr := nStr + nBills[nIdx].FID + ',';
+    //xxxxx
+
+    TBusWorkerBusinessWechat.CallMe(cBC_WX_SendWXMessage, nStr,
+      sFlag_Yes, nStr);
+    //xxxxx
   end;
   {$ENDIF}
 end;

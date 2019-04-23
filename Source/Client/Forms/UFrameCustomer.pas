@@ -70,7 +70,7 @@ implementation
 {$R *.dfm}
 uses
   ULibFun, UMgrControl, UDataModule, UFormBase, UFormWait, USysBusiness,
-  UBusinessPacker, USysConst, USysDB, USysLoger;
+  UBusinessPacker, UBusinessConst, USysConst, USysDB, USysLoger, NativeXml;
 
 class function TfFrameCustomer.FrameID: integer;
 begin
@@ -264,8 +264,10 @@ end;
 //Desc: 关联商城账户
 procedure TfFrameCustomer.N6Click(Sender: TObject);
 var nStr:string;
+    nXML: TNativeXml;
+    nNode: TXmlNode;
     nP: TFormCommandParam;
-    nID,nName,nBindID,nAccount:string;
+    nID,nName,nBindID,nAccount,nPhone:string;
 begin
   if cxView1.DataController.GetSelectedCount < 1 then
   begin
@@ -276,7 +278,7 @@ begin
   nAccount := SQLQuery.FieldByName('C_WeiXin').AsString;
   if nAccount <> '' then
   begin
-    ShowMsg('商城账户[' + nAccount + ']已存在',sHint);
+    ShowMsg('商城账户已存在',sHint);
     Exit;
   end;
 
@@ -286,35 +288,46 @@ begin
 
   nBindID  := nP.FParamB;
   nAccount := nP.FParamC;
+  nPhone   := nP.FParamD;
   nID      := SQLQuery.FieldByName('C_ID').AsString;
   nName    := SQLQuery.FieldByName('C_Name').AsString;
 
   with FListA do
   begin
     Clear;
-    Values['Action']   := 'add';
-    Values['BindID']   := nBindID;
-    Values['Account']  := nAccount;
+    Values['SerialNo']   := nBindID;
     Values['CusID']    := nID;
     Values['CusName']  := nName;
-    Values['Memo']     := sFlag_Sale;
+    Values['RealName'] := nAccount;
+    Values['Phone']    := nPhone;
+    Values['SerialNo'] := nBindID;
+    Values['Type']     := '1';
   end;
 
-  if edit_shopclients(PackerEncodeStr(FListA.Text)) <> sFlag_Yes then Exit;
-  //call remote
+  CallBusinessWechat(cBC_WX_BindAccount, PackerEncodeStr(FListA.Text), '', nStr);
+  if nStr = '' then Exit;
 
-  nStr := 'update %s set C_WeiXin=''%s'' where C_ID=''%s''';
-  nStr := Format(nStr,[sTable_Customer, nAccount, nID]);
-  FDM.ExecuteSQL(nStr);
+  nXML := nil;
+  try
+    nXML := TNativeXml.Create;
+    nXML.ReadFromString(nStr);
+    nNode := nXML.Root.NodeByNameR('head');
 
-  ShowMsg('关联商城账户成功',sHint);
-  InitFormData(FWhere);
+    if nNode.NodeByNameR('errcode').ValueAsString = '0' then
+    begin
+      ShowMsg('关联商城账户成功', sHint);
+      InitFormData(FWhere);
+    end else ShowDlg(nNode.NodeByNameR('errmsg').ValueAsString, sHint);
+  finally
+    nXML.Free;
+  end;
 end;
 
 //Desc: 取消关联商城账户
 procedure TfFrameCustomer.N7Click(Sender: TObject);
-var nStr:string;
-    nID,nName,nAccount:string;
+var nStr,nID:string;
+    nXML: TNativeXml;
+    nNode: TXmlNode;
 begin
   if cxView1.DataController.GetSelectedCount < 1 then
   begin
@@ -322,29 +335,30 @@ begin
     Exit;
   end;
 
-  nAccount := SQLQuery.FieldByName('C_WeiXin').AsString;
   nID := SQLQuery.FieldByName('C_ID').AsString;
-  nName := SQLQuery.FieldByName('C_Name').AsString;
-
   with FListA do
   begin
     Clear;
-    Values['Action']   := 'del';
-    Values['Account']  := nAccount;
     Values['CusID']    := nID;
-    Values['CusName']  := nName;
-    Values['Memo']     := sFlag_Sale;
   end;
 
-  if edit_shopclients(PackerEncodeStr(FListA.Text)) <> sFlag_Yes then Exit;
-  //call remote
+  CallBusinessWechat(cBC_WX_UnbindAccount, PackerEncodeStr(FListA.Text), '', nStr);
+  if nStr = '' then Exit;
 
-  nStr := 'update %s set C_WeiXin=Null where C_ID=''%s''';
-  nStr := Format(nStr,[sTable_Customer, nID]);
-  FDM.ExecuteSQL(nStr);
+  nXML := nil;
+  try
+    nXML := TNativeXml.Create;
+    nXML.ReadFromString(nStr);
+    nNode := nXML.Root.NodeByNameR('head');
 
-  InitFormData(FWhere);
-  ShowMsg('取消商城关联成功！', sHint);
+    if nNode.NodeByNameR('errcode').ValueAsString = '0' then
+    begin
+      ShowMsg('取消关联成功', sHint);
+      InitFormData(FWhere);
+    end else ShowDlg(nNode.NodeByNameR('errmsg').ValueAsString, sHint);
+  finally
+    nXML.Free;
+  end;
 end;
 
 initialization

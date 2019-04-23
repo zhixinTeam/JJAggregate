@@ -62,7 +62,7 @@ implementation
 
 uses
   Contnrs, UFormBase, USysConst, UBusinessPacker, ULibFun, UMgrControl,
-  UFormWait, USysBusiness;
+  UFormWait, USysBusiness, UBusinessConst, NativeXml;
 
 class function TfFormGetWechartAccount.CreateForm(const nPopedom: string;
   const nParam: Pointer): TWinControl;
@@ -85,6 +85,7 @@ begin
       nIdx := Integer(ListQuery.Selected.Data);
       nP.FParamB := FUsers[nIdx].FBindID;
       nP.FParamC := FUsers[nIdx].FCusName;
+      nP.FParamD := FUsers[nIdx].FPhone;
     end;
   finally
     Free;
@@ -155,37 +156,47 @@ begin
 end;
 
 procedure TfFormGetWechartAccount.LoadCustomer(nFilter: string);
-var nIdx,nInt: Integer;
-    nListA,nListB: TStrings;
+var nStr: string;
+    nXML: TNativeXml;
+    nNode: TXmlNode;
+    nIdx,nInt: Integer;
 begin
   if Length(FUsers) < 1 then
   begin
-    nListA := nil;
-    nListB := nil;
+    nXML := nil;
     ShowWaitForm(Self, '¶ÁÈ¡Î¢ÐÅÕË»§', True);
     try
-      nListA := TStringList.Create;
-      nListA.Text := getCustomerInfo('');
-      nListB := TStringList.Create;
+      CallBusinessWechat(cBC_WX_GetCustomers, '', '', nStr);
+      if nStr = '' then Exit;
 
-      nInt := 0;
-      SetLength(FUsers, nListA.Count);
+      nXML := TNativeXml.Create;
+      nXML.ReadFromString(nStr);
+      nNode := nXML.Root.NodeByNameR('head');
 
-      for nIdx:=0 to nListA.Count-1 do
+      nStr := nNode.NodeByNameR('errcode').ValueAsString;
+      if nStr <> '0' then
       begin
-        nListB.Text := PackerDecodeStr(nListA[nIdx]);
-        with FUsers[nInt],nListB do
+        ShowDlg(nNode.NodeByNameR('errmsg').ValueAsString, sHint);
+        Exit;
+      end;
+
+      nNode := nXML.Root.NodeByNameR('items');
+      nInt := 0;
+      SetLength(FUsers, nNode.NodeCount);
+
+      for nIdx:=0 to nNode.NodeCount-1 do
+      begin
+        with FUsers[nInt],nNode.Nodes[nIdx] do
         begin
-          FBindID   := Values['BindID'];
-          FCusName  := Values['Name'];
-          FPhone    := Values['Phone'];
+          FBindID   := NodeByNameR('serial_no').ValueAsString;
+          FCusName  := NodeByNameR('real_name').ValueAsString;
+          FPhone    := NodeByNameR('phone').ValueAsString;
 
           Inc(nInt);
         end;
-      end;
+      end; 
     finally
-      nListA.Free;
-      nListB.Free;
+      nXML.Free;
       CloseWaitForm;
     end;   
   end;

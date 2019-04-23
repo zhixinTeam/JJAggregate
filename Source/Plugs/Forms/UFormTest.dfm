@@ -1,5 +1,5 @@
 inherited BaseForm1: TBaseForm1
-  Left = 456
+  Left = 460
   Top = 435
   Width = 644
   Height = 453
@@ -18,7 +18,7 @@ inherited BaseForm1: TBaseForm1
     Height = 381
     Align = alClient
     Lines.Strings = (
-      'Memo1')
+      'TH181224006,TH181224008,TH190325003,')
     ScrollBars = ssVertical
     TabOrder = 0
   end
@@ -50,7 +50,7 @@ inherited BaseForm1: TBaseForm1
       Height = 20
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 1
-      Text = 'sql=select * from sys_user'
+      Text = 'update Sys_Dict Set D_ParamB='#39#39' Where 1<>1'
     end
   end
   object IdHTTP1: TIdHTTP
