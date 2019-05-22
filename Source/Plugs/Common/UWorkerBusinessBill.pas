@@ -470,6 +470,7 @@ var nIdx: Integer;
     nStatus, nNextStatus: string;
     {$ENDIF}
     nOut: TWorkerBusinessCommand;
+    nTmp: TWorkerBusinessCommand;
 begin
   Result := False;
   FListA.Text := PackerDecodeStr(FIn.FData);
@@ -534,6 +535,12 @@ begin
       FListC.Text := PackerDecodeStr(FListB[nIdx]);
       //get bill info
 
+      if not TWorkerBusinessCommander.CallMe(cBC_GetStockBatcode,
+         FListC.Values['StockNO'], FListC.Values['Value'], @nTmp) then
+         raise Exception.Create(nTmp.FData);
+
+      FListC.Values['HYDan'] := nTmp.FData;
+
       nStr := MakeSQLByStr([SF('L_ID', nOut.FData),
               SF('L_ZhiKa', FListA.Values['ZhiKa']),
               SF('L_Order', FListC.Values['OrderNo']),
@@ -549,9 +556,11 @@ begin
               SF('L_StockNo', FListC.Values['StockNO']),
               SF('L_StockName', FListC.Values['StockName']),
               SF('L_Value', FListC.Values['Value'], sfVal),
+              SF('L_KDValue', FListC.Values['Value'], sfVal),
               SF('L_Price', FListC.Values['Price'], sfVal),
               SF('L_PriceDesc', FListC.Values['PriceDesc']),
-
+              SF('L_HYDan', FListC.Values['HYDan']),
+              
               SF('L_ZKMoney', nFixMoney),
               SF('L_Truck', FListA.Values['Truck']),
               SF('L_Lading', FListA.Values['Lading']),
@@ -562,6 +571,12 @@ begin
               ], sTable_Bill, '', True);
       gDBConnManager.WorkerExec(FDBConn, nStr);
       //新增交货单
+
+      nStr := 'Update %s Set B_HasUse=B_HasUse+%s Where B_Batcode=''%s''';
+      nStr := Format(nStr, [sTable_StockBatcode, FListC.Values['Value'],
+              FListC.Values['HYDan']]);
+      gDBConnManager.WorkerExec(FDBConn, nStr);
+      //更新批次号使用量
 
       if FMinBillValue > 0 then //车辆忽略最小开单量
       begin
@@ -575,10 +590,10 @@ begin
       begin
         nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckOut),
                 SF('L_InTime', sField_SQLServer_Now, sfVal),
-                SF('L_PValue', 0, sfVal),
+                SF('L_PValue', FListC.Values['PValue'], sfVal),
                 SF('L_PDate', sField_SQLServer_Now, sfVal),
                 SF('L_PMan', FIn.FBase.FFrom.FUser),
-                SF('L_MValue', FListC.Values['Value'], sfVal),
+                SF('L_MValue', FListC.Values['MValue'], sfVal),
                 SF('L_MDate', sField_SQLServer_Now, sfVal),
                 SF('L_MMan', FIn.FBase.FFrom.FUser),
                 SF('L_OutFact', sField_SQLServer_Now, sfVal),
@@ -660,6 +675,11 @@ begin
               FListA.Values['CusID']]);
       gDBConnManager.WorkerExec(FDBConn, nStr);
       //freeze money from account
+
+      nStr := 'Update %s Set Z_MoneyUsed=Z_MoneyUsed+(%.2f) Where Z_ID=''%s''';
+      nStr := Format(nStr, [sTable_ZhiKa,  nVal, FListA.Values['ZhiKa']]);
+      gDBConnManager.WorkerExec(FDBConn, nStr);
+      //更新占用金额
     end else
     begin
       nStr := 'Update %s Set A_FreezeMoney=A_FreezeMoney+%s Where A_CID=''%s''';
@@ -1614,6 +1634,11 @@ begin
           nSQL := MakeSQLByStr([SF('L_Value', FValue, sfVal)
                   ], sTable_Bill, SF('L_ID', FID), False);
           FListA.Add(nSQL); //更新提货量
+
+          nSQL := 'Update %s Set B_HasUse=B_HasUse+(%.2f) ' +
+                  'Where B_Batcode=''%s''';
+          nSQL := Format(nSQL, [sTable_StockBatcode, nVal, FHYDan]);
+          FListA.Add(nSQL); //update batcode
         end;
       end else
       begin

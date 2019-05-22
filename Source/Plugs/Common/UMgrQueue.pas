@@ -508,7 +508,7 @@ begin
     if nStr <> FLastQueueVoice then
     begin
       if IsNetPlayVoice and Assigned(gNetVoiceHelper) then
-           gNetVoiceHelper.PlayVoice(nStr)
+           gNetVoiceHelper.PlayVoice(nStr,'dt')
       else gVoiceHelper.PlayVoice(nStr);
       FLastQueueVoice := nStr;
     end;

@@ -67,6 +67,8 @@ type
 
     FWXFactoryID  : string;                          //微信工厂代码
     FWXServiceURL : string;                          //微信服务地址
+    FPicBase    : Integer;                           //图片索引
+    FPicPath    : string;                            //图片目录
   end;
   //系统参数
 

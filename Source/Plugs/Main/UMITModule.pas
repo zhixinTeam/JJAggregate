@@ -15,7 +15,7 @@ uses
   {$IFDEF HardMon}UEventHardware, UWorkerHardware,{$ENDIF}
   {$IFDEF MicroMsg}UWXMessager, UWorkerBussinessWechat,{$ENDIF}
   UMemDataPool, UObjectList, UMgrDBConn, UMgrParam, UMgrPlug, UMgrChannel,
-  UChannelChooser, USAPConnection, UCronTasks, UWorkerBusiness,
+  UChannelChooser, USAPConnection, UCronTasks, UWorkerBusiness,UWorkerBusinessOrder,
   UWorkerBusinessBill;
 
 procedure InitSystemObject(const nMainForm: THandle);
@@ -98,6 +98,8 @@ begin
         
         Next;
       end;
+      FPicBase := 0;
+      FPicPath := gPath + 'Camera\';
     end;
   finally
     gDBConnManager.ReleaseConnection(nWorker);

@@ -8,7 +8,8 @@ unit UEventHardware;
 interface
 
 uses
-  Windows, Classes, UMgrPlug, UBusinessConst, ULibFun, UMITConst, UPlugConst;
+  Windows, Classes, UMgrPlug, UBusinessConst, ULibFun,
+  UMITConst{$IFDEF HKVDVR}, UMgrCamera{$ENDIF}, UPlugConst;
 
 type
   THardwareWorker = class(TPlugEventWorker)
@@ -33,7 +34,8 @@ uses
   SysUtils, USysLoger, UHardBusiness, UMgrTruckProbe, UMgrParam,
   UMgrQueue, UMgrLEDCard, UMgrHardHelper, UMgrRemotePrint, U02NReader,
   UMgrERelay, UMgrCodePrinter, UMgrTTCEM100, UMgrRFID102, UMgrVoiceNet,
-  UMgrBasisWeight, UMgrRemoteSnap, USendStatusToDCS;
+  UMgrBasisWeight, UMgrRemoteSnap, USendStatusToDCS
+  {$IFDEF UseERelayPLC} ,UMgrERelayPLC {$ENDIF};
 
 class function THardwareWorker.ModuleInfo: TPlugModuleInfo;
 begin
@@ -81,6 +83,11 @@ begin
 
     nStr := '喷码机';
     gCodePrinterManager.LoadConfig(nCfg + 'CodePrinter.xml');
+
+    {$IFDEF HKVDVR}
+    nStr := '硬盘录像机';
+    gCameraManager.LoadConfig(nCfg + cCameraXML);
+    {$ENDIF}
 
     {$IFDEF HYRFID201}
     nStr := '华益RFID102';
@@ -130,6 +137,23 @@ begin
       gDcsStatusSender.LoadConfig(nCfg + 'DcsSender.xml');
     end;
     {$ENDIF}
+
+    {$IFDEF UseERelayPLC}
+    nStr := '车检由PLC控制';
+    if FileExists(nCfg + 'ERelayPLC.xml') then
+    begin
+      gERelayManagerPLC := TERelayManager.Create;
+      gERelayManagerPLC.LoadConfig(nCfg + 'ERelayPLC.xml');
+    end;
+    {$ENDIF}
+
+    {$IFDEF RemoteSnap}
+    nStr := '海康威视远程抓拍';
+    if FileExists(nCfg + 'RemoteSnap.xml') then
+    begin
+      gHKSnapHelper.LoadConfig(nCfg + 'RemoteSnap.xml');
+    end;
+    {$ENDIF}
   except
     on E:Exception do
     begin
@@ -174,7 +198,6 @@ begin
   g02NReader.OnCardOut := WhenReaderCardOut;
   g02NReader.StartReader;
   //near reader
-
   gERelayManager.ControlStart;
   //erelay
 
@@ -186,10 +209,15 @@ begin
 
   gCardManager.StartSender;
   //led display
-
   {$IFDEF MITTruckProber}
   gProberManager.StartProber;
   {$ENDIF} //truck
+
+  {$IFDEF HKVDVR}
+  gCameraManager.OnCameraProc := WhenCaptureFinished;
+  gCameraManager.ControlStart;
+  //硬盘录像机
+  {$ENDIF}
 
   {$IFDEF TTCEM100}
   if Assigned(gM100ReaderManager) then
@@ -200,7 +228,7 @@ begin
   {$ENDIF}
 
   {$IFDEF BasisWeight}
-  gBasisWeightManager.TunnelManager.OnUserParseWeight := WhenParsePoundWeight;
+  //gBasisWeightManager.TunnelManager.OnUserParseWeight := WhenParsePoundWeight;
   gBasisWeightManager.OnStatusChange := WhenBasisWeightStatusChange;
   gBasisWeightManager.StartService;
   {$ENDIF}
@@ -215,6 +243,12 @@ begin
     gDcsStatusSender.StartSender;
   //向DCS发数据
   {$ENDIF}
+
+  {$IFDEF UseERelayPLC}
+  if Assigned(gERelayManagerPLC) then
+    gERelayManagerPLC.StartService;
+  //车检由PLC控制
+  {$ENDIF}
 end;
 
 procedure THardwareWorker.AfterStopServer;
@@ -224,7 +258,6 @@ begin
   if Assigned(gNetVoiceHelper) then
     gNetVoiceHelper.StopVoice;
   //NetVoice
-
   gERelayManager.ControlStop;
   //erelay
 
@@ -251,6 +284,12 @@ begin
   gProberManager.StopProber;
   {$ENDIF} //truck
 
+  {$IFDEF HKVDVR}
+  gCameraManager.OnCameraProc := nil;
+  gCameraManager.ControlStop;
+  //硬盘录像机
+  {$ENDIF}
+
   {$IFDEF TTCEM100}
   if Assigned(gM100ReaderManager) then
   begin
@@ -276,6 +315,17 @@ begin
   if Assigned(gDcsStatusSender) then
     gDcsStatusSender.StopSender;
   //向DCS发数据
+  {$ENDIF}
+
+  {$IFDEF UseERelayPLC}
+  if Assigned(gERelayManagerPLC) then
+    gERelayManagerPLC.StopService;
+  //车检由PLC控制
+  {$ENDIF}
+
+  {$IFDEF RemoteSnap}
+  gHKSnapHelper.StopSnap;
+  //remote snap
   {$ENDIF}
 end;
 

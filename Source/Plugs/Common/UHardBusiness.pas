@@ -12,7 +12,8 @@ uses
   UBusinessWorker, UBusinessConst, UBusinessPacker, UMgrQueue, UFormCtrl,
   UMgrHardHelper, U02NReader, UMgrERelay, UMgrRemotePrint, UMgrTruckProbe,
   UMgrRFID102, UMgrTTCEM100, UMgrBasisWeight, UMgrPoundTunnels,
-  UMgrRemoteSnap;
+  {$IFDEF UseERelayPLC} UMgrERelayPLC, {$ENDIF}
+  UMgrRemoteSnap,{$IFDEF HKVDVR}UMgrCamera, {$ENDIF} Graphics, UMITConst, UMgrVoiceNet;
 
 procedure WhenReaderCardArrived(const nReader: THHReaderItem);
 procedure WhenHYReaderCardArrived(const nReader: PHYReaderItem);
@@ -34,15 +35,82 @@ procedure WhenTruckLineChanged(const nTruckLine: TList);
 function VerifySnapTruck(const nTruck,nBill,nPos,nDept: string;
   var nResult: string): Boolean;
 //车牌识别
+{$IFDEF HKVDVR}
+procedure WhenCaptureFinished(const nPtr: Pointer);
+//保存图片
+{$ENDIF}
+function SaveDBImage(const nDS: TDataSet; const nFieldName: string;
+      const nImage: string): Boolean; overload;
+function SaveDBImage(const nDS: TDataSet; const nFieldName: string;
+  const nImage: TGraphic): Boolean; overload;
 
 implementation
 
 uses
-  ULibFun, USysDB, USysLoger, UTaskMonitor;
+  ULibFun, USysDB, USysLoger, UTaskMonitor, HKVNetSDK;
 
 const
   sPost_In   = 'in';
   sPost_Out  = 'out';
+
+function SaveDBImage(const nDS: TDataSet; const nFieldName: string;
+      const nImage: string): Boolean;
+var nPic: TPicture;
+begin
+  Result := False;
+  if not FileExists(nImage) then Exit;
+
+  nPic := nil;
+  try
+    nPic := TPicture.Create;
+    nPic.LoadFromFile(nImage);
+
+    SaveDBImage(nDS, nFieldName, nPic.Graphic);
+    FreeAndNil(nPic);
+  except
+    if Assigned(nPic) then nPic.Free;
+  end;
+end;
+
+function SaveDBImage(const nDS: TDataSet; const nFieldName: string;
+  const nImage: TGraphic): Boolean;
+var nField: TField;
+    nStream: TMemoryStream;
+    nBuf: array[1..MAX_PATH] of Char;
+begin
+  Result := False;
+  nField := nDS.FindField(nFieldName);
+  if not (Assigned(nField) and (nField is TBlobField)) then Exit;
+
+  nStream := nil;
+  try
+    if not Assigned(nImage) then
+    begin
+      nDS.Edit;
+      TBlobField(nField).Clear;
+      nDS.Post; Result := True; Exit;
+    end;
+    
+    nStream := TMemoryStream.Create;
+    nImage.SaveToStream(nStream);
+    nStream.Seek(0, soFromEnd);
+
+    FillChar(nBuf, MAX_PATH, #0);
+    StrPCopy(@nBuf[1], nImage.ClassName);
+    nStream.WriteBuffer(nBuf, MAX_PATH);
+
+    nDS.Edit;
+    nStream.Position := 0;
+    TBlobField(nField).LoadFromStream(nStream);
+
+    nDS.Post;
+    FreeAndNil(nStream);
+    Result := True;
+  except
+    if Assigned(nStream) then nStream.Free;
+    if nDS.State = dsEdit then nDS.Cancel;
+  end;
+end;
 
 //Date: 2014-09-15
 //Parm: 命令;数据;参数;输出
@@ -558,7 +626,7 @@ begin
     Exit;
   end;
 
-  if nReader <> '' then
+  if (nReader <> '') and (Copy(nReader,1,1) <> 'V') then
     BlueOpenDoor(nReader, nReaderType); //抬杆
   Result := True;
 
@@ -633,89 +701,6 @@ begin
   end;
 end;
 
-//Date: 2012-4-22
-//Parm: 读头数据
-//Desc: 对nReader读到的卡号做具体动作
-procedure WhenReaderCardArrived(const nReader: THHReaderItem);
-var nStr,nCard,nReaderType: string;
-    nErrNum: Integer;
-    nDBConn: PDBWorker;
-begin
-  nDBConn := nil;
-  {$IFDEF DEBUG}
-  WriteHardHelperLog('WhenReaderCardArrived进入.');
-  {$ENDIF}
-
-  with gParamManager.ActiveParam^ do
-  try
-    nDBConn := gDBConnManager.GetConnection(FDB.FID, nErrNum);
-    if not Assigned(nDBConn) then
-    begin
-      WriteHardHelperLog('连接HM数据库失败(DBConn Is Null).');
-      Exit;
-    end;
-
-    if not nDBConn.FConn.Connected then
-      nDBConn.FConn.Connected := True;
-    //conn db
-
-    nStr := 'Select C_Card From $TB Where C_Card=''$CD'' or ' +
-            'C_Card2=''$CD'' or C_Card3=''$CD''';
-    nStr := MacroValue(nStr, [MI('$TB', sTable_Card), MI('$CD', nReader.FCard)]);
-
-    with gDBConnManager.WorkerQuery(nDBConn, nStr) do
-    if RecordCount > 0 then
-    begin
-      nCard := Fields[0].AsString;
-    end else
-    begin
-      nStr := Format('磁卡号[ %s ]匹配失败.', [nReader.FCard]);
-      WriteHardHelperLog(nStr);
-      Exit;
-    end;
-
-    if Assigned(nReader.FOptions) then
-         nReaderType := nReader.FOptions.Values['ReaderType']
-    else nReaderType := '';
-
-    try
-      if nReader.FType = rtIn then
-      begin
-        MakeTruckIn(nCard, nReader.FID,nReader.FPost,nReader.FDept, nDBConn, nReaderType);
-      end else
-
-      if nReader.FType = rtOut then
-      begin
-        if Assigned(nReader.FOptions) then
-             nStr := nReader.FOptions.Values['HYPrinter']
-        else nStr := '';
-        MakeTruckOut(nCard, nReader.FID, nReader.FPrinter,nReader.FPost,nReader.FDept, nStr, nReaderType);
-      end else
-
-      if nReader.FType = rtGate then
-      begin
-        if nReader.FID <> '' then
-          BlueOpenDoor(nReader.FID, nReaderType);
-        //抬杆
-      end else
-
-      if nReader.FType = rtQueueGate then
-      begin
-        if nReader.FID <> '' then
-          MakeTruckPassGate(nCard, nReader.FID, nDBConn, nReaderType);
-        //抬杆
-      end;
-    except
-      On E:Exception do
-      begin
-        WriteHardHelperLog(E.Message);
-      end;
-    end;
-  finally
-    gDBConnManager.ReleaseConnection(nDBConn);
-  end;
-end;
-
 //Date: 2014-10-25
 //Parm: 读头数据
 //Desc: 华益读头磁卡动作
@@ -738,8 +723,11 @@ end;
 //Parm: 三合一读卡器
 //Desc: 处理三合一读卡器信息
 procedure WhenTTCE_M100_ReadCard(const nItem: PM100ReaderItem);
-var {$IFDEF DEBUG}nStr: string;{$ENDIF}
+var nStr: string;
     nRetain: Boolean;
+    nCType: string;
+    nDBConn: PDBWorker;
+    nErrNum: Integer;
 begin
   nRetain := False;
   //init
@@ -756,6 +744,41 @@ begin
       nRetain := MakeTruckOut(nItem.FCard, nItem.FVReader, nItem.FVPrinter,nitem.FPost,nitem.FDept,
                               nItem.FVHYPrinter);
       //xxxxx
+
+      if not GetCardUsed(nItem.FCard, nCType) then
+        nCType := '';
+
+        if nCType = sFlag_Provide then
+        begin
+          nDBConn := nil;
+          with gParamManager.ActiveParam^ do
+          Try
+            nDBConn := gDBConnManager.GetConnection(FDB.FID, nErrNum);
+            if not Assigned(nDBConn) then
+            begin
+              WriteHardHelperLog('连接HM数据库失败(DBConn Is Null).');
+              Exit;
+            end;
+
+            if not nDBConn.FConn.Connected then
+              nDBConn.FConn.Connected := True;
+            //conn db
+            nStr := 'select O_CType from %s Where O_Card=''%s'' ';
+            nStr := Format(nStr, [sTable_Order, nItem.FCard]);
+            with gDBConnManager.WorkerQuery(nDBConn,nStr) do
+            if RecordCount > 0 then
+            begin
+              if FieldByName('O_CType').AsString = sFlag_OrderCardG then
+                nRetain := False;
+            end;
+          finally
+            gDBConnManager.ReleaseConnection(nDBConn);
+          end;
+        end;
+        if nRetain then
+          WriteHardHelperLog('吞卡机执行状态:'+'卡类型:'+nCType+'动作:吞卡')
+        else
+          WriteHardHelperLog('吞卡机执行状态:'+'卡类型:'+nCType+'动作:吞卡后吐卡');
     end else
     begin
       gHardwareHelper.SetReaderCard(nItem.FVReader, nItem.FCard, False);
@@ -775,7 +798,7 @@ end;
 //Parm: 通道号;提示信息;车牌号
 //Desc: 在nTunnel的小屏上显示信息
 procedure ShowLEDHint(const nTunnel: string; nHint: string;
-  const nTruck: string = '');
+  const nTruck: string = '';const nUnPLC:string = '');
 begin
   if nTruck <> '' then
     nHint := nTruck + StringOfChar(' ', 12 - Length(nTruck)) + nHint;
@@ -783,7 +806,20 @@ begin
   
   if Length(nHint) > 24 then
     nHint := Copy(nHint, 1, 24);
-  gERelayManager.ShowTxt(nTunnel, nHint);
+  {$IFDEF UseERelayPLC}
+    if nUnPLC = '' then
+      gERelayManagerPLC.ShowText(nTunnel, nHint)
+    else
+    begin
+      {$IFDEF BasisWeightTruckProber}
+        gProberManager.ShowTxt(nTunnel, nHint);
+      {$ELSE}
+        gERelayManager.ShowTxt(nTunnel, nHint);
+      {$ENDIF}
+    end;
+  {$ELSE}
+    gERelayManager.ShowTxt(nTunnel, nHint);
+  {$ENDIF}
 end;
 
 //Date: 2012-4-24
@@ -862,10 +898,29 @@ end;
 //Parm: 车辆;通道;皮重
 //Desc: 授权nTruck在nTunnel车道放灰
 procedure TruckStartFH(const nTruck: PTruckItem; const nTunnel: string;
- const nLading: TLadingBillItem);
+ const nLading: TLadingBillItem; const UnPLC:string = '');
 var nStr: string;
 begin
-  gERelayManager.LineOpen(nTunnel);
+  {$IFDEF UseERelayPLC}
+    if UnPLC = '' then
+    begin
+      gERelayManagerPLC.OpenTunnel(nTunnel);
+      WriteNearReaderLog(nTunnel+'打开进厂道闸,红绿灯');
+    end
+    else
+    begin
+      {$IFDEF BasisWeightTruckProber}
+        gProberManager.OpenTunnel(nTunnel);
+      {$ELSE}
+        gERelayManager.LineOpen(nTunnel);
+      {$ENDIF}
+    end;
+    //语音播报
+    if Assigned(gNetVoiceHelper) then
+      gNetVoiceHelper.PlayVoice(nLading.FTruck+'刷卡成功请上磅',nTunnel);
+  {$ELSE}
+    gERelayManager.LineOpen(nTunnel);
+  {$ENDIF}
   //开始放灰
 
   nStr := Format('Truck=%s', [nTruck.FTruck]);
@@ -874,8 +929,23 @@ begin
   //开始定量装车
 
   if nLading.FStatus <> sFlag_TruckIn then
+  begin
+    {$IFDEF UseERelayPLC}
+      if UnPLC = '' then
+      begin
+        gERelayManagerPLC.OpenTunnel(nTunnel+'_O');
+        WriteNearReaderLog(nTunnel+'允许放灰');
+      end
+      else
+      begin
+        {$IFDEF BasisWeightTruckProber}
+          gProberManager.OpenTunnel(nTunnel+'_O');
+        {$ENDIF}
+      end;
+    {$ENDIF}
     gBasisWeightManager.SetParam(nTunnel, 'CanFH', sFlag_Yes);
   //添加可放灰标记
+  end;
 end;
 
 //Date: 2019-03-12
@@ -889,13 +959,14 @@ end;
 //Date: 2019-03-12
 //Parm: 磁卡号;通道号
 //Desc: 对nCard执行称量操作
-procedure MakeTruckWeightFirst(const nCard,nTunnel: string);
+procedure MakeTruckWeightFirst(const nCard,nTunnel: string;const UnPLC:string = '');
 var nStr: string;
     nIdx: Integer;
     nPound: TBWTunnel;
     nPLine: PLineItem;
     nPTruck: PTruckItem;
     nTrucks: TLadingBillItems;
+    nPT: PPTTunnelItem;
 begin
   {$IFDEF DEBUG}
   WriteNearReaderLog('MakeTruckWeightFirst进入.');
@@ -907,7 +978,7 @@ begin
     nStr := Format(nStr, [nCard]);
 
     WriteNearReaderLog(nStr);
-    ShowLEDHint(nTunnel, '读取交货单信息失败');
+    ShowLEDHint(nTunnel, '读取交货单信息失败','',UnPLC);
     Exit;
   end;
 
@@ -917,7 +988,7 @@ begin
     nStr := Format(nStr, [nCard]);
 
     WriteNearReaderLog(nStr);
-    ShowLEDHint(nTunnel, '没有需要装料车辆');
+    ShowLEDHint(nTunnel, '没有需要装料车辆','',UnPLC);
     Exit;
   end;
 
@@ -926,18 +997,46 @@ begin
   begin
     if FStatus = sFlag_TruckNone then
     begin
-      ShowLEDHint(nTunnel, '请进厂刷卡', nTrucks[0].FTruck);
+      ShowLEDHint(nTunnel, '请进厂刷卡', nTrucks[0].FTruck,UnPLC);
       Exit;
     end;
   end;
 
-  if gBasisWeightManager.IsTunnelBusy(nTunnel, @nPound) and
-     (nPound.FBill <> nTrucks[0].FID) then //通道忙
-  begin
-    if nPound.FValTunnel = 0 then //前车已下磅
+ if gBasisWeightManager <> nil then
+ begin
+    with gBasisWeightManager.TunnelManager do
     begin
-      nStr := Format('%s 请等待前车', [nTrucks[0].FTruck]);
-      ShowLEDHint(nTunnel, nStr);
+      nPT := GetTunnel(nTunnel);
+      if not Assigned(nPT) then
+      begin
+        ShowLEDHint(nTunnel, '通道未启用', nTrucks[0].FTruck,UnPLC);
+        Exit;
+      end;
+    end;
+
+    if gBasisWeightManager.IsTunnelBusy(nTunnel, @nPound) and
+       (nPound.FBill <> nTrucks[0].FID) then //通道忙
+    begin
+      if nPound.FValTunnel = 0 then //前车已下磅
+      begin
+        nStr := Format('%s 请等待前车', [nTrucks[0].FTruck]);
+        ShowLEDHint(nTunnel, nStr,'',UnPLC);
+        Exit;
+      end;
+    end;
+  end;
+
+
+  WriteNearReaderLog('通道' + nTunnel +'当前业务:' + nPound.FBill +
+                     '新刷卡:' + nTrucks[0].FID);
+
+  if nPound.FBill <> '' then
+  if (nPound.FBill <> nTrucks[0].FID) then //前车业务未完成后车刷卡
+  begin
+    if (nPound.FValTunnel < 0) or (nPound.FValTunnel > nPound.FTunnel.FPort.FMinValue) then 
+    begin
+      nStr := Format('%s.%s 地磅重量异常', [nTrucks[0].FID, nTrucks[0].FTruck]);
+      WriteNearReaderLog(nStr);
       Exit;
     end;
   end;
@@ -946,7 +1045,7 @@ begin
          nPTruck, nPLine, sFlag_San) then
   begin
     WriteNearReaderLog(nStr);
-    ShowLEDHint(nTunnel, '请换道装车', nTrucks[0].FTruck);
+    ShowLEDHint(nTunnel, '请换道装车', nTrucks[0].FTruck,UnPLC);
     Exit;
   end; //检查通道
 
@@ -957,18 +1056,110 @@ begin
     WriteNearReaderLog(nStr);
 
     nStr := Format('请 %s 上磅称量皮重', [nTrucks[0].FTruck]);
-    ShowLEDHint(nTunnel, nStr);
+    ShowLEDHint(nTunnel, nStr,'',UnPLC);
   end else
   begin
     if nPound.FValTunnel > 0 then
          nStr := '请上磅装车'
     else nStr := '请开始装车';
 
-    ShowLEDHint(nTunnel, nStr, nTrucks[0].FTruck); 
+    ShowLEDHint(nTunnel, nStr, nTrucks[0].FTruck,UnPLC);
   end;
 
-  TruckStartFH(nPTruck, nTunnel, nTrucks[0]);
+  TruckStartFH(nPTruck, nTunnel, nTrucks[0],UnPLC);
   //执行放灰
+end;
+
+//Date: 2012-4-22
+//Parm: 读头数据
+//Desc: 对nReader读到的卡号做具体动作
+procedure WhenReaderCardArrived(const nReader: THHReaderItem);
+var nStr,nCard,nReaderType: string;
+    nErrNum: Integer;
+    nDBConn: PDBWorker;
+begin
+  nDBConn := nil;
+  {$IFDEF DEBUG}
+  WriteHardHelperLog('WhenReaderCardArrived进入.');
+  {$ENDIF}
+
+  with gParamManager.ActiveParam^ do
+  try
+    nDBConn := gDBConnManager.GetConnection(FDB.FID, nErrNum);
+    if not Assigned(nDBConn) then
+    begin
+      WriteHardHelperLog('连接HM数据库失败(DBConn Is Null).');
+      Exit;
+    end;
+
+    if not nDBConn.FConn.Connected then
+      nDBConn.FConn.Connected := True;
+    //conn db
+
+    nStr := 'Select C_Card From $TB Where C_Card=''$CD'' or ' +
+            'C_Card2=''$CD'' or C_Card3=''$CD''';
+    nStr := MacroValue(nStr, [MI('$TB', sTable_Card), MI('$CD', nReader.FCard)]);
+
+    with gDBConnManager.WorkerQuery(nDBConn, nStr) do
+    if RecordCount > 0 then
+    begin
+      nCard := Fields[0].AsString;
+    end else
+    begin
+      nStr := Format('磁卡号[ %s ]匹配失败.', [nReader.FCard]);
+      WriteHardHelperLog(nStr);
+      Exit;
+    end;
+
+
+    if (Assigned(nReader.FOptions)) and
+      (Trim(nReader.FOptions.Values['Tunnel']) <> '') then
+    begin
+      MakeTruckWeightFirst(nCard, nReader.FOptions.Values['Tunnel'],Trim(nReader.FOptions.Values['TruckProber']));
+    end
+    else
+    begin
+      if Assigned(nReader.FOptions) then
+           nReaderType := nReader.FOptions.Values['ReaderType']
+      else nReaderType := '';
+
+      try
+        if nReader.FType = rtIn then
+        begin
+          MakeTruckIn(nCard, nReader.FID,nReader.FPost,nReader.FDept, nDBConn, nReaderType);
+        end else
+
+        if nReader.FType = rtOut then
+        begin
+          if Assigned(nReader.FOptions) then
+               nStr := nReader.FOptions.Values['HYPrinter']
+          else nStr := '';
+          MakeTruckOut(nCard, nReader.FID, nReader.FPrinter,nReader.FPost,nReader.FDept, nStr, nReaderType);
+        end else
+
+        if nReader.FType = rtGate then
+        begin
+          if nReader.FID <> '' then
+            BlueOpenDoor(nReader.FID, nReaderType);
+          //抬杆
+        end else
+
+        if nReader.FType = rtQueueGate then
+        begin
+          if nReader.FID <> '' then
+            MakeTruckPassGate(nCard, nReader.FID, nDBConn, nReaderType);
+          //抬杆
+        end;
+      except
+        On E:Exception do
+        begin
+          WriteHardHelperLog(E.Message);
+        end;
+      end;
+    end;
+  finally
+    gDBConnManager.ReleaseConnection(nDBConn);
+  end;
 end;
 
 //Date: 2012-4-24
@@ -985,7 +1176,13 @@ begin
            nStr := nHost.FOptions.Values['HYPrinter']
       else nStr := '';
       MakeTruckOut(nCard, '', nHost.FPrinter,'','', nStr);
-    end;// else MakeTruckLadingDai(nCard, nHost.FTunnel);
+    end// else MakeTruckLadingDai(nCard, nHost.FTunnel);
+    else //单刷支持定量装车
+    begin
+      {$IFDEF BasisWeightWithPM}
+        MakeTruckWeightFirst(nCard, nHost.FTunnel);
+      {$ENDIF}
+    end;
   end else
 
   if nHost.FType = rtKeep then
@@ -1010,12 +1207,48 @@ begin
   WriteHardHelperLog('WhenReaderCardOut退出.');
   {$ENDIF}
 
-  gERelayManager.LineClose(nHost.FTunnel);
+  {$IFDEF UseERelayPLC}
+  if nHost.FOptions.Values['TruckProber'] = '' then
+  begin
+    gERelayManagerPLC.CloseTunnel(nHost.FTunnel+'_N');
+    WriteNearReaderLog(nHost.FTunnel+'关闭放灰');
+  end
+  else
+  begin
+    {$IFDEF BasisWeightTruckProber}
+     // gProberManager.CloseTunnel(nHost.FTunnel+'_O');
+    {$ELSE}
+      gERelayManager.LineClose(nHost.FTunnel);
+    {$ENDIF}
+  end;
+  {$ELSE}
+    gERelayManager.LineClose(nHost.FTunnel);
+  {$ENDIF}
+
   Sleep(100);
 
   if nHost.FETimeOut then
-       gERelayManager.ShowTxt(nHost.FTunnel, '电子标签超出范围')
-  else gERelayManager.ShowTxt(nHost.FTunnel, nHost.FLEDText);
+  begin
+    {$IFDEF UseERelayPLC}
+    if nHost.FOptions.Values['TruckProber'] = '' then
+      gERelayManagerPLC.ShowText(nHost.FTunnel, '电子标签超出范围')
+    else
+      gERelayManager.ShowTxt(nHost.FTunnel, '电子标签超出范围');
+    {$ELSE}
+      gERelayManager.ShowTxt(nHost.FTunnel, '电子标签超出范围');
+    {$ENDIF}
+  end
+  else
+  begin
+    {$IFDEF UseERelayPLC}
+    if nHost.FOptions.Values['TruckProber'] = '' then
+      gERelayManagerPLC.ShowText(nHost.FTunnel, nHost.FLEDText)
+    else
+      gERelayManager.ShowTxt(nHost.FTunnel, nHost.FLEDText);
+    {$ELSE}
+      gERelayManager.ShowTxt(nHost.FTunnel, nHost.FLEDText);
+    {$ENDIF}
+  end;
   Sleep(100);
 end;
 
@@ -1082,17 +1315,185 @@ begin
   Result := True;
 end;
 
+//Desc: 构建图片路径
+function MakePicName: string;
+begin
+  while True do
+  begin
+    Result := gSysParam.FPicPath + IntToStr(gSysParam.FPicBase) + '.jpg';
+    if not FileExists(Result) then
+    begin
+      Inc(gSysParam.FPicBase);
+      Exit;
+    end;
+
+    DeleteFile(Result);
+    if FileExists(Result) then Inc(gSysParam.FPicBase)
+  end;
+end;
+
+procedure CapturePicture(const nTunnel: PPTTunnelItem; const nList: TStrings);
+const
+  cRetry = 2;
+  //重试次数
+var nStr,nTmp: string;
+    nIdx,nInt: Integer;
+    nLogin,nErr: Integer;
+    nPic: NET_DVR_JPEGPARA;
+    nInfo: TNET_DVR_DEVICEINFO;
+begin
+  nList.Clear;
+
+  if not Assigned(nTunnel.FCamera) then
+  begin
+    WriteNearReaderLog('抓拍通道无效');
+    Exit;
+  end;
+
+  if not DirectoryExists(gSysParam.FPicPath) then
+    ForceDirectories(gSysParam.FPicPath);
+
+  if gSysParam.FPicBase >= 100 then
+    gSysParam.FPicBase := 0;
+
+  nLogin := -1;
+
+  NET_DVR_Init();
+
+  try
+    for nIdx:=1 to cRetry do
+    begin
+      nStr := 'NET_DVR_Login(IPAddr=%s,wDVRPort=%d,UserName=%s,PassWord=%s)';
+      nStr := Format(nStr,[nTunnel.FCamera.FHost,nTunnel.FCamera.FPort,nTunnel.FCamera.FUser,nTunnel.FCamera.FPwd]);
+
+      nLogin := NET_DVR_Login(PChar(nTunnel.FCamera.FHost),
+                   nTunnel.FCamera.FPort,
+                   PChar(nTunnel.FCamera.FUser),
+                   PChar(nTunnel.FCamera.FPwd), @nInfo);
+
+      nErr := NET_DVR_GetLastError;
+      if nErr = 0 then break;
+
+      if nIdx = cRetry then
+      begin
+        nStr := '登录摄像机[ %s.%d ]失败,错误码: %d';
+        nStr := Format(nStr, [nTunnel.FCamera.FHost, nTunnel.FCamera.FPort, nErr]);
+        WriteNearReaderLog(nStr);
+        Exit;
+      end;
+    end;
+
+    nPic.wPicSize := nTunnel.FCamera.FPicSize;
+    nPic.wPicQuality := nTunnel.FCamera.FPicQuality;
+    nStr := 'nPic.wPicSize=%d,nPic.wPicQuality=%d';
+    nStr := Format(nStr,[nPic.wPicSize,nPic.wPicQuality]);
+
+    for nIdx:=Low(nTunnel.FCameraTunnels) to High(nTunnel.FCameraTunnels) do
+    begin
+      if nTunnel.FCameraTunnels[nIdx] = MaxByte then continue;
+
+      for nInt:=1 to cRetry do
+      begin
+        nStr := MakePicName();
+        WriteNearReaderLog('抓拍图片路径:'+nStr);
+        nTmp := 'NET_DVR_CaptureJPEGPicture(LoginID=%d,lChannel=%d,sPicFileName=%s)';
+        nTmp := Format(nTmp,[nLogin,nTunnel.FCameraTunnels[nIdx],nStr]);
+
+        NET_DVR_CaptureJPEGPicture(nLogin, nTunnel.FCameraTunnels[nIdx],
+                                   @nPic, PChar(nStr));
+
+        nErr := NET_DVR_GetLastError;
+
+        if nErr = 0 then
+        begin
+          nList.Add(nStr);
+          Break;
+        end;
+
+        if nIdx = cRetry then
+        begin
+          nStr := '抓拍图像[ %s.%d ]失败,错误码: %d';
+          nStr := Format(nStr, [nTunnel.FCamera.FHost,
+                   nTunnel.FCameraTunnels[nIdx], nErr]);
+          WriteNearReaderLog(nStr);
+        end;
+      end;
+    end;
+  finally
+    if nLogin > -1 then
+      NET_DVR_Logout(nLogin);
+    NET_DVR_Cleanup();
+  end;
+end;
+
+procedure SavePicture(const nID, nTruck, nMate, nFile: string);
+var nStr: string;
+    nRID: Integer;
+    nDBConn: PDBWorker;
+    nIdx:Integer;
+begin
+  nDBConn := nil;
+  with gParamManager.ActiveParam^ do
+  begin
+    try
+      nDBConn := gDBConnManager.GetConnection(FDB.FID, nIdx);
+      if not Assigned(nDBConn) then
+      begin
+        WriteNearReaderLog('连接HM数据库失败(DBConn Is Null).');
+        Exit;
+      end;
+
+      if not nDBConn.FConn.Connected then
+        nDBConn.FConn.Connected := True;
+
+      nDBConn.FConn.BeginTrans;
+      try
+        nStr := MakeSQLByStr([
+            SF('P_ID', nID),
+            SF('P_Name', nTruck),
+            SF('P_Mate', nMate),
+            SF('P_Date', sField_SQLServer_Now, sfVal)
+            ], sTable_Picture, '', True);
+        gDBConnManager.WorkerExec(nDBConn, nStr);
+        WriteNearReaderLog('保存抓拍'+nStr);
+
+        nStr := 'Select Max(%s) From %s';
+        nStr := Format(nStr, ['R_ID', sTable_Picture]);
+
+        with gDBConnManager.WorkerQuery(nDBConn, nStr) do
+        if RecordCount > 0 then
+        begin
+          nRID := Fields[0].AsInteger;
+        end;
+
+        nStr := 'Select P_Picture From %s Where R_ID=%d';
+        nStr := Format(nStr, [sTable_Picture, nRID]);
+        SaveDBImage(gDBConnManager.WorkerQuery(nDBConn, nStr), 'P_Picture', nFile);
+
+        nDBConn.FConn.CommitTrans;
+      except
+        nDBConn.FConn.RollbackTrans;
+      end;
+    finally
+      gDBConnManager.ReleaseConnection(nDBConn);
+    end;
+  end;
+end;
+
 //Date: 2019-03-12
 //Parm: 交货单号;重量
 //Desc: 依据nBill状态写入nValue重量
-function SavePoundData(const nTunnel: PBWTunnel; const nValue: Double): Boolean;
-var nStr, nStatus: string;
+function SavePoundData(const nTunnel: PBWTunnel; const nValue: Double; out nMsg:string): Boolean;
+var nStr, nStatus, nTruck: string;
     nDBConn: PDBWorker;
+    nPvalue,nDefaultPValue,nPValueWuCha : Double;
+    nList: TStrings;
+    nIdx: Integer;
 begin
   nDBConn := nil;
   try
     Result := False;
-    nStr := 'Select L_Status,L_Value,L_PValue From %s Where L_ID=''%s''';
+    nStr := 'Select L_Status,L_Value,L_PValue,L_Truck From %s Where L_ID=''%s''';
     nStr := Format(nStr, [sTable_Bill, nTunnel.FBill]);
      
     with gDBConnManager.SQLQuery(nStr, nDBConn) do
@@ -1104,8 +1505,58 @@ begin
       end;
 
       nStatus := FieldByName('L_Status').AsString;
+      nTruck  := FieldByName('L_Truck').AsString;
       if nStatus = sFlag_TruckIn then //皮重
       begin
+        //查找默认皮重值
+        nStr := ' Select D_Value from %s  where D_Name = ''%s'' and D_Memo = ''%s''  ';
+        nStr := Format(nStr, [sTable_SysDict, sFlag_SysParam,sFlag_DefaultPValue]);
+        with gDBConnManager.WorkerQuery(nDBConn, nStr) do
+        begin
+          if RecordCount < 1 then
+            nDefaultPValue := 21
+          else
+            nDefaultPValue :=  FieldByName('D_Value').AsFloat;
+        end;
+        //查找皮重上下浮动值
+        nStr := ' Select D_Value from %s  where D_Name = ''%s'' and D_Memo = ''%s''  ';
+        nStr := Format(nStr, [sTable_SysDict, sFlag_SysParam,sFlag_PValueWuCha]);
+        with gDBConnManager.WorkerQuery(nDBConn, nStr) do
+        begin
+          if RecordCount < 1 then
+            nPValueWuCha := 3
+          else
+            nPValueWuCha :=  FieldByName('D_Value').AsFloat;
+        end;
+
+        //判断皮重有效性
+        nPvalue := 0;
+        nStr := ' Select Top 5 L_PValue from %s  where L_Truck = ''%s'' and L_PValue is not null order by R_ID Desc ';
+        nStr := Format(nStr, [sTable_Bill, nTruck]);
+        with gDBConnManager.WorkerQuery(nDBConn, nStr) do
+        begin
+          if RecordCount < 1 then
+            nPvalue := nDefaultPValue
+          else
+          begin
+            First;
+            while not Eof do
+            begin
+              nPvalue := nPvalue + FieldByName('L_Pvalue').AsFloat;
+              Next;
+            end;
+            nPvalue := nPvalue / RecordCount;
+          end;
+        end;
+        //皮重有效范围值
+        if  (nValue < nPvalue - nPvalueWucha)  or (nValue > nPvalue + nPvalueWucha) then
+        begin
+          nMsg := '皮重异常';
+          WriteNearReaderLog(nTunnel.FID+'历史平均皮重：'+FloatToStr(nPValue)
+          +'当前皮重：'+FloatToStr(nValue)+'浮动范围：'+FloatToStr(nPValueWuCha));
+          Exit;
+        end;
+
         nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckBFP),
                 SF('L_NextStatus', sFlag_TruckFH),
                 SF('L_LadeTime', sField_SQLServer_Now, sfVal),
@@ -1116,6 +1567,27 @@ begin
 
         gBasisWeightManager.SetTruckPValue(nTunnel.FID, nValue);
         //更新通道皮重, 确认磅重上限
+        {$IFDEF UseERelayPLC}
+        if nTunnel.FTunnel.FOptions.Values['TruckProber'] = '' then
+        begin
+          gERelayManagerPLC.OpenTunnel(nTunnel.FID+'_O');
+          WriteNearReaderLog(nTunnel.FID+'保存皮重,允许放灰');
+        end
+        else
+        begin
+          gProberManager.OpenTunnel(nTunnel.FID+'_O');
+          WriteNearReaderLog(nTunnel.FID+'保存皮重,允许放灰');
+        end;
+          //保存皮重之后开始放灰
+          //语音播报
+          if Assigned(gNetVoiceHelper) then
+            gNetVoiceHelper.PlayVoice(nTunnel.FParams.Values['Truck']+'称重完毕请装车',nTunnel.FID);
+        {$ENDIF}
+
+        {$IFDEF HKVDVR}
+        gCameraManager.CapturePicture(nTunnel.FID, nTunnel.FBill);
+        //抓拍
+        {$ENDIF}
       end else
       begin
         nStr := MakeSQLByStr([SF('L_Status', sFlag_TruckBFM),
@@ -1124,6 +1596,7 @@ begin
                 SF('L_MDate', sField_SQLServer_Now, sfVal)
           ], sTable_Bill, SF('L_ID', nTunnel.FBill), False);
         gDBConnManager.WorkerExec(nDBConn, nStr);
+        WriteNearReaderLog((nTunnel.FID+'更新毛重值：'+FloatToStr(nValue)));
       end; //放灰状态,只更新重量,出厂时计算净重
     end;
 
@@ -1137,7 +1610,10 @@ end;
 //Parm: 定量装车通道
 //Desc: 当nTunnel状态改变时,处理业务
 procedure WhenBasisWeightStatusChange(const nTunnel: PBWTunnel);
-var nStr, nTruck: string;
+var
+  nStr, nTruck, nMsg: string;
+  nList : TStrings;
+  nIdx  : Integer;
 begin
   if nTunnel.FStatusNew = bsProcess then
   begin
@@ -1145,24 +1621,79 @@ begin
          nStr := Format('%.2f/%.2f', [nTunnel.FWeightMax, nTunnel.FValTunnel])
     else nStr := Format('%.2f/%.2f', [nTunnel.FValue, nTunnel.FValTunnel]);
 
-    ShowLEDHint(nTunnel.FID, nStr, nTunnel.FParams.Values['Truck']);
+    ShowLEDHint(nTunnel.FID, nStr, nTunnel.FParams.Values['Truck'],nTunnel.FTunnel.FOptions.Values['TruckProber']);
     Exit;
   end;
 
   case nTunnel.FStatusNew of
-   bsInit      : WriteNearReaderLog('初始化:' + nTunnel.FID);
-   bsNew       : WriteNearReaderLog('新添加:' + nTunnel.FID);
-   bsStart     : WriteNearReaderLog('开始称重:' + nTunnel.FID);
-   bsClose     : WriteNearReaderLog('称重关闭:' + nTunnel.FID);
-   bsDone      : WriteNearReaderLog('称重完成:' + nTunnel.FID);
-   bsStable    : WriteNearReaderLog('数据平稳:' + nTunnel.FID);
+   bsInit      : WriteNearReaderLog('初始化:' + nTunnel.FID   + '单据号：' + nTunnel.FBill);
+   bsNew       : WriteNearReaderLog('新添加:' + nTunnel.FID   + '单据号：' + nTunnel.FBill);
+   bsStart     : WriteNearReaderLog('开始称重:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
+   bsClose     : WriteNearReaderLog('称重关闭:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
+   bsDone      : WriteNearReaderLog('称重完成:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
+   bsStable    : WriteNearReaderLog('数据平稳:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
+   bsError     : WriteNearReaderLog('地磅连接故障:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
   end; //log
 
   if nTunnel.FStatusNew = bsClose then
   begin
-    ShowLEDHint(nTunnel.FID, '装车业务关闭', nTunnel.FParams.Values['Truck']);
+    ShowLEDHint(nTunnel.FID, '装车业务关闭', nTunnel.FParams.Values['Truck'],nTunnel.FTunnel.FOptions.Values['TruckProber']);
     WriteNearReaderLog(nTunnel.FID+'装车业务关闭');
 
+    {$IFDEF UseERelayPLC}
+    if nTunnel.FTunnel.FOptions.Values['TruckProber'] <> 'Y' then
+    begin
+      gERelayManagerPLC.CloseTunnel(nTunnel.FID+'_N');
+      WriteNearReaderLog(nTunnel.FID+'装车业务关闭,关闭放灰');
+    end
+    else
+    begin
+    {$IFDEF BasisWeightTruckProber}
+      gProberManager.CloseTunnel(nTunnel.FID+'_O');
+      WriteNearReaderLog(nTunnel.FID+'装车业务关闭,关闭放灰');
+    {$ENDIF}
+    end;
+    {$ENDIF}
+    
+    gBasisWeightManager.SetParam(nTunnel.FID, 'CanFH', sFlag_No);
+    //通知DCS关闭装车
+    Exit;
+  end;
+
+  if nTunnel.FStatusNew = bsError then
+  begin
+    ShowLEDHint(nTunnel.FID, '地磅连接故障', nTunnel.FParams.Values['Truck'],nTunnel.FTunnel.FOptions.Values['TruckProber']);
+    {$IFDEF UseERelayPLC}
+    if nTunnel.FTunnel.FOptions.Values['TruckProber'] <> 'Y' then
+    begin
+      gERelayManagerPLC.CloseTunnel(nTunnel.FID+'_N');
+    end
+    else
+    begin
+    {$IFDEF BasisWeightTruckProber}
+      gProberManager.CloseTunnel(nTunnel.FID+'_O');
+    {$ENDIF}
+    end;
+    {$ENDIF}
+    WriteNearReaderLog(nTunnel.FID+'地磅连接故障');
+
+    //尝试重新连接
+    gBasisWeightManager.TunnelManager.ClosePort(nTunnel.FID);
+    nTunnel.FEnable := gBasisWeightManager.TunnelManager.ActivePort(nTunnel.FID, nil, True);
+    {$IFDEF UseERelayPLC}
+    if nTunnel.FTunnel.FOptions.Values['TruckProber'] <> 'Y' then
+    begin
+      gERelayManagerPLC.CloseTunnel(nTunnel.FID+'_N');
+      WriteNearReaderLog(nTunnel.FID+'关闭放灰');
+    end
+    else
+    begin
+    {$IFDEF BasisWeightTruckProber}
+      gProberManager.CloseTunnel(nTunnel.FID+'_O');
+    {$ENDIF}
+    end;
+    {$ENDIF}
+    
     gBasisWeightManager.SetParam(nTunnel.FID, 'CanFH', sFlag_No);
     //通知DCS关闭装车
     Exit;
@@ -1171,15 +1702,49 @@ begin
   if nTunnel.FStatusNew = bsDone then
   begin
     {$IFDEF BasisWeightWithPM}
-    ShowLEDHint(nTunnel.FID, '装车完成请等待保存称重');
-    WriteNearReaderLog(nTunnel.FID+'装车完成请等待保存称重');
+      ShowLEDHint(nTunnel.FID, '装车完成请等待保存称重','',nTunnel.FTunnel.FOptions.Values['TruckProber']);
+      WriteNearReaderLog(nTunnel.FID+'装车完成请等待保存称重');
     {$ELSE}
-    ShowLEDHint(nTunnel.FID, '装车完成 请下磅');
-    gProberManager.OpenTunnel(nTunnel.FID + '_Z');
+      ShowLEDHint(nTunnel.FID, '装车完成 请下磅');
+      {$IFDEF UseERelayPLC}
+      if nTunnel.FTunnel.FOptions.Values['TruckProber'] <> 'Y' then
+      begin
+        gERelayManagerPLC.OpenTunnel(nTunnel.FID + '_Z');
+        WriteNearReaderLog(nTunnel.FID+'装车完成,打开出口道闸,红绿灯');
+      end
+      else
+      begin
+        gProberManager.OpenTunnel(nTunnel.FID + '_Z');
+      end;
+      {$ELSE}
+        gProberManager.OpenTunnel(nTunnel.FID + '_Z');
+      {$ENDIF}
     //打开道闸
     {$ENDIF}
 
-    gERelayManager.LineClose(nTunnel.FID);
+    {$IFDEF UseERelayPLC}
+    if nTunnel.FTunnel.FOptions.Values['TruckProber'] = '' then
+    begin
+      gERelayManagerPLC.CloseTunnel(nTunnel.FID+'_N');
+      WriteNearReaderLog(nTunnel.FID+'装车完成,关闭放灰');
+    end
+    else
+    begin
+    {$IFDEF BasisWeightTruckProber}
+      gProberManager.CloseTunnel(nTunnel.FID+'_O');
+    {$ELSE}
+      gERelayManager.LineClose(nTunnel.FID);
+    {$ENDIF}
+    end;
+    {$ELSE}
+      gERelayManager.LineClose(nTunnel.FID);
+    {$ENDIF}
+
+    {$IFDEF HKVDVR}
+    gCameraManager.CapturePicture(nTunnel.FID, nTunnel.FBill);
+    //抓拍
+    {$ENDIF}
+    
     //停止装车
     gBasisWeightManager.SetParam(nTunnel.FID, 'CanFH', sFlag_No);
     //通知DCS关闭装车
@@ -1192,38 +1757,102 @@ begin
     Exit; //非库底计量,不保存数据
     {$ENDIF}
 
-    if not gProberManager.IsTunnelOK(nTunnel.FID) then
+    {$IFDEF UseERelayPLC}
+    if nTunnel.FTunnel.FOptions.Values['TruckProber'] <> 'Y' then
     begin
-      nTunnel.FStableDone := False;
-      //继续触发事件
-      ShowLEDHint(nTunnel.FID, '车辆未停到位 请移动车辆');
-      Exit;
+      if not gERelayManagerPLC.IsTunnelOK(nTunnel.FID) then
+      begin
+        nTunnel.FStableDone := False;
+        //继续触发事件
+        ShowLEDHint(nTunnel.FID, '车辆未停到位 请移动车辆','',nTunnel.FTunnel.FOptions.Values['TruckProber']);
+        //语音播报
+        if Assigned(gNetVoiceHelper) then
+          gNetVoiceHelper.PlayVoice('车辆未停到位请移动车辆',nTunnel.FID);
+        Exit;
+      end;
+    end
+    else
+    begin
+      if not gProberManager.IsTunnelOK(nTunnel.FID) then
+      begin
+        nTunnel.FStableDone := False;
+        //继续触发事件
+        ShowLEDHint(nTunnel.FID, '车辆未停到位 请移动车辆','','Y');
+        //语音播报
+        if Assigned(gNetVoiceHelper) then
+          gNetVoiceHelper.PlayVoice('车辆未停到位请移动车辆',nTunnel.FID);
+        Exit;
+      end;
     end;
+    {$ELSE}
+      if not gProberManager.IsTunnelOK(nTunnel.FID) then
+      begin
+        nTunnel.FStableDone := False;
+        //继续触发事件
+        ShowLEDHint(nTunnel.FID, '车辆未停到位 请移动车辆','','Y');
+        Exit;
+      end;
+    {$ENDIF}
 
-    ShowLEDHint(nTunnel.FID, '数据平稳准备保存称重');
+    //ShowLEDHint(nTunnel.FID, '数据平稳准备保存称重');
     WriteNearReaderLog(nTunnel.FID+'数据平稳准备保存称重');
                                    
-    if SavePoundData(nTunnel, nTunnel.FValHas) then
+    if SavePoundData(nTunnel, nTunnel.FValHas,nMsg) then
     begin
       gBasisWeightManager.SetParam(nTunnel.FID, 'CanFH', sFlag_Yes);
       //添加可放灰标记
 
       if nTunnel.FWeightDone then
       begin
-        ShowLEDHint(nTunnel.FID, '毛重保存完毕请下磅.');
-        WriteNearReaderLog(nTunnel.FID+'毛重保存完毕,请下磅');
-        gProberManager.OpenTunnel(nTunnel.FID + '_Z');
+        ShowLEDHint(nTunnel.FID, '毛重'+ FloatToStr(nTunnel.FValHas) +'保存完毕请下磅.','',nTunnel.FTunnel.FOptions.Values['TruckProber']);
+        WriteNearReaderLog(nTunnel.FID+'毛重'+ FloatToStr(nTunnel.FValHas) +'保存完毕,请下磅');
+        {$IFDEF UseERelayPLC}
+        if nTunnel.FTunnel.FOptions.Values['TruckProber'] = '' then
+        begin
+          gERelayManagerPLC.OpenTunnel(nTunnel.FID+ '_Z');
+          gERelayManagerPLC.CloseTunnel(nTunnel.FID+'_N');
+          WriteNearReaderLog(nTunnel.FID+'毛重保存完毕,打开出口道闸,红绿灯,关闭放灰');
+        end
+        else
+        begin
+        {$IFDEF BasisWeightTruckProber}
+          gProberManager.OpenTunnel(nTunnel.FID + '_Z');
+          gProberManager.CloseTunnel(nTunnel.FID +'_O');
+        {$ELSE}
+          gProberManager.OpenTunnel(nTunnel.FID + '_Z');
+        {$ENDIF}
+        end;
+          //语音播报
+          if Assigned(gNetVoiceHelper) then
+            gNetVoiceHelper.PlayVoice(nTunnel.FParams.Values['Truck']+'装车完毕请下磅',nTunnel.FID);
+        {$ELSE}
+          gProberManager.OpenTunnel(nTunnel.FID + '_Z');
+        {$ENDIF}
+
+        {$IFDEF HKVDVR}
+        gCameraManager.CapturePicture(nTunnel.FID, nTunnel.FBill);
+        //抓拍
+        {$ENDIF}
+        
       end else
       begin
-        ShowLEDHint(nTunnel.FID, '保存完毕请等待装车.');
+        //ShowLEDHint(nTunnel.FID, '保存完毕请等待装车.');
         WriteNearReaderLog(nTunnel.FID+'保存完毕,请等待装车');
       end;
     end else
     begin
       nTunnel.FStableDone := False;
       //继续触发事件
-      ShowLEDHint(nTunnel.FID, '保存失败请联系管理员');
-      WriteNearReaderLog(nTunnel.FID+'保存失败 请联系管理员');
+      if nMsg <> '' then
+      begin
+        ShowLEDHint(nTunnel.FID, nMsg,'',nTunnel.FTunnel.FOptions.Values['TruckProber']);
+        WriteNearReaderLog(nTunnel.FID+nMsg);
+      end
+      else
+      begin
+        ShowLEDHint(nTunnel.FID, '保存失败请联系管理员','',nTunnel.FTunnel.FOptions.Values['TruckProber']);
+        WriteNearReaderLog(nTunnel.FID+'保存失败 请联系管理员');
+      end;
     end;
   end;
 end;
@@ -1246,15 +1875,15 @@ begin
     gBasisWeightManager.SetParam(nLine.FLineID, 'LineStatus', nStr, True);
     //更新通道状态
 
-    {$IFDEF ReverseTrafficLight}
-    if nLine.FIsValid then
-         gProberManager.CloseTunnel(nLine.FLineID)
-    else gProberManager.OpenTunnel(nLine.FLineID);
-    {$ELSE}
-    if nLine.FIsValid then
-         gProberManager.OpenTunnel(nLine.FLineID)
-    else gProberManager.CloseTunnel(nLine.FLineID);
-    {$ENDIF} //同步道闸
+//    {$IFDEF ReverseTrafficLight}
+//      if nLine.FIsValid then
+//           gProberManager.CloseTunnel(nLine.FLineID)
+//      else gProberManager.OpenTunnel(nLine.FLineID);
+//    {$ELSE}
+//      if nLine.FIsValid then
+//           gProberManager.OpenTunnel(nLine.FLineID)
+//      else gProberManager.CloseTunnel(nLine.FLineID);
+//    {$ENDIF} //同步道闸
   end;
 end;
 
@@ -1285,5 +1914,78 @@ begin
     nList.Free;
   end;
 end;
+
+{$IFDEF HKVDVR}
+procedure WhenCaptureFinished(const nPtr: Pointer);
+var nStr: string;
+    nDS: TDataSet;
+    nPic: TPicture;
+    nDBConn: PDBWorker;
+    nErrNum, nRID: Integer;
+    nCapture: PCameraFrameCapture;
+begin
+  nDBConn := nil;
+  {$IFDEF DEBUG}
+  WriteHardHelperLog('WhenCaptureFinished进入.');
+  {$ENDIF}
+
+  nCapture :=  PCameraFrameCapture(nPtr);
+  if not FileExists(nCapture.FCaptureName) then Exit;
+
+  with gParamManager.ActiveParam^ do
+  try
+    nDBConn := gDBConnManager.GetConnection(FDB.FID, nErrNum);
+    if not Assigned(nDBConn) then
+    begin
+      WriteHardHelperLog('连接HM数据库失败(DBConn Is Null).');
+      Exit;
+    end;
+
+    if not nDBConn.FConn.Connected then
+      nDBConn.FConn.Connected := True;
+    //conn db
+
+    nDBConn.FConn.BeginTrans;
+    try
+      nStr := MakeSQLByStr([
+              SF('P_ID', nCapture.FCaptureFix),
+              //SF('P_Name', nCapture.FCaptureName),
+              SF('P_Date', sField_SQLServer_Now, sfVal)
+              ], sTable_Picture, '', True);
+      //xxxxx
+
+      if gDBConnManager.WorkerExec(nDBConn, nStr) < 1 then Exit;
+
+      nStr := 'Select Max(%s) From %s';
+      nStr := Format(nStr, ['R_ID', sTable_Picture]);
+      with gDBConnManager.WorkerQuery(nDBConn, nStr) do
+        nRID := Fields[0].AsInteger;
+
+      nStr := 'Select P_Picture From %s Where R_ID=%d';
+      nStr := Format(nStr, [sTable_Picture, nRID]);
+      nDS := gDBConnManager.WorkerQuery(nDBConn, nStr);
+
+      WriteHardHelperLog('开始保存图片:' + IntToStr(nRID) + ',路径:' + nCapture.FCaptureName);
+      nPic := nil;
+      try
+        nPic := TPicture.Create;
+        nPic.LoadFromFile(nCapture.FCaptureName);
+        SaveDBImage(nDS, 'P_Picture', nPic.Graphic);
+        WriteHardHelperLog('保存图片成功:' + IntToStr(nRID));
+        FreeAndNil(nPic);
+      except
+        if Assigned(nPic) then nPic.Free;
+      end;
+
+      DeleteFile(nCapture.FCaptureName);
+      nDBConn.FConn.CommitTrans;
+    except
+      nDBConn.FConn.RollbackTrans;
+    end;
+  finally
+    gDBConnManager.ReleaseConnection(nDBConn);
+  end;
+end;
+{$ENDIF}
 
 end.
