@@ -162,6 +162,11 @@ begin
     Result := Result + ' Where (' + FJBWhere + ')';
   end;
 
+  {$IFDEF AdminUseFL}
+    if not gSysParam.FIsAdmin then
+      Result := Result + ' And (L_CusID in(select distinct C_ID from S_Customer where isnull(C_FL,'''') <> ''Y'' ))';
+  {$ENDIF}
+
   if Radio1.Checked then
   begin
     Result := Result + ' Group By L_SaleID,L_SaleMan,L_CusID,L_CusName,L_CusPY';

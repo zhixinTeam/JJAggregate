@@ -5,23 +5,24 @@ inherited fFormPriceView: TfFormPriceView
   Height = 396
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
   BorderStyle = bsSizeable
+  Position = poDesktopCenter
   OnClose = FormClose
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 12
   inherited dxLayout1: TdxLayoutControl
-    Width = 577
-    Height = 357
+    Width = 585
+    Height = 365
     inherited BtnOK: TButton
-      Left = 431
-      Top = 324
+      Left = 439
+      Top = 332
       Caption = #30830#23450
       Enabled = False
       TabOrder = 3
     end
     inherited BtnExit: TButton
-      Left = 501
-      Top = 324
+      Left = 509
+      Top = 332
       TabOrder = 4
     end
     object cxLabel1: TcxLabel [2]
@@ -80,7 +81,7 @@ inherited fFormPriceView: TfFormPriceView
     end
     object Edit1: TcxColorComboBox [4]
       Left = 11
-      Top = 324
+      Top = 332
       ParentFont = False
       Properties.CustomColors = <
         item

@@ -103,7 +103,7 @@ inherited fFrameBillCard: TfFrameBillCard
     end
     object cxTextEdit1: TcxTextEdit [4]
       Left = 81
-      Top = 96
+      Top = 93
       Hint = 'T.L_ID'
       ParentFont = False
       TabOrder = 4
@@ -111,7 +111,7 @@ inherited fFrameBillCard: TfFrameBillCard
     end
     object cxTextEdit3: TcxTextEdit [5]
       Left = 269
-      Top = 96
+      Top = 93
       Hint = 'T.L_Truck'
       ParentFont = False
       TabOrder = 5
@@ -119,7 +119,7 @@ inherited fFrameBillCard: TfFrameBillCard
     end
     object cxTextEdit2: TcxTextEdit [6]
       Left = 457
-      Top = 96
+      Top = 93
       Hint = 'T.L_CusName'
       ParentFont = False
       TabOrder = 6

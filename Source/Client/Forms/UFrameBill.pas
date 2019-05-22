@@ -47,6 +47,8 @@ type
     dxLayout1Item10: TdxLayoutItem;
     CheckDelete: TcxCheckBox;
     N3: TMenuItem;
+    N10: TMenuItem;
+    N12: TMenuItem;
     procedure EditIDPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure BtnDelClick(Sender: TObject);
@@ -60,6 +62,8 @@ type
     procedure cxView1DblClick(Sender: TObject);
     procedure N3Click(Sender: TObject);
     procedure PMenu1Popup(Sender: TObject);
+    procedure N10Click(Sender: TObject);
+    procedure N12Click(Sender: TObject);
   protected
     FStart,FEnd: TDate;
     //时间区间
@@ -81,7 +85,7 @@ implementation
 {$R *.dfm}
 uses
   ULibFun, UMgrControl, UDataModule, UFormBase, UFormInputbox, USysPopedom,
-  USysConst, USysDB, USysBusiness, UFormDateFilter;
+  USysConst, USysDB, USysBusiness, UFormDateFilter,ShellAPI,UFormWait;
 
 //------------------------------------------------------------------------------
 class function TfFrameBill.FrameID: integer;
@@ -112,16 +116,41 @@ begin
 
   Result := 'Select * From $Bill ';
   //提货单
-
-  if (nWhere = '') or FUseDate then
+  {$IFDEF AdminUseFL}
+  if gSysParam.FIsAdmin then
   begin
-    Result := Result + 'Where (L_Date>=''$ST'' and L_Date <''$End'')';
-    nStr := ' And ';
-  end else nStr := ' Where ';
+    if (nWhere = '') or FUseDate then
+    begin
+      Result := Result + 'Where (L_Date>=''$ST'' and L_Date <''$End'')';
+      nStr := ' And ';
+    end else nStr := ' Where ';
 
-  if nWhere <> '' then
-    Result := Result + nStr + '(' + nWhere + ')';
-  //xxxxx
+    if nWhere <> '' then
+      Result := Result + nStr + '(' + nWhere + ')';
+    //xxxxx
+  end
+  else
+  begin
+    if (nWhere = '') or FUseDate then
+    begin
+      Result := Result + 'Where (L_Date>=''$ST'' and L_Date <''$End'') and (L_CusID in(select distinct C_ID from S_Customer where isnull(C_FL,'''') <> ''Y'' ))';
+      nStr := ' And ';
+    end else nStr := ' Where ';
+
+    if nWhere <> '' then
+      Result := Result + nStr + '(' + nWhere + ') and (L_CusID in(select distinct C_ID from S_Customer where isnull(C_FL,'''') <> ''Y'' )) ';
+    //xxxxx
+  end;
+  {$ELSE}
+    if (nWhere = '') or FUseDate then
+    begin
+      Result := Result + 'Where (L_Date>=''$ST'' and L_Date <''$End'')';
+      nStr := ' And ';
+    end else nStr := ' Where ';
+
+    if nWhere <> '' then
+      Result := Result + nStr + '(' + nWhere + ')';  
+  {$ENDIF}
 
   Result := MacroValue(Result, [
             MI('$ST', Date2Str(FStart)), MI('$End', Date2Str(FEnd + 1))]);
@@ -257,6 +286,7 @@ begin
   N3.Enabled := (cxView1.DataController.GetSelectedCount > 0) and
                 (gPopedomManager.HasPopedom(sPopedom_ViewPrice, PopedomItem));
   //xxxxx
+  N12.Enabled := gSysParam.FIsAdmin;
 end;
 
 //Desc: 打印提货单
@@ -328,6 +358,101 @@ begin
     if (nP.FCommand = cCmd_ModalResult) and (nP.FParamA = mrOK) then
       InitFormData(FWhere);
     //display
+  end;
+end;
+
+procedure TfFrameBill.N10Click(Sender: TObject);
+var nStr,nID,nDir: string;
+    nPic: TPicture;
+begin
+  if cxView1.DataController.GetSelectedCount < 1 then
+  begin
+    ShowMsg('请选择要查看的记录', sHint);
+    Exit;
+  end;
+
+  nID := SQLQuery.FieldByName('L_ID').AsString;
+  nDir := gSysParam.FPicPath + nID + '\';
+
+  if DirectoryExists(nDir) then
+  begin
+    ShellExecute(GetDesktopWindow, 'open', PChar(nDir), nil, nil, SW_SHOWNORMAL);
+    Exit;
+  end else ForceDirectories(nDir);
+
+  nPic := nil;
+  nStr := 'Select * From %s Where P_ID=''%s''';
+  nStr := Format(nStr, [sTable_Picture, nID]);
+
+  ShowWaitForm(ParentForm, '读取图片', True);
+  try
+    with FDM.QueryTemp(nStr) do
+    begin
+      if RecordCount < 1 then
+      begin
+        ShowMsg('本次称重无抓拍', sHint);
+        Exit;
+      end;
+
+      nPic := TPicture.Create;
+      First;
+
+      While not eof do
+      begin
+        nStr := nDir + Format('%s_%s.jpg', [FieldByName('P_ID').AsString,
+                FieldByName('R_ID').AsString]);
+        //xxxxx
+
+        FDM.LoadDBImage(FDM.SqlTemp, 'P_Picture', nPic);
+        nPic.SaveToFile(nStr);
+        Next;
+      end;
+    end;
+
+    ShellExecute(GetDesktopWindow, 'open', PChar(nDir), nil, nil, SW_SHOWNORMAL);
+    //open dir
+  finally
+    nPic.Free;
+    CloseWaitForm;
+    FDM.SqlTemp.Close;
+  end;
+end;
+
+procedure TfFrameBill.N12Click(Sender: TObject);
+var
+  nID   : string;
+  nList : TStrings;
+  nP: TFormCommandParam;
+begin
+  inherited;
+  if cxView1.DataController.GetSelectedCount < 1 then
+  begin
+    ShowMsg('请选择要勘误的记录', sHint);
+    Exit;
+  end;
+  if (Trim(SQLQuery.FieldByName('L_OutFact').AsString) = '') then
+  begin
+    ShowMsg('提货单未出厂,不允许勘误', sHint);
+    Exit;
+  end;
+  
+  nID := SQLQuery.FieldByName('L_ID').AsString;
+
+  nList := TStringList.Create;
+  try
+    nList.Add(nID);
+
+    nP.FCommand := cCmd_EditData;
+    nP.FParamA := nList.Text;
+    CreateBaseFormItem(cFI_FormBillKW, '', @nP);
+
+    if (nP.FCommand = cCmd_ModalResult) and (nP.FParamA = mrOK) then
+    begin
+      InitFormData(FWhere);
+    end;
+
+  finally
+    nList.Free;
   end;
 end;
 

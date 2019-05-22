@@ -78,6 +78,8 @@ type
     dxLayoutControl1Item23: TdxLayoutItem;
     EditArea: TcxButtonEdit;
     dxLayoutControl1Group9: TdxLayoutGroup;
+    CheckFL: TcxCheckBox;
+    dxLayoutControl1Item24: TdxLayoutItem;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure BtnAddClick(Sender: TObject);
@@ -201,6 +203,21 @@ begin
 
   ResetHintAllForm(Self, 'T', sTable_Customer);
   //÷ÿ÷√±Ì√˚≥∆
+  {$IFDEF AdminUseFL}
+  if gSysParam.FIsAdmin then
+  begin
+    dxLayoutControl1Item24.Visible := True;
+    dxLayoutControl1Item1.Visible  := False;
+  end
+  else
+  begin
+    dxLayoutControl1Item24.Visible := False;
+    dxLayoutControl1Item1.Visible  := True;
+  end;
+  {$ELSE}
+    dxLayoutControl1Item24.Visible := False;
+    dxLayoutControl1Item1.Visible  := True;
+  {$ENDIF}
 end;
 
 procedure TfFormCustomer.FormClose(Sender: TObject;
@@ -243,6 +260,11 @@ begin
   begin
     Result := True;
     Check1.Checked := nData = sFlag_Yes;
+  end
+  else if Sender = CheckFL then
+  begin
+    Result := True;
+    CheckFL.Checked := nData = sFlag_Yes;
   end;
 end;
 
@@ -350,6 +372,12 @@ begin
   begin
     if Check1.Checked then
          nData := sFlag_Yes
+    else nData := sFlag_No;
+  end
+  else if Sender = CheckFL then
+  begin
+    if CheckFL.Checked then
+        nData  := sFlag_Yes
     else nData := sFlag_No;
   end;
 end;

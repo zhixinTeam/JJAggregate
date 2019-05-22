@@ -146,6 +146,11 @@ begin
     Result := Result + ' Where (' + FJBWhere + ')';
   end;
 
+  {$IFDEF AdminUseFL}
+    if not gSysParam.FIsAdmin then
+      Result := Result + ' And (b.L_CusID in(select distinct C_ID from S_Customer where isnull(C_FL,'''') <> ''Y'' ))'; 
+  {$ENDIF}
+  
   {$IFDEF CastMoney}
   Result := MacroValue(Result, [MI('$Bill', sTable_Bill), MI('$Pound', sTable_PoundLog),
             MI('$S', Date2Str(FStart)), MI('$End', Date2Str(FEnd + 1))]);

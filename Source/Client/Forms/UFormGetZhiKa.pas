@@ -29,6 +29,8 @@ type
     ListDetail: TcxListView;
     dxLayout1Item4: TdxLayoutItem;
     EditZK: TcxComboBox;
+    EditProject: TcxComboBox;
+    dxLayout1Item5: TdxLayoutItem;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure EditSalesManPropertiesChange(Sender: TObject);
@@ -38,6 +40,7 @@ type
     procedure EditNameKeyPress(Sender: TObject; var Key: Char);
     procedure EditZKPropertiesEditValueChanged(Sender: TObject);
     procedure BtnOKClick(Sender: TObject);
+    procedure EditProjectPropertiesEditValueChanged(Sender: TObject);
   protected
     { Private declarations }
     FShowPrice: Boolean;
@@ -48,6 +51,9 @@ type
     function LoadCustomerInfo(nID: string;
       const nIsCode: Boolean= False): Boolean;
     //载入客户
+    function LoadCustomerInfoEx(nID: string;
+      const nIsCode: Boolean= False;const nProject:string = ''): Boolean;
+    //载入纸卡
   public
     { Public declarations }
     class function CreateForm(const nPopedom: string = '';
@@ -171,31 +177,38 @@ begin
   //----------------------------------------------------------------------------
   if nZhiKa = '' then
   begin
-    nStr := 'Z_ID=Select Z_ID, Z_Name From %s ' +
+    nStr := 'Select distinct case when isnull(Z_Project, '''')<>'''' then Z_Project else ''无'' end  Z_Project From %s ' +
             'Where Z_Customer=''%s'' And Z_ValidDays>%s And ' +
             'IsNull(Z_InValid, '''')<>''%s'' And ' +
-            'IsNull(Z_Freeze, '''')<>''%s'' Order By Z_ID';
+            'IsNull(Z_Freeze, '''')<>''%s'' Order By Z_Project Desc';
     nStr := Format(nStr, [sTable_ZhiKa, nID, sField_SQLServer_Now,
             sFlag_Yes, sFlag_Yes]);
     //xxxxx
   end else
   begin
-    nStr := 'Z_ID=Select Z_ID, Z_Name From %s Where Z_ID=''%s''';
+    nStr := 'Select distinct case when isnull(Z_Project, '''')<>'''' then Z_Project else ''无'' end  Z_Project From %s Where Z_ID=''%s''';
     nStr := Format(nStr, [sTable_ZhiKa, nZhiKa]);
   end;
 
-  with EditZK.Properties do
+  with EditProject.Properties do
   begin
-    AdjustStringsItem(Items, True);
-    FDM.FillStringsData(Items, nStr, 0, '.');
-    AdjustStringsItem(Items, False);
+    with FDM.QueryTemp(nStr) do
+    begin
+      Items.Clear;
+      if RecordCount < 0 then Exit;
+      //no data
+      First;
+
+      while not Eof do
+      begin
+        Items.Add(FieldByName('Z_Project').AsString);
+        Next;
+      end;
+    end;
 
     if Items.Count > 0 then
-      EditZK.ItemIndex := 0;
+      EditProject.ItemIndex := 0;
     //xxxxx
-
-    ActiveControl := BtnOK;
-    //准备开单
   end;
 end;
 
@@ -281,7 +294,7 @@ begin
 
     SetCtrlData(EditSalesMan, nP.FParamD);
     SetCtrlData(EditName, nP.FParamB);
-    
+
     if EditName.ItemIndex < 0 then
     begin
       nStr := Format('%s=%s.%s', [nP.FParamB, nP.FParamB, nP.FParamC]);
@@ -292,16 +305,111 @@ begin
 end;
 
 procedure TfFormGetZhiKa.BtnOKClick(Sender: TObject);
+var
+  nStr : string;
 begin
   if EditZK.ItemIndex < 0 then
   begin
     ShowMsg('请选择纸卡', sHint);
     Exit;
   end;
+  if Trim(EditProject.Text) <> '无' then
+  begin
+    nStr := Format('确定要选择工程工地为[ %s ]的纸卡吗?', [Trim(EditProject.Text)]);
+    if not QueryDlg(nStr, sAsk) then Exit;
+  end;
 
   gParam.FParamB := GetCtrlData(EditZK);
   gParam.FParamC := GetCtrlData(EditName);
   ModalResult := mrOk;
+end;
+
+function TfFormGetZhiKa.LoadCustomerInfoEx(nID: string;
+  const nIsCode: Boolean; const nProject: string): Boolean;
+var nDS: TDataSet;
+    nStr,nZhiKa,nCusName,nSaleMan: string;
+begin
+  Result := False;
+  ClearCustomerInfo;
+
+  if nIsCode then
+  begin
+    nZhiKa := nID;
+    if not IsZhiKaValid(nZhiKa, nID, True) then
+    begin
+      ShowDlg(nID, sHint);
+      Exit;
+    end;
+  end else nZhiKa := '';
+
+  nDS := USysBusiness.LoadCustomerInfo(nID, ListInfo, nStr);
+  Result := Assigned(nDS);
+  BtnOK.Enabled := Result;
+
+  if not Result then
+  begin
+    ShowMsg(nStr, sHint); Exit;
+  end;
+
+  with nDS do
+  begin
+    nCusName := FieldByName('C_Name').AsString;
+    nSaleMan := FieldByName('C_SaleMan').AsString;
+  end;
+
+  SetCtrlData(EditSalesMan, nSaleMan);
+  if GetStringsItemIndex(EditName.Properties.Items, nID) < 0 then
+  begin
+    nStr := Format('%s=%s.%s', [nID, nID, nCusName]);
+    InsertStringsItem(EditName.Properties.Items, nStr);
+  end;
+
+  SetCtrlData(EditName, nID);
+  //customer info done
+
+  //----------------------------------------------------------------------------
+  if nZhiKa = '' then
+  begin
+    nStr := 'Z_ID=Select Z_ID, Z_Name From %s ' +
+            'Where Z_Customer=''%s'' and isnull(Z_Project,'''')=''%s'' And Z_ValidDays>%s And ' +
+            'IsNull(Z_InValid, '''')<>''%s'' And ' +
+            'IsNull(Z_Freeze, '''')<>''%s'' Order By Z_ID';
+    nStr := Format(nStr, [sTable_ZhiKa, nID, nProject, sField_SQLServer_Now,
+            sFlag_Yes, sFlag_Yes]);
+    //xxxxx
+  end else
+  begin
+    nStr := 'Z_ID=Select Z_ID, Z_Name From %s Where Z_ID=''%s''';
+    nStr := Format(nStr, [sTable_ZhiKa, nZhiKa]);
+  end;
+
+  with EditZK.Properties do
+  begin
+    AdjustStringsItem(Items, True);
+    FDM.FillStringsData(Items, nStr, 0, '.');
+    AdjustStringsItem(Items, False);
+
+    if Items.Count > 0 then
+      EditZK.ItemIndex := 0;
+    //xxxxx
+
+    ActiveControl := BtnOK;
+    //准备开单
+  end;
+end;
+
+procedure TfFormGetZhiKa.EditProjectPropertiesEditValueChanged(
+  Sender: TObject);
+begin
+  inherited;
+  if (EditProject.ItemIndex > -1)  then
+  begin
+    if Trim(EditProject.Text) <> '无' then
+      LoadCustomerInfoEx(GetCtrlData(EditName),False,Trim(EditProject.Text))
+    else
+      LoadCustomerInfoEx(GetCtrlData(EditName),False);
+  end;
+  //xxxxx
 end;
 
 initialization

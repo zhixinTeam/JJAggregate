@@ -203,6 +203,8 @@ const
   sFlag_NFStock       = 'NoFaHuoStock';              //现场无需发货
   sFlag_StrictSanVal  = 'StrictSanVal';              //严格控制散装超发
   sFlag_PEmpTWuCha    = 'EmpTruckWuCha';             //空车出厂误差
+  sFlag_DefaultPValue = 'DefaultPValue';             //默认皮重
+  sFlag_PValueWuCha   = 'PValueWuCha';               //皮重误差范围
 
   sFlag_WXFactory     = 'WXFactoryID';               //微信标识
   sFlag_WXServiceMIT  = 'WXServiceMIT';              //微信工厂服务
@@ -309,6 +311,7 @@ const
   sTable_StockRecord  = 'S_StockRecord';             //检验记录
   sTable_StockHuaYan  = 'S_StockHuaYan';             //开化验单
   sTable_StockBatcode = 'S_Batcode';                 //批次号
+  sFlag_HYValue       = 'HYMaxValue';                //化验批次量
 
   sTable_Truck        = 'S_Truck';                   //车辆表
   sTable_TruckPlan    = 'S_TruckPlan';               //派车单
@@ -566,7 +569,7 @@ const
        'C_Phone varChar(15), C_Fax varChar(15), C_Tax varChar(32),' +
        'C_Bank varChar(35), C_Account varChar(18), C_SaleMan varChar(15),' +
        'C_Param varChar(32), C_Memo varChar(50), C_XuNi Char(1),' +
-       'C_Area varChar(50))';
+       'C_Area varChar(50), C_FL Char(1))';
   {-----------------------------------------------------------------------------
    客户信息表: Customer
    *.R_ID: 记录号
@@ -587,6 +590,7 @@ const
    *.C_Memo: 备注信息
    *.C_XuNi: 虚拟(临时)客户
    *.C_Area: 所属区域
+   *.C_FL:  是否返利客户
   -----------------------------------------------------------------------------}
   
   sSQL_NewCusAccount = 'Create Table $Table(R_ID $Inc, A_CID varChar(15),' +

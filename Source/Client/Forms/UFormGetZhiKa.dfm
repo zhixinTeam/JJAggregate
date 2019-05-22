@@ -1,8 +1,8 @@
 inherited fFormGetZhiKa: TfFormGetZhiKa
-  Left = 351
-  Top = 280
+  Left = 404
+  Top = 121
   Width = 431
-  Height = 467
+  Height = 468
   BorderStyle = bsSizeable
   Position = poDesktopCenter
   OnClose = FormClose
@@ -10,18 +10,18 @@ inherited fFormGetZhiKa: TfFormGetZhiKa
   PixelsPerInch = 96
   TextHeight = 12
   inherited dxLayout1: TdxLayoutControl
-    Width = 415
-    Height = 428
+    Width = 423
+    Height = 437
     inherited BtnOK: TButton
-      Left = 269
-      Top = 395
+      Left = 277
+      Top = 404
       Caption = #30830#23450
-      TabOrder = 6
+      TabOrder = 7
     end
     inherited BtnExit: TButton
-      Left = 339
-      Top = 395
-      TabOrder = 7
+      Left = 347
+      Top = 404
+      TabOrder = 8
     end
     object ListInfo: TcxMCListBox [2]
       Left = 23
@@ -83,7 +83,7 @@ inherited fFormGetZhiKa: TfFormGetZhiKa
     end
     object ListDetail: TcxListView [6]
       Left = 23
-      Top = 264
+      Top = 289
       Width = 355
       Height = 154
       Checkboxes = True
@@ -105,12 +105,12 @@ inherited fFormGetZhiKa: TfFormGetZhiKa
       ReadOnly = True
       RowSelect = True
       Style.Edges = [bLeft, bTop, bRight, bBottom]
-      TabOrder = 5
+      TabOrder = 6
       ViewStyle = vsReport
     end
     object EditZK: TcxComboBox [7]
       Left = 81
-      Top = 239
+      Top = 264
       ParentFont = False
       Properties.DropDownListStyle = lsEditFixedList
       Properties.DropDownRows = 20
@@ -118,9 +118,16 @@ inherited fFormGetZhiKa: TfFormGetZhiKa
       Properties.IncrementalSearch = False
       Properties.ItemHeight = 20
       Properties.OnEditValueChanged = EditZKPropertiesEditValueChanged
-      TabOrder = 4
+      TabOrder = 5
       OnKeyPress = EditNameKeyPress
       Width = 368
+    end
+    object EditProject: TcxComboBox [8]
+      Left = 81
+      Top = 239
+      Properties.OnEditValueChanged = EditProjectPropertiesEditValueChanged
+      TabOrder = 4
+      Width = 121
     end
     inherited dxLayout1Group_Root: TdxLayoutGroup
       inherited dxGroup1: TdxLayoutGroup
@@ -164,6 +171,11 @@ inherited fFormGetZhiKa: TfFormGetZhiKa
         AutoAligns = [aaHorizontal]
         AlignVert = avClient
         Caption = '2.'#36873#25321#32440#21345
+        object dxLayout1Item5: TdxLayoutItem
+          Caption = #24037#31243#24037#22320':'
+          Control = EditProject
+          ControlOptions.ShowBorder = False
+        end
         object dxLayout1Item4: TdxLayoutItem
           Caption = #32440#21345#21015#34920':'
           Control = EditZK

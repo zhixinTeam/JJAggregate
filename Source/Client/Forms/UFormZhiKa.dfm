@@ -175,7 +175,7 @@ inherited fFormZhiKa: TfFormZhiKa
           ControlOptions.ShowBorder = False
         end
         object dxLayout1Item8: TdxLayoutItem
-          Caption = #39033#30446#21517#31216':'
+          Caption = #24037#31243#24037#22320':'
           Control = EditPName
           ControlOptions.ShowBorder = False
         end

@@ -25,7 +25,7 @@ inherited fFrameCusInOutMoney: TfFrameCusInOutMoney
     Height = 135
     object cxTextEdit3: TcxTextEdit [0]
       Left = 81
-      Top = 96
+      Top = 93
       Hint = 'T.M_CusID'
       ParentFont = False
       TabOrder = 2
@@ -47,7 +47,7 @@ inherited fFrameCusInOutMoney: TfFrameCusInOutMoney
     end
     object cxTextEdit4: TcxTextEdit [2]
       Left = 264
-      Top = 96
+      Top = 93
       Hint = 'T.M_CusName'
       ParentFont = False
       TabOrder = 3
@@ -69,7 +69,7 @@ inherited fFrameCusInOutMoney: TfFrameCusInOutMoney
     end
     object cxTextEdit5: TcxTextEdit [4]
       Left = 512
-      Top = 96
+      Top = 93
       Hint = 'T.M_Memo'
       ParentFont = False
       TabOrder = 4

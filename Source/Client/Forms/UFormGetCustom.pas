@@ -4,6 +4,7 @@
 *******************************************************************************}
 unit UFormGetCustom;
 
+{$I Link.Inc}
 interface
 
 uses
@@ -179,9 +180,26 @@ begin
 
   nStr := 'Select cus.*,S_Name From $Cus cus ' +
           ' Left Join $SM sm On sm.S_ID=cus.C_SaleMan';
-  if nWhere <> '' then
-    nStr := nStr + ' Where (' + nWhere + ')';
-  nStr := nStr + ' Order By C_PY';
+  {$IFDEF AdminUseFL}
+  if gSysParam.FIsAdmin then
+  begin
+    if nWhere <> '' then
+      nStr := nStr + ' Where (' + nWhere + ')';
+    nStr := nStr + ' Order By C_PY';
+  end
+  else
+  begin
+    if nWhere <> '' then
+      nStr := nStr + ' Where (' + nWhere + ') and (IsNull(cus.C_FL, '''')<>''Y'') '
+    else
+      nStr := nStr + ' Where (IsNull(cus.C_FL, '''')<>''Y'') ';
+    nStr := nStr + ' Order By C_PY';
+  end;
+  {$ELSE}
+    if nWhere <> '' then
+      nStr := nStr + ' Where (' + nWhere + ')';
+    nStr := nStr + ' Order By C_PY';
+  {$ENDIF}
 
   nStr := MacroValue(nStr, [MI('$Cus', sTable_Customer),
           MI('$SM', sTable_Salesman), MI('$SID', GetCtrlData(EditSMan)),

@@ -1,6 +1,6 @@
 inherited fFormCustomer: TfFormCustomer
-  Left = 420
-  Top = 165
+  Left = 382
+  Top = 119
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
   ClientHeight = 530
@@ -92,7 +92,7 @@ inherited fFormCustomer: TfFormCustomer
       Width = 120
     end
     object BtnAdd: TButton
-      Left = 411
+      Left = 426
       Top = 343
       Width = 46
       Height = 18
@@ -101,7 +101,7 @@ inherited fFormCustomer: TfFormCustomer
       OnClick = BtnAddClick
     end
     object BtnDel: TButton
-      Left = 412
+      Left = 427
       Top = 368
       Width = 45
       Height = 17
@@ -110,21 +110,21 @@ inherited fFormCustomer: TfFormCustomer
       OnClick = BtnDelClick
     end
     object BtnOK: TButton
-      Left = 324
-      Top = 497
+      Left = 339
+      Top = 480
       Width = 70
       Height = 22
       Caption = #20445#23384
-      TabOrder = 21
+      TabOrder = 22
       OnClick = BtnOKClick
     end
     object BtnExit: TButton
-      Left = 399
-      Top = 497
+      Left = 414
+      Top = 480
       Width = 70
       Height = 22
       Caption = #21462#28040
-      TabOrder = 22
+      TabOrder = 23
       OnClick = BtnExitClick
     end
     object cxTextEdit1: TcxTextEdit
@@ -231,7 +231,7 @@ inherited fFormCustomer: TfFormCustomer
     end
     object Check1: TcxCheckBox
       Left = 11
-      Top = 497
+      Top = 480
       Hint = 'T.C_XuNi'
       Caption = #38750#27491#24335#23458#25143': '#27491#24120#26597#35810#26102#19981#20104#26174#31034'.'
       ParentFont = False
@@ -266,6 +266,15 @@ inherited fFormCustomer: TfFormCustomer
       TabOrder = 2
       OnKeyDown = FormKeyDown
       Width = 299
+    end
+    object CheckFL: TcxCheckBox
+      Left = 234
+      Top = 480
+      Hint = 'T.C_FL'
+      Caption = #36820#21033#23458#25143
+      ParentFont = False
+      TabOrder = 21
+      Width = 100
     end
     object dxLayoutControl1Group_Root: TdxLayoutGroup
       ShowCaption = False
@@ -479,6 +488,12 @@ inherited fFormCustomer: TfFormCustomer
           Caption = 'cxCheckBox1'
           ShowCaption = False
           Control = Check1
+          ControlOptions.ShowBorder = False
+        end
+        object dxLayoutControl1Item24: TdxLayoutItem
+          Caption = 'cxCheckBox1'
+          ShowCaption = False
+          Control = CheckFL
           ControlOptions.ShowBorder = False
         end
         object dxLayoutControl1Item10: TdxLayoutItem

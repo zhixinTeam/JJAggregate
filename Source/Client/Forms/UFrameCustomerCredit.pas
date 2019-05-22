@@ -4,6 +4,7 @@
 *******************************************************************************}
 unit UFrameCustomerCredit;
 
+{$I Link.Inc}
 interface
 
 uses
@@ -119,13 +120,28 @@ var nSQL: string;
 begin
   nDefault := False;
   //user define
+  {$IFDEF AdminUseFL}
+  if gSysParam.FIsAdmin then
+  begin
+    nSQL := 'Select cus.*,A_CreditLimit,S_Name From $Cus cus ' +
+            ' Left Join $CA ca On ca.A_CID=cus.C_ID ' +
+            ' Left Join $SM sm On sm.S_ID=cus.C_SaleMan ' +
+            'Where (A_CreditLimit <> 0)';
+  end
+  else
+  begin
+    nSQL := 'Select cus.*,A_CreditLimit,S_Name From $Cus cus ' +
+            ' Left Join $CA ca On ca.A_CID=cus.C_ID ' +
+            ' Left Join $SM sm On sm.S_ID=cus.C_SaleMan ' +
+            'Where (A_CreditLimit <> 0 and isnull(C_FL,'''') <> ''Y'')';
+  end;
+  {$ELSE}
+    nSQL := 'Select cus.*,A_CreditLimit,S_Name From $Cus cus ' +
+            ' Left Join $CA ca On ca.A_CID=cus.C_ID ' +
+            ' Left Join $SM sm On sm.S_ID=cus.C_SaleMan ' +
+            'Where (A_CreditLimit <> 0)';
+  {$ENDIF}
 
-  nSQL := 'Select cus.*,A_CreditLimit,S_Name From $Cus cus ' +
-          ' Left Join $CA ca On ca.A_CID=cus.C_ID ' +
-          ' Left Join $SM sm On sm.S_ID=cus.C_SaleMan ' +
-          'Where (A_CreditLimit <> 0)';
-  //xxxxx
-  
   nSQL := MacroValue(nSQL, [MI('$Cus', sTable_Customer),
           MI('$CA', sTable_CusAccount), MI('$SM', sTable_Salesman)]);
   //xxxxx
@@ -147,11 +163,26 @@ begin
   nStr := 'Select cc.*,C_Name From %s cc ' +
           ' Left Join %s cus On cus.C_ID=cc.C_CusID';
   nStr := Format(nStr, [sTable_CusCredit, sTable_Customer]);
-
-  if nWhere = '' then
-       nStr := nStr + ' Where (C_Date>=''$ST'' and C_Date <''$End'')'
-  else nStr := nStr + ' Where (' + nWhere + ')';
-
+  
+  {$IFDEF AdminUseFL}
+  if gSysParam.FIsAdmin then
+  begin
+    if nWhere = '' then
+         nStr := nStr + ' Where (C_Date>=''$ST'' and C_Date <''$End'')'
+    else nStr := nStr + ' Where (' + nWhere + ')';
+  end
+  else
+  begin
+    if nWhere = '' then
+         nStr := nStr + ' Where (C_Date>=''$ST'' and C_Date <''$End'' and isnull(cus.C_FL,'''') <>''Y'')'
+    else nStr := nStr + ' Where (' + nWhere + ') and (isnull(cus.C_FL,'''') <>''Y'') ';
+  end;
+  {$ELSE}
+    if nWhere = '' then
+         nStr := nStr + ' Where (C_Date>=''$ST'' and C_Date <''$End'')'
+    else nStr := nStr + ' Where (' + nWhere + ')';
+  {$ENDIF}
+  
   nStr := MacroValue(nStr, [MI('$ST', Date2Str(FStart)),
                             MI('$End', Date2Str(FEnd + 1))]);
   FDM.QueryData(QueryDtl, nStr)

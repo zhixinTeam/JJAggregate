@@ -4,6 +4,7 @@
 *******************************************************************************}
 unit UFramePayment;
 
+{$I Link.inc}
 interface
 
 uses
@@ -84,6 +85,11 @@ begin
   if nWhere = '' then
        Result := Result + 'And (M_Date>=''$Start'' And M_Date <''$End'')'
   else Result := Result + 'And (' + nWhere + ')';
+
+  {$IFDEF AdminUseFL}
+    if not gSysParam.FIsAdmin then
+      Result := Result + ' And (iom.M_CusID in(select distinct C_ID from S_Customer where isnull(C_FL,'''') <> ''Y'' ))';
+  {$ENDIF}
 
   Result := MacroValue(Result, [MI('$SM', sTable_Salesman),
             MI('$IOM', sTable_InOutMoney), MI('$HK', sFlag_MoneyHuiKuan),

@@ -31,6 +31,7 @@ const
   cFI_FrameMakeCard     = $0012;                     //办理磁卡
   cFI_FrameBill         = $0013;                     //开提货单
   cFI_FrameBillQuery    = $0014;                     //开单查询
+  cFI_FrameMakeOCard    = $0015;                     //办理采购磁卡
 
   cFI_FramePayment      = $0021;                     //销售回款
   cFI_FrameShouJu       = $0020;                     //收据查询
@@ -102,6 +103,7 @@ const
   cFI_FormMakeLSCard    = $1016;                     //厂内零售办卡
 
   cFI_FormBill          = $1017;                     //开提货单
+  cFI_FormBillKW        = $1117;                     //提货单勘误
   cFI_FormGetZhika      = $1101;                     //获取纸卡
   cFI_FormShouJu        = $1018;                     //开收据
   cFI_FormCusCredit     = $1019;                     //信用变动
@@ -392,7 +394,7 @@ begin
 
   AddMenuModuleItem('MAIN_M01', cFI_FrameProvider);
   AddMenuModuleItem('MAIN_M02', cFI_FrameMaterails);
-  AddMenuModuleItem('MAIN_M03', -1); 
+  AddMenuModuleItem('MAIN_M03', cFI_FrameMakeOCard); 
   AddMenuModuleItem('MAIN_M04', cFI_FrameOrder);
   AddMenuModuleItem('MAIN_M08', cFI_FrameOrderDetail);
   AddMenuModuleItem('MAIN_M09', cFI_FrameOrderBase);

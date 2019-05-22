@@ -6,22 +6,23 @@ inherited fFormGetCustom: TfFormGetCustom
   BorderStyle = bsSizeable
   Constraints.MinHeight = 300
   Constraints.MinWidth = 445
+  Position = poDesktopCenter
   OnClose = FormClose
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 12
   inherited dxLayout1: TdxLayoutControl
-    Width = 429
-    Height = 261
+    Width = 437
+    Height = 269
     inherited BtnOK: TButton
-      Left = 283
-      Top = 228
+      Left = 291
+      Top = 236
       Caption = #30830#23450
       TabOrder = 5
     end
     inherited BtnExit: TButton
-      Left = 353
-      Top = 228
+      Left = 361
+      Top = 236
       TabOrder = 6
     end
     object EditSMan: TcxComboBox [2]

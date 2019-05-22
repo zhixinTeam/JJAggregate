@@ -21,7 +21,7 @@ type
     FParamB: Variant;
     FParamC: Variant;
     FParamD: Variant;
-    FParamE: Pointer;
+    FParamE: Variant;
   end;
 
   TBaseForm = class(TForm)

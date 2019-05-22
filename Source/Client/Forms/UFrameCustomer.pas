@@ -95,10 +95,24 @@ begin
   Result := 'Select cus.*,S_Name From $Cus cus' +
             ' Left Join $Sale On S_ID=cus.C_SaleMan';
   //xxxxx
-
-  if nWhere = '' then
-       Result := Result + ' Where C_XuNi<>''$Yes'''
-  else Result := Result + ' Where (' + nWhere + ')';
+  {$IFDEF AdminUseFL}
+  if gSysParam.FIsAdmin then
+  begin
+    if nWhere = '' then
+         Result := Result + ' Where C_XuNi<>''$Yes'''
+    else Result := Result + ' Where (' + nWhere + ')';
+  end
+  else
+  begin
+    if nWhere = '' then
+         Result := Result + ' Where C_XuNi<>''$Yes'' and  isnull(C_FL,'''')<>''$Yes'' '
+    else Result := Result + ' Where (' + nWhere + ') and (isnull(C_FL,'''')<>''$Yes'')';
+  end;
+  {$ELSE}
+    if nWhere = '' then
+         Result := Result + ' Where C_XuNi<>''$Yes'''
+    else Result := Result + ' Where (' + nWhere + ')';  
+  {$ENDIF}
 
   Result := MacroValue(Result, [MI('$Cus', sTable_Customer),
             MI('$Sale', sTable_Salesman), MI('$Yes', sFlag_Yes)]);

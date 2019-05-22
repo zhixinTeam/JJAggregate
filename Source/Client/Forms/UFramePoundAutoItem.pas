@@ -417,6 +417,36 @@ begin
   for nIdx:=Low(nBills) to High(nBills) do
   with nBills[nIdx] do
   begin
+    {$IFDEF TruckAutoIn}
+    if FStatus=sFlag_TruckNone then
+    begin
+      if FCardUsed = sFlag_Provide then
+      begin
+        if SavePurchaseOrders(sFlag_TruckIn, nBills) then
+        begin
+          ShowMsg('车辆进厂成功', sHint);
+          LoadBillItems(FCardTmp);
+          Exit;
+        end else
+        begin
+          ShowMsg('车辆进厂失败', sHint);
+        end;
+      end
+      else
+      if FCardUsed = sFlag_Sale then
+      begin
+        if SaveLadingBills(sFlag_TruckIn, nBills) then
+        begin
+          ShowMsg('车辆进厂成功', sHint);
+          LoadBillItems(FCardTmp);
+          Exit;
+        end else
+        begin
+          ShowMsg('车辆进厂失败', sHint);
+        end;
+      end;
+    end;
+    {$ENDIF}
     if (FStatus <> sFlag_TruckBFP) and (FNextStatus = sFlag_TruckZT) then
       FNextStatus := sFlag_TruckBFP;
     //状态校正

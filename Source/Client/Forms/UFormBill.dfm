@@ -44,7 +44,7 @@ inherited fFormBill: TfFormBill
     end
     object ListBill: TcxListView [3]
       Left = 23
-      Top = 296
+      Top = 314
       Width = 372
       Height = 113
       Columns = <
@@ -70,7 +70,7 @@ inherited fFormBill: TfFormBill
     end
     object EditValue: TcxTextEdit [4]
       Left = 81
-      Top = 271
+      Top = 264
       ParentFont = False
       TabOrder = 3
       OnKeyPress = EditLadingKeyPress
@@ -87,7 +87,7 @@ inherited fFormBill: TfFormBill
     end
     object EditStock: TcxComboBox [6]
       Left = 81
-      Top = 246
+      Top = 239
       ParentFont = False
       Properties.DropDownListStyle = lsEditFixedList
       Properties.DropDownRows = 15
@@ -99,7 +99,7 @@ inherited fFormBill: TfFormBill
     end
     object BtnAdd: TButton [7]
       Left = 357
-      Top = 246
+      Top = 239
       Width = 39
       Height = 17
       Caption = #28155#21152
@@ -108,7 +108,7 @@ inherited fFormBill: TfFormBill
     end
     object BtnDel: TButton [8]
       Left = 357
-      Top = 271
+      Top = 264
       Width = 39
       Height = 18
       Caption = #21024#38500
@@ -158,6 +158,12 @@ inherited fFormBill: TfFormBill
       TabOrder = 14
       Text = #28857#20987#26597#30475
       Width = 121
+    end
+    object EditPValue: TcxTextEdit [12]
+      Left = 81
+      Top = 289
+      TabOrder = 15
+      Width = 271
     end
     inherited dxLayout1Group_Root: TdxLayoutGroup
       inherited dxGroup1: TdxLayoutGroup
@@ -254,6 +260,12 @@ inherited fFormBill: TfFormBill
               ControlOptions.ShowBorder = False
             end
           end
+        end
+        object dxLayout1Item5: TdxLayoutItem
+          AutoAligns = [aaVertical]
+          Caption = #34917#21333#30382#37325':'
+          Control = EditPValue
+          ControlOptions.ShowBorder = False
         end
         object dxLayout1Item4: TdxLayoutItem
           AutoAligns = [aaHorizontal]

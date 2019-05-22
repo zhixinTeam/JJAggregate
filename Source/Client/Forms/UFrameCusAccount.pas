@@ -73,10 +73,24 @@ begin
             ' Left Join $Cus cus On cus.C_ID=ca.A_CID ' +
             ' Left Join $SM sm On sm.S_ID=cus.C_SaleMan ';
   //xxxxx
-
-  if nWhere = '' then
-       Result := Result + 'Where IsNull(C_XuNi, '''')<>''$Yes'''
-  else Result := Result + 'Where (' + nWhere + ')';
+  {$IFDEF AdminUseFL}
+  if gSysParam.FIsAdmin then
+  begin
+    if nWhere = '' then
+         Result := Result + 'Where IsNull(C_XuNi, '''')<>''$Yes'''
+    else Result := Result + 'Where (' + nWhere + ')';
+  end
+  else
+  begin
+    if nWhere = '' then
+         Result := Result + 'Where IsNull(C_XuNi, '''')<>''$Yes'' and IsNull(C_FL, '''')<>''$Yes'' '
+    else Result := Result + 'Where (' + nWhere + ') and (IsNull(C_FL, '''')<>''$Yes'') ';
+  end;
+  {$ELSE}
+    if nWhere = '' then
+         Result := Result + 'Where IsNull(C_XuNi, '''')<>''$Yes'''
+    else Result := Result + 'Where (' + nWhere + ')';  
+  {$ENDIF}
 
   Result := MacroValue(Result, [MI('$CA', sTable_CusAccount),
             MI('$Cus', sTable_Customer), MI('$SM', sTable_Salesman),
@@ -116,7 +130,7 @@ begin
   {$ELSE}
   N4.Visible := False;
   {$ENDIF}
-  N6.Enabled := gSysParam.FIsAdmin;
+  N6.Enabled := True;   // gSysParam.FIsAdmin;
 end;
 
 //Desc: 快捷菜单
@@ -154,36 +168,51 @@ var nStr,nCID: string;
     nVal: Double;
 begin
   if cxView1.DataController.GetSelectedCount < 1 then Exit;
-  nCID := SQLQuery.FieldByName('A_CID').AsString;
+  
+  //校正出金
+  nStr := ' update Sys_CustomerAccount set A_OutMoney = L_Money From( ' +
+    ' Select Sum(L_Money) L_Money, L_CusID from ( ' +
+    ' select isnull(L_Value,0) * isnull(L_Price,0) as L_Money, L_CusID from S_Bill ' +
+    ' where L_OutFact Is not Null ) t Group by L_CusID) b where A_CID = b.L_CusID ';
+  FDM.ExecuteSQL(nStr);
 
-  nStr := 'Select Sum(L_Money) from (' +
-          '  select L_Value * L_Price as L_Money from %s' +
-          '  where L_OutFact Is not Null And L_CusID = ''%s'') t';
-  nStr := Format(nStr, [sTable_Bill, nCID]);
-
-  with FDM.QuerySQL(nStr) do
-  begin
-    nVal := Float2Float(Fields[0].AsFloat, cPrecision, True);
-    nStr := 'Update %s Set A_OutMoney=%.2f Where A_CID=''%s''';
-    nStr := Format(nStr, [sTable_CusAccount, nVal, nCID]);
-    FDM.ExecuteSQL(nStr);
-  end;
-
-  nStr := 'Select Sum(L_Money) from (' +
-          '  select L_Value * L_Price as L_Money from %s' +
-          '  where L_OutFact Is Null And L_CusID = ''%s'') t';
-  nStr := Format(nStr, [sTable_Bill, nCID]);
-
-  with FDM.QuerySQL(nStr) do
-  begin
-    nVal := Float2Float(Fields[0].AsFloat, cPrecision, True);
-    nStr := 'Update %s Set A_FreezeMoney=%.2f Where A_CID=''%s''';
-    nStr := Format(nStr, [sTable_CusAccount, nVal, nCID]);
-    FDM.ExecuteSQL(nStr);
-  end;
+  //校正冻结资金
+  nStr := ' update Sys_CustomerAccount set A_FreezeMoney = L_Money From( ' +
+    ' Select Sum(L_Money) L_Money, L_CusID from ( ' +
+    ' select isnull(L_Value,0) * isnull(L_Price,0) as L_Money, L_CusID from S_Bill ' +
+    ' where L_OutFact Is  Null ) t Group by L_CusID) b where A_CID = b.L_CusID ';
+  FDM.ExecuteSQL(nStr);
 
   InitFormData(FWhere);
   ShowMsg('校正完毕', sHint);
+
+//  nCID := SQLQuery.FieldByName('A_CID').AsString;
+//
+//  nStr := 'Select Sum(L_Money) from (' +
+//          '  select L_Value * L_Price as L_Money from %s' +
+//          '  where L_OutFact Is not Null And L_CusID = ''%s'') t';
+//  nStr := Format(nStr, [sTable_Bill, nCID]);
+//
+//  with FDM.QuerySQL(nStr) do
+//  begin
+//    nVal := Float2Float(Fields[0].AsFloat, cPrecision, True);
+//    nStr := 'Update %s Set A_OutMoney=%.2f Where A_CID=''%s''';
+//    nStr := Format(nStr, [sTable_CusAccount, nVal, nCID]);
+//    FDM.ExecuteSQL(nStr);
+//  end;
+//
+//  nStr := 'Select Sum(L_Money) from (' +
+//          '  select L_Value * L_Price as L_Money from %s' +
+//          '  where L_OutFact Is Null And L_CusID = ''%s'') t';
+//  nStr := Format(nStr, [sTable_Bill, nCID]);
+//
+//  with FDM.QuerySQL(nStr) do
+//  begin
+//    nVal := Float2Float(Fields[0].AsFloat, cPrecision, True);
+//    nStr := 'Update %s Set A_FreezeMoney=%.2f Where A_CID=''%s''';
+//    nStr := Format(nStr, [sTable_CusAccount, nVal, nCID]);
+//    FDM.ExecuteSQL(nStr);
+//  end;
 end;
 
 initialization

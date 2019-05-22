@@ -42,6 +42,8 @@ type
     EditPrice: TcxButtonEdit;
     dxLayout1Item13: TdxLayoutItem;
     dxLayout1Group3: TdxLayoutGroup;
+    EditPValue: TcxTextEdit;
+    dxLayout1Item5: TdxLayoutItem;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure EditStockPropertiesChange(Sender: TObject);
@@ -154,8 +156,17 @@ begin
     end;
 
     if nBuDan then //≤πµ•
-         FBuDanFlag := sFlag_Yes
-    else FBuDanFlag := sFlag_No;
+    begin
+      FBuDanFlag := sFlag_Yes;
+      dxLayout1Item5.Visible := True;
+      EditPValue.Text        := '0';
+    end
+    else
+    begin
+      FBuDanFlag := sFlag_No;
+      dxLayout1Item5.Visible := False;
+      EditPValue.Text        := '0';
+    end;
 
     if Assigned(nParam) then
     with PFormCommandParam(nParam)^ do
@@ -549,6 +560,11 @@ begin
       Values['StockName'] := FStockName;
       Values['Price'] := FloatToStr(FPrice);
       Values['Value'] := FloatToStr(FValue);
+      if FBuDanFlag = sFlag_Yes then
+      begin
+        Values['PValue'] := FloatToStr(StrToFloatDef(EditPValue.Text,0));
+        Values['MValue'] := FloatToStr(StrToFloatDef(EditPValue.Text,0)+FValue);
+      end;
 
       Values['PriceDesc'] := gStockTypes[FPriceIndex].FParam;
       //º€∏Ò√Ë ˆ

@@ -29,7 +29,12 @@ uses
   UFramePoundManual, UFramePoundAuto, UFramePMaterails, UFormPMaterails,
   UFramePProvider, UFormPProvider, UFramePoundQuery, UFrameQuerySaleDetail,
   UFrameQuerySaleTotal, UFrameZTDispatch, UFrameTrucks, UFormTruck,
-  UFrameTruckPlan, UFormTruckPlan, UFormTodo, UFormTodoSend, UFrameTodo;
+  UFrameTruckPlan, UFormTruckPlan, UFormTodo, UFormTodoSend, UFrameTodo,
+  UFrameHYData,UFormHYData,UFrameHYStock,UFormHYStock, UFrameHYRecord, UFormHYRecord,
+  UFrameBatcodeJ,UFormBatcodeJ,UFormGetProvider,UFormGetMeterails,
+  UFrameOrderCard,UFramePurchaseOrder, UFormGetPOrderBase,  UFormPurchaseOrder,
+  UFormPurchasing, UFramePOrderBase,UFormPOrderBase,UFrameOrderDetail,
+  UFormOrderDtl, UFormBillKW;
 
 procedure InitSystemObject;
 procedure RunSystemObject;

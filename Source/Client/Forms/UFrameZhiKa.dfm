@@ -207,6 +207,10 @@ inherited fFrameZhiKa: TfFrameZhiKa
       Caption = #23457#26680#32440#21345
       OnClick = N10Click
     end
+    object N11: TMenuItem
+      Caption = #26657#27491#32440#21345#37329#39069
+      OnClick = N11Click
+    end
     object N6: TMenuItem
       Caption = '-'
     end

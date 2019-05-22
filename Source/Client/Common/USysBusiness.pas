@@ -86,6 +86,9 @@ function GetZhikaUsedMoney(nZhiKa: string): Double;
 function GetCustomerValidMoney(nCID: string; const nLimit: Boolean = True;
  const nCredit: PDouble = nil): Double;
 //客户可用金额
+function GetHYMaxValue: Double;
+function GetHYValueByStockNo(const nNo: string): Double;
+//获取化验单已开量
 
 function SyncRemoteCustomer: Boolean;
 //同步远程用户
@@ -1058,10 +1061,24 @@ begin
   if nWhere = '' then
        nW := ''
   else nW := Format(' And (%s)', [nWhere]);
-
-  nStr := 'C_ID=Select C_ID,C_Name From %s ' +
-          'Where IsNull(C_XuNi, '''')<>''%s'' %s Order By C_PY';
-  nStr := Format(nStr, [sTable_Customer, sFlag_Yes, nW]);
+  {$IFDEF AdminUseFL}
+  if gSysParam.FIsAdmin then
+  begin
+    nStr := 'C_ID=Select C_ID,C_Name From %s ' +
+            'Where IsNull(C_XuNi, '''')<>''%s'' %s Order By C_PY';
+    nStr := Format(nStr, [sTable_Customer, sFlag_Yes, nW]);
+  end
+  else
+  begin
+    nStr := 'C_ID=Select C_ID,C_Name From %s ' +
+            'Where IsNull(C_XuNi, '''')<>''%s'' and IsNull(C_FL, '''')<>''%s'' %s Order By C_PY';
+    nStr := Format(nStr, [sTable_Customer, sFlag_Yes, sFlag_Yes, nW]);
+  end;
+  {$ELSE}
+    nStr := 'C_ID=Select C_ID,C_Name From %s ' +
+            'Where IsNull(C_XuNi, '''')<>''%s'' %s Order By C_PY';
+    nStr := Format(nStr, [sTable_Customer, sFlag_Yes, nW]);  
+  {$ENDIF}
 
   AdjustStringsItem(nList, True);
   FDM.FillStringsData(nList, nStr, -1, '.');
@@ -2165,6 +2182,19 @@ begin
     Add(Format('单据类型:%s %s', [nDelimiter, BillTypeToStr(FIsVIP)]));
     Add(Format('供 应 商:%s %s', [nDelimiter, FCusName]));
   end;
+end;
+
+//Desc: 每批次最大量
+function GetHYMaxValue: Double;
+var nStr: string;
+begin
+  nStr := 'Select D_Value From %s Where D_Name=''%s'' and D_Memo=''%s''';
+  nStr := Format(nStr, [sTable_SysDict, sFlag_SysParam, sFlag_HYValue]);
+
+  with FDM.QueryTemp(nStr) do
+  if RecordCount > 0 then
+       Result := Fields[0].AsFloat
+  else Result := 0;
 end;
 
 //Desc: 获取nNo水泥编号的已开量

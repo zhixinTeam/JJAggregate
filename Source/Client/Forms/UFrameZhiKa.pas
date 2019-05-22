@@ -4,6 +4,7 @@
 *******************************************************************************}
 unit UFrameZhiKa;
 
+{$I Link.Inc}
 interface
 
 uses
@@ -45,6 +46,7 @@ type
     N9: TMenuItem;
     N10: TMenuItem;
     N6: TMenuItem;
+    N11: TMenuItem;
     procedure EditIDPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure BtnAddClick(Sender: TObject);
@@ -57,6 +59,7 @@ type
     procedure cxView1DblClick(Sender: TObject);
     procedure N8Click(Sender: TObject);
     procedure N10Click(Sender: TObject);
+    procedure N11Click(Sender: TObject);
   private
     { Private declarations }
   protected
@@ -113,11 +116,28 @@ begin
             ' Left Join $SM sm On sm.S_ID=zk.Z_SaleMan ' +
             ' Left Join $Cus cus On cus.C_ID=zk.Z_Customer';
   //纸卡
-
-  if nWhere = '' then
-       Result := Result + ' Where (zk.Z_Date>=''$ST'' and zk.Z_Date <''$End'')' +
-                 ' and (Z_InValid Is Null or Z_InValid<>''$Yes'')'
-  else Result := Result + ' Where (' + nWhere + ')';
+  {$IFDEF AdminUseFL}
+  if gSysParam.FIsAdmin then
+  begin
+    if nWhere = '' then
+         Result := Result + ' Where (zk.Z_Date>=''$ST'' and zk.Z_Date <''$End'')' +
+                   ' and (Z_InValid Is Null or Z_InValid<>''$Yes'')'
+    else Result := Result + ' Where (' + nWhere + ')';
+  end
+  else
+  begin
+    if nWhere = '' then
+         Result := Result + ' Where (zk.Z_Date>=''$ST'' and zk.Z_Date <''$End'')' +
+                   ' and (Z_InValid Is Null or Z_InValid<>''$Yes'') '+
+                   ' and (zk.Z_Customer in(select distinct C_ID from S_Customer where isnull(C_FL,'''') <> ''Y'' ))'
+    else Result := Result + ' Where (' + nWhere + ') and (zk.Z_Customer in(select distinct C_ID from S_Customer where isnull(C_FL,'''') <> ''Y'' ))';
+  end;
+  {$ELSE}
+    if nWhere = '' then
+         Result := Result + ' Where (zk.Z_Date>=''$ST'' and zk.Z_Date <''$End'')' +
+                   ' and (Z_InValid Is Null or Z_InValid<>''$Yes'')'
+    else Result := Result + ' Where (' + nWhere + ')';
+  {$ENDIF}
 
   Result := MacroValue(Result, [MI('$ZK', sTable_ZhiKa), 
              MI('$SM', sTable_Salesman),
@@ -313,6 +333,24 @@ begin
     
     InitFormData(FWhere);
     ShowMsg('审核完毕', sHint);
+  end;
+end;
+
+//一键校正纸卡金额
+procedure TfFrameZhiKa.N11Click(Sender: TObject);
+var nStr: string;
+begin
+  if cxView1.DataController.GetSelectedCount > 0 then
+  begin
+    nStr := ' update S_ZhiKa set Z_MoneyUsed = L_Money From( ' +
+      ' Select Sum(L_Money) L_Money, L_ZhiKa from ( ' +
+      ' select isnull(L_Value,0) * isnull(L_Price,0) as L_Money, L_ZhiKa from S_Bill ' +
+      ' where L_OutFact Is not Null ) t Group by L_ZhiKa) b where Z_ID = b.L_ZhiKa ';
+
+    FDM.ExecuteSQL(nStr);
+
+    InitFormData(FWhere);
+    ShowMsg('校正完毕', sHint);
   end;
 end;
 

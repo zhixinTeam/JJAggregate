@@ -4,6 +4,7 @@
 *******************************************************************************}
 unit UFrameBillCard;
 
+{$I Link.inc}
 interface
 
 uses
@@ -169,6 +170,11 @@ begin
     if FWhere = '' then
          nStr := nStr + 'Where (C_Date>=''$S'' and C_Date<''$End'')'
     else nStr := nStr + 'Where (' + FWhere + ')';
+
+//    {$IFDEF AdminUseFL}
+//      if not gSysParam.FIsAdmin then
+//        nStr := nStr + ' And (b.L_CusID in(select distinct C_ID from S_Customer where isnull(C_FL,'''') <> ''Y'' ))';
+//    {$ENDIF}
 
     nStr := MacroValue(nStr, [MI('$BC', sTable_Card),
             MI('$Bill', sTable_Bill),
