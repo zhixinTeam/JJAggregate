@@ -517,6 +517,7 @@ end;
 //Desc: 保存
 procedure TfFormBill.BtnOKClick(Sender: TObject);
 var nIdx: Integer;
+    nStr: string;
     nPrint: Boolean;
     nList,nTmp,nStocks: TStrings;
 begin
@@ -538,6 +539,11 @@ begin
       ShowDlg('当前价格已失效(刚调价),请重新执行开单操作', sHint);
       Exit;
     end;
+  end;
+  if StrToFloatDef(EditValue.Text,0) >= 50 then
+  begin
+    nStr := '办理吨数为'+EditValue.Text+',已大于等于50吨,您确定要继续办理吗？';
+    if not QueryDlg(nStr, sAsk) then Exit;
   end;
 
   nStocks := TStringList.Create;

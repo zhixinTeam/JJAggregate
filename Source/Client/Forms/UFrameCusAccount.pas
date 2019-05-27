@@ -183,6 +183,12 @@ begin
     ' where L_OutFact Is  Null ) t Group by L_CusID) b where A_CID = b.L_CusID ';
   FDM.ExecuteSQL(nStr);
 
+  //校正冻结资金
+  nStr := ' update Sys_CustomerAccount set A_FreezeMoney = 0  where ' +
+    ' A_CID  not in (select L_CusID from S_Bill    ' +
+    ' where L_OutFact Is Null Group by L_CusID ) ';
+  FDM.ExecuteSQL(nStr);
+
   InitFormData(FWhere);
   ShowMsg('校正完毕', sHint);
 
