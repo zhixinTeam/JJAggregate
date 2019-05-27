@@ -518,6 +518,7 @@ end;
 procedure TfFormBill.BtnOKClick(Sender: TObject);
 var nIdx: Integer;
     nStr: string;
+    nValue: Double;
     nPrint: Boolean;
     nList,nTmp,nStocks: TStrings;
 begin
@@ -540,11 +541,21 @@ begin
       Exit;
     end;
   end;
-  if StrToFloatDef(EditValue.Text,0) >= 50 then
+
+  nValue := 0;
+  for nIdx:=Low(gStockList) to High(gStockList) do
+  with gStockList[nIdx] do
   begin
-    nStr := '办理吨数为'+EditValue.Text+',已大于等于50吨,您确定要继续办理吗？';
-    if not QueryDlg(nStr, sAsk) then Exit;
+    if not FSelecte then Continue;
+    nValue := FValue;
+
+    if nValue >= 50 then
+    begin
+      nStr := '办理吨数为'+Floattostr(nValue)+',已大于等于50吨,您确定要继续办理吗？';
+      if not QueryDlg(nStr, sAsk) then Exit;
+    end;
   end;
+
 
   nStocks := TStringList.Create;
   nList := TStringList.Create;
