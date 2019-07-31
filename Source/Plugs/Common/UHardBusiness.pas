@@ -1614,11 +1614,49 @@ var
   nStr, nTruck, nMsg: string;
   nList : TStrings;
   nIdx  : Integer;
+  FLevel1,FLevel2: Double;
 begin
   if nTunnel.FStatusNew = bsProcess then
   begin
     if nTunnel.FWeightMax > 0 then
-         nStr := Format('%.2f/%.2f', [nTunnel.FWeightMax, nTunnel.FValTunnel])
+    begin
+      nStr := Format('%.2f/%.2f', [nTunnel.FWeightMax, nTunnel.FValTunnel]);
+      
+      FLevel1 := StrToFloatDef(nTunnel.FTunnel.FOptions.Values['Level1'],0);
+      FLevel2 := StrToFloatDef(nTunnel.FTunnel.FOptions.Values['Level2'],0);
+      if (FLevel1 > 0) and (FLevel2 > FLevel1)  then
+      begin
+        if (not nTunnel.FWeightDone) and (not nTunnel.FLevel1)
+          and (nTunnel.FValTunnel >= nTunnel.FWeightMax * FLevel1)
+          and (nTunnel.FValTunnel < nTunnel.FWeightMax * FLevel2) then  //模拟量1
+        begin
+          {$IFDEF UseERelayPLC}
+          if nTunnel.FTunnel.FOptions.Values['TruckProber'] = '' then
+          begin
+            nTunnel.FLevel1 := True;
+            gERelayManagerPLC.OpenTunnel(nTunnel.FID+'_O01');
+            WriteNearReaderLog(nTunnel.FID+'关一级'+' 当前量：'+FloatToStr(nTunnel.FValTunnel)+'最终量：'+FloatToStr(nTunnel.FWeightMax));
+          end;
+          {$ENDIF}
+        end;
+      end;
+      if (FLevel2 > 0) and (FLevel2 < 1) then
+      begin
+        if (not nTunnel.FWeightDone) and (not nTunnel.FLevel2)
+          and (nTunnel.FValTunnel >= nTunnel.FWeightMax * FLevel2)
+          and (nTunnel.FValTunnel < (nTunnel.FWeightMax - 0.1)) then  //模拟量2
+        begin
+          {$IFDEF UseERelayPLC}
+          if nTunnel.FTunnel.FOptions.Values['TruckProber'] = '' then
+          begin
+            nTunnel.FLevel2 := True;
+            gERelayManagerPLC.OpenTunnel(nTunnel.FID+'_O02');
+            WriteNearReaderLog(nTunnel.FID+'关二级'+' 当前量：'+FloatToStr(nTunnel.FValTunnel)+'最终量：'+FloatToStr(nTunnel.FWeightMax));
+          end;
+          {$ENDIF}
+        end;
+      end;
+    end
     else nStr := Format('%.2f/%.2f', [nTunnel.FValue, nTunnel.FValTunnel]);
 
     ShowLEDHint(nTunnel.FID, nStr, nTunnel.FParams.Values['Truck'],nTunnel.FTunnel.FOptions.Values['TruckProber']);

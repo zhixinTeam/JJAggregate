@@ -332,6 +332,8 @@ const
   sTable_CusCredit    = 'Sys_CustomerCredit';        //客户信用
   sTable_SysShouJu    = 'Sys_ShouJu';                //收据记录
 
+  sTable_SysFaPiao    = 'Sys_FaPiao';                //发票记录
+
   sTable_PoundLog     = 'Sys_PoundLog';              //过磅数据
   sTable_PoundBak     = 'Sys_PoundBak';              //过磅作废
   sTable_Picture      = 'Sys_Picture';               //存放图片
@@ -648,6 +650,27 @@ const
 
    *.水泥销售入金中
      金额 = 单价 x 数量 + 其它
+  -----------------------------------------------------------------------------}
+
+  sSQL_NewFaPiao = 'Create Table $Table(R_ID $Inc, F_SaleMan varChar(15),' +
+       'F_CusID varChar(15), F_CusName varChar(80), ' +
+       'F_Type Char(1), F_Payment varChar(20),' +
+       'F_Money Decimal(15,5), F_ZID varChar(15), F_Date DateTime,' +
+       'F_Man varChar(32), F_Memo varChar(200), F_KPDate DateTime)';
+  {-----------------------------------------------------------------------------
+   发票明细:sys_FaPiao
+   *.R_ID:记录编号
+   *.F_SaleMan:业务员
+   *.F_CusID:客户号
+   *.F_CusName:客户名
+   *.F_Type:类型(发票)
+   *.F_Payment:付款方式
+   *.F_Money:缴纳金额
+   *.F_ZID:纸卡号
+   *.F_Date:操作日期
+   *.F_Man:操作人
+   *.F_Memo:描述
+   *.F_KPDate:开票日期
   -----------------------------------------------------------------------------}
 
   sSQL_NewSysShouJu = 'Create Table $Table(R_ID $Inc ,S_Code varChar(15),' +
@@ -1402,6 +1425,7 @@ begin
   AddSysTableItem(sTable_InOutMoney, sSQL_NewInOutMoney);
   AddSysTableItem(sTable_CusCredit, sSQL_NewCusCredit);
   AddSysTableItem(sTable_SysShouJu, sSQL_NewSysShouJu);
+  AddSysTableItem(sTable_SysFaPiao, sSQL_NewFaPiao);
 
   AddSysTableItem(sTable_ZhiKa, sSQL_NewZhiKa);
   AddSysTableItem(sTable_ZhiKaDtl, sSQL_NewZhiKaDtl);
