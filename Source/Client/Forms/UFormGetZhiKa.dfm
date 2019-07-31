@@ -125,9 +125,20 @@ inherited fFormGetZhiKa: TfFormGetZhiKa
     object EditProject: TcxComboBox [8]
       Left = 81
       Top = 239
+      ParentFont = False
       Properties.OnEditValueChanged = EditProjectPropertiesEditValueChanged
       TabOrder = 4
-      Width = 121
+      Width = 240
+    end
+    object chkMr: TCheckBox [9]
+      Left = 327
+      Top = 241
+      Width = 80
+      Height = 17
+      Caption = #35774#20026#40664#35748
+      Color = clWindow
+      ParentColor = False
+      TabOrder = 9
     end
     inherited dxLayout1Group_Root: TdxLayoutGroup
       inherited dxGroup1: TdxLayoutGroup
@@ -172,6 +183,7 @@ inherited fFormGetZhiKa: TfFormGetZhiKa
         AlignVert = avClient
         Caption = '2.'#36873#25321#32440#21345
         object dxLayout1Item5: TdxLayoutItem
+          AutoAligns = [aaVertical]
           Caption = #24037#31243#24037#22320':'
           Control = EditProject
           ControlOptions.ShowBorder = False

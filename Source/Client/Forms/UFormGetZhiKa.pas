@@ -31,6 +31,7 @@ type
     EditZK: TcxComboBox;
     EditProject: TcxComboBox;
     dxLayout1Item5: TdxLayoutItem;
+    chkMr: TCheckBox;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure EditSalesManPropertiesChange(Sender: TObject);
@@ -177,10 +178,10 @@ begin
   //----------------------------------------------------------------------------
   if nZhiKa = '' then
   begin
-    nStr := 'Select distinct case when isnull(Z_Project, '''')<>'''' then Z_Project else ''无'' end  Z_Project From %s ' +
+    nStr := 'Select case when isnull(Z_Project, '''')<>'''' then Z_Project else ''无'' end  Z_Project From %s ' +
             'Where Z_Customer=''%s'' And Z_ValidDays>%s And ' +
             'IsNull(Z_InValid, '''')<>''%s'' And ' +
-            'IsNull(Z_Freeze, '''')<>''%s'' Order By Z_Project Desc';
+            'IsNull(Z_Freeze, '''')<>''%s'' Order By ISNULL(Z_ProjectSort,2) ';
     nStr := Format(nStr, [sTable_ZhiKa, nID, sField_SQLServer_Now,
             sFlag_Yes, sFlag_Yes]);
     //xxxxx
@@ -201,7 +202,8 @@ begin
 
       while not Eof do
       begin
-        Items.Add(FieldByName('Z_Project').AsString);
+        if Items.IndexOf(FieldByName('Z_Project').AsString) < 0 then
+          Items.Add(FieldByName('Z_Project').AsString);
         Next;
       end;
     end;
@@ -306,7 +308,7 @@ end;
 
 procedure TfFormGetZhiKa.BtnOKClick(Sender: TObject);
 var
-  nStr : string;
+  nStr, nSQL : string;
 begin
   if EditZK.ItemIndex < 0 then
   begin
@@ -321,6 +323,19 @@ begin
 
   gParam.FParamB := GetCtrlData(EditZK);
   gParam.FParamC := GetCtrlData(EditName);
+
+  if chkMr.Checked then
+  begin
+    //更改工程工地排序
+    nSQL := 'Update %s Set Z_ProjectSort=0 Where Z_Customer=''%s'' and Z_ID=''%s'' ';
+    nSQL := Format(nSQL, [sTable_ZhiKa,GetCtrlData(EditName), GetCtrlData(EditZK)]);
+    FDM.ExecuteSQL(nSQL);
+    //更改工程工地排序
+    nSQL := 'Update %s Set Z_ProjectSort=1 Where Z_Customer=''%s'' and Z_ID<>''%s'' ';
+    nSQL := Format(nSQL, [sTable_ZhiKa,GetCtrlData(EditName), GetCtrlData(EditZK)]);
+    FDM.ExecuteSQL(nSQL);
+  end;
+
   ModalResult := mrOk;
 end;
 

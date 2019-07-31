@@ -49,6 +49,8 @@ type
     N3: TMenuItem;
     N10: TMenuItem;
     N12: TMenuItem;
+    N6: TMenuItem;
+    N7: TMenuItem;
     procedure EditIDPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure BtnDelClick(Sender: TObject);
@@ -64,6 +66,8 @@ type
     procedure PMenu1Popup(Sender: TObject);
     procedure N10Click(Sender: TObject);
     procedure N12Click(Sender: TObject);
+    procedure N6Click(Sender: TObject);
+    procedure N7Click(Sender: TObject);
   protected
     FStart,FEnd: TDate;
     //时间区间
@@ -98,6 +102,7 @@ begin
   inherited;
   FUseDate := True;
   InitDateRange(Name, FStart, FEnd);
+  cxView1.OptionsSelection.MultiSelect := True;
 end;
 
 procedure TfFrameBill.OnDestroyFrame;
@@ -287,6 +292,8 @@ begin
                 (gPopedomManager.HasPopedom(sPopedom_ViewPrice, PopedomItem));
   //xxxxx
   N12.Enabled := gSysParam.FIsAdmin;
+  N6.Enabled  := gSysParam.FIsAdmin;
+  N7.Enabled  := gSysParam.FIsAdmin;
 end;
 
 //Desc: 打印提货单
@@ -445,6 +452,123 @@ begin
     nP.FCommand := cCmd_EditData;
     nP.FParamA := nList.Text;
     CreateBaseFormItem(cFI_FormBillKW, '', @nP);
+
+    if (nP.FCommand = cCmd_ModalResult) and (nP.FParamA = mrOK) then
+    begin
+      InitFormData(FWhere);
+    end;
+
+  finally
+    nList.Free;
+  end;
+end;
+
+procedure TfFrameBill.N6Click(Sender: TObject);
+var
+  i : Integer;
+  nValue: Double;
+  nStr,nLID:   string;
+begin
+  inherited;
+  if cxView1.DataController.GetSelectedCount < 1 then
+  begin
+    ShowMsg('请选择要冲红的记录', sHint);
+    Exit;
+  end;
+  if not QueryDlg('确定要对选中的所有记录进行冲红嘛？', sAsk) then Exit;
+  with cxView1.Controller do
+  begin
+    for i:=0 to SelectedRowCount-1   do
+    begin
+      SelectedRows[i].Focused:=True;
+      if (Trim(SQLQuery.FieldByName('L_OutFact').AsString) = '') then
+      begin
+        if SelectedRowCount = 1 then
+        begin
+          ShowMsg('提货单未出厂,不允许冲红', sHint);
+          Exit;
+        end
+        else
+          Continue;
+      end;
+      if Pos('冲红',SQLQuery.FieldByName('L_Memo').AsString) > 0 then
+      begin
+        if SelectedRowCount = 1 then
+        begin
+          ShowMsg('提货单已冲红', sHint);
+          Exit;
+        end
+        else
+          Continue;
+      end;
+      nLID := SQLQuery.FieldByName('L_ID').AsString;
+      if SQLQuery.FieldByName('L_Value').AsFloat > 0 then
+      begin
+        nValue := 0 - SQLQuery.FieldByName('L_Value').AsFloat;
+
+        nStr := ' insert Into %s(L_ID,L_ZhiKa,L_CusID,L_CusName,L_CusPY,L_SaleID,L_SaleMan,L_StockNo,L_StockName,L_Value,L_Price,L_ZKMoney, '
+          +' L_Truck,L_Status,L_NextStatus,L_InTime,L_InMan,L_PValue,L_PDate,L_PMan,L_MValue,L_MDate,L_MMan,L_LadeTime, '
+          +' L_LadeMan,L_OutFact,L_OutMan,L_Man,L_Date,L_Memo,L_KDValue) values '
+          +' (''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',%f,%f,''%s'',''%s'',''%s'',''%s'',%s, '
+          +'  ''%s'',%f,%s,''%s'',%f,%s,''%s'',%s,''%s'',''%s'',''%s'',''%s'',%s,''%s'',%f)';
+
+        nStr := Format(nStr, [sTable_Bill, 'CH'+nLID, SQLQuery.FieldByName('L_ZhiKa').AsString,
+                SQLQuery.FieldByName('L_CusID').AsString,SQLQuery.FieldByName('L_CusName').AsString,SQLQuery.FieldByName('L_CusPY').AsString,
+                SQLQuery.FieldByName('L_SaleID').AsString,SQLQuery.FieldByName('L_SaleMan').AsString,SQLQuery.FieldByName('L_StockNo').AsString,
+                SQLQuery.FieldByName('L_StockName').AsString,nValue,SQLQuery.FieldByName('L_Price').AsFloat,
+                SQLQuery.FieldByName('L_ZKMoney').AsString,SQLQuery.FieldByName('L_Truck').AsString,SQLQuery.FieldByName('L_Status').AsString,
+                SQLQuery.FieldByName('L_NextStatus').AsString,FDM.SQLServerNow,SQLQuery.FieldByName('L_InMan').AsString,
+                SQLQuery.FieldByName('L_PValue').AsFloat,FDM.SQLServerNow,SQLQuery.FieldByName('L_PMan').AsString,
+                SQLQuery.FieldByName('L_MValue').AsFloat,FDM.SQLServerNow,SQLQuery.FieldByName('L_MMan').AsString,
+                FDM.SQLServerNow,SQLQuery.FieldByName('L_LadeMan').AsString,SQLQuery.FieldByName('L_OutFact').AsString,
+                SQLQuery.FieldByName('L_OutMan').AsString,SQLQuery.FieldByName('L_Man').AsString,FDM.SQLServerNow,
+                '冲红记录', SQLQuery.FieldByName('L_KDValue').AsFloat]);
+        FDM.ExecuteSQL(nStr);
+
+        nStr := ' update %s set L_Memo=''%s'' where L_ID = ''%s'' ';
+        nStr := Format(nStr, [sTable_Bill, '已冲红', nLID]);
+
+        FDM.ExecuteSQL(nStr);
+    end;
+
+  end;
+  if cxView1.DataController.GetSelectedCount > 0 then
+  begin
+      //冲红后校正资金
+      CheckAllCusMoney;
+      InitFormData(FWhere);
+      ShowMsg('提货单冲红成功！', sHint);
+    end;
+  end;
+end;
+
+procedure TfFrameBill.N7Click(Sender: TObject);
+var
+  nID   : string;
+  nList : TStrings;
+  nP: TFormCommandParam;
+begin
+  inherited;
+  if cxView1.DataController.GetSelectedCount < 1 then
+  begin
+    ShowMsg('请选择要调价/调量的记录', sHint);
+    Exit;
+  end;
+  if (Trim(SQLQuery.FieldByName('L_OutFact').AsString) = '') then
+  begin
+    ShowMsg('提货单未出厂,不允许调价/调量', sHint);
+    Exit;
+  end;
+  
+  nID := SQLQuery.FieldByName('L_ID').AsString;
+
+  nList := TStringList.Create;
+  try
+    nList.Add(nID);
+
+    nP.FCommand := cCmd_EditData;
+    nP.FParamA := nList.Text;
+    CreateBaseFormItem(cFI_FormBillAdjustNum, '', @nP);
 
     if (nP.FCommand = cCmd_ModalResult) and (nP.FParamA = mrOK) then
     begin

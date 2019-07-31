@@ -177,5 +177,12 @@ inherited fFrameCusAccount: TfFrameCusAccount
       Caption = #26657#27491#23458#25143#36164#37329
       OnClick = N6Click
     end
+    object N8: TMenuItem
+      Caption = '-'
+    end
+    object N7: TMenuItem
+      Caption = #23458#25143#23545#36134#25253#34920
+      OnClick = N7Click
+    end
   end
 end

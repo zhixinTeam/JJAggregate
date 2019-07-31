@@ -108,6 +108,9 @@ function SaveCustomerPayment(const nCusID,nCusName,nSaleMan: string;
  const nType,nPayment,nMemo: string; const nMoney: Double;
  const nCredit: Boolean = True): Boolean;
 //保存回款记录
+function SaveCustomerPayBill(const nCusID,nCusName,nSaleMan: string;
+ const nType,nPayment,nMemo: string; const nMoney: Double;const nKPDate:string): Boolean;
+//保存发票记录
 function SaveCustomerCredit(const nCusID,nMemo: string; const nCredit: Double;
  const nEndTime: TDateTime): Boolean;
 //保存信用记录
@@ -177,6 +180,9 @@ procedure GetPoundAutoWuCha(var nWCValZ,nWCValF: Double; const nVal: Double;
 function GetTruckNO(const nTruck: WideString; const nLong: Integer=12): string;
 function GetValue(const nValue: Double): string;
 //显示格式化
+
+procedure CheckAllCusMoney;
+//校正所有客户资金
 
 function IsTunnelOK(const nTunnel: string): Boolean;
 //查询通道光栅是否正常
@@ -1195,7 +1201,7 @@ begin
   begin
     nLimit := GetCustomerValidMoney(nCusID, False);
     //get money value
-    
+
     if (nLimit <= 0) or (nLimit < -nVal) then
     begin
       nStr := '客户: %s ' + #13#10#13#10 +
@@ -1255,6 +1261,34 @@ begin
       nStr := Format(nStr, [nCusName]);
       ShowDlg(nStr, sHint);
     end;
+
+    if not nBool then
+      FDM.ADOConn.CommitTrans;
+    Result := True;
+  except
+    Result := False;
+    if not nBool then FDM.ADOConn.RollbackTrans;
+  end;
+end;
+
+function SaveCustomerPayBill(const nCusID,nCusName,nSaleMan: string;
+ const nType,nPayment,nMemo: string; const nMoney: Double;const nKPDate:string): Boolean;
+var nStr: string;
+    nBool: Boolean;
+    nVal: Double;
+begin
+  Result := False;
+  nVal := Float2Float(nMoney, cPrecision, False);
+  //adjust float value
+  nBool := FDM.ADOConn.InTransaction;
+  if not nBool then FDM.ADOConn.BeginTrans;
+  try
+    nStr := 'Insert Into %s(F_SaleMan,F_CusID,F_CusName,' +
+            'F_Type,F_Payment,F_Money,F_Date,F_Man,F_Memo,F_KPDate ) ' +
+            'Values(''%s'',''%s'',''%s'',''%s'',''%s'',%.2f,%s,''%s'',''%s'',''%s'')';
+    nStr := Format(nStr, [sTable_SysFaPiao, nSaleMan, nCusID, nCusName, nType,
+            nPayment, nVal, FDM.SQLServerNow, gSysParam.FUserID, nMemo,nKPDate]);
+    FDM.ExecuteSQL(nStr);
 
     if not nBool then
       FDM.ADOConn.CommitTrans;
@@ -2345,8 +2379,9 @@ begin
   nBill := AdjustListStrFormat(nBill, '''', True, ',', False);
   //添加引号
 
-  nStr := 'Select * From %s b Where L_ID In(%s)';
-  nStr := Format(nStr, [sTable_Bill, nBill]);
+  nStr := ' Select b.*, isnull(c.C_FL,''N'') C_FL From %s b Left Join %s c on b.L_CusID = c.C_ID '+
+          ' Where L_ID In(%s) ';
+  nStr := Format(nStr, [sTable_Bill,sTable_Customer, nBill]);
   //xxxxx
 
   if FDM.QueryTemp(nStr).RecordCount < 1 then
@@ -2927,6 +2962,31 @@ var nStr: string;
 begin
   nStr := Format('      %.2f', [nValue]);
   Result := Copy(nStr, Length(nStr) - 6 + 1, 6);
+end;
+
+procedure CheckAllCusMoney;
+var
+  nStr: string;
+begin
+  //校正出金
+  nStr := ' update Sys_CustomerAccount set A_OutMoney = L_Money From( ' +
+    ' Select Sum(L_Money) L_Money, L_CusID from ( ' +
+    ' select isnull(L_Value,0) * isnull(L_Price,0) as L_Money, L_CusID from S_Bill ' +
+    ' where L_OutFact Is not Null ) t Group by L_CusID) b where A_CID = b.L_CusID ';
+  FDM.ExecuteSQL(nStr);
+
+  //校正冻结资金
+  nStr := ' update Sys_CustomerAccount set A_FreezeMoney = L_Money From( ' +
+    ' Select Sum(L_Money) L_Money, L_CusID from ( ' +
+    ' select isnull(L_Value,0) * isnull(L_Price,0) as L_Money, L_CusID from S_Bill ' +
+    ' where L_OutFact Is  Null ) t Group by L_CusID) b where A_CID = b.L_CusID ';
+  FDM.ExecuteSQL(nStr);
+
+  //校正冻结资金
+  nStr := ' update Sys_CustomerAccount set A_FreezeMoney = 0  where ' +
+    ' A_CID  not in (select L_CusID from S_Bill    ' +
+    ' where L_OutFact Is Null Group by L_CusID ) ';
+  FDM.ExecuteSQL(nStr);
 end;
 
 //验证车辆电子标签

@@ -38,12 +38,15 @@ type
     N4: TMenuItem;
     N5: TMenuItem;
     N6: TMenuItem;
+    N7: TMenuItem;
+    N8: TMenuItem;
     procedure N3Click(Sender: TObject);
     procedure EditIDPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure PMenu1Popup(Sender: TObject);
     procedure N4Click(Sender: TObject);
     procedure N6Click(Sender: TObject);
+    procedure N7Click(Sender: TObject);
   private
     { Private declarations }
   protected
@@ -58,7 +61,8 @@ implementation
 
 {$R *.dfm}
 uses
-  ULibFun, UMgrControl, USysConst, USysDB, UDataModule, USysBusiness;
+  ULibFun, UMgrControl, USysConst, USysDB, UDataModule, USysBusiness, UFormDateFilter,
+  UDataReport;
 
 class function TfFrameCusAccount.FrameID: integer;
 begin
@@ -219,6 +223,122 @@ begin
 //    nStr := Format(nStr, [sTable_CusAccount, nVal, nCID]);
 //    FDM.ExecuteSQL(nStr);
 //  end;
+end;
+
+procedure TfFrameCusAccount.N7Click(Sender: TObject);
+var
+  nStr, nCID, nCName,nCDate : string;
+  FStart,FEnd: TDate;
+  nLastInMoney, nLastOutMoney, nLastYSMoney : Double;
+  nInMoney, nOutMoney, nYSMoney : Double;
+  nParam: TReportParamItem;
+  nSus: Boolean;
+begin
+  inherited;
+  if cxView1.DataController.GetSelectedCount < 1 then Exit;
+
+  nCID   := SQLQuery.FieldByName('A_CID').AsString;
+  nCName := SQLQuery.FieldByName('C_NAME').AsString;
+  FStart := IncMonth(Now,-1);
+  FEnd   := Now;
+  if ShowDateFilterForm(FStart, FEnd) then
+  begin
+    nCDate := Date2CH(FormatDateTime('YYYYMMDD', FStart))+'至'
+             +Date2CH(FormatDateTime('YYYYMMDD', FEnd));
+    nStr := ' Select Sum(L_Money) from (' +
+            ' select L_Value * L_Price as L_Money from %s' +
+            ' where L_OutFact Is not Null And L_CusID = ''%s'' and L_Date < ''%s'') t';
+    nStr := Format(nStr, [sTable_Bill, nCID, Date2Str(FStart)]);
+
+    with FDM.QuerySQL(nStr) do
+    begin
+      nLastOutMoney := Float2Float(Fields[0].AsFloat, cPrecision, True);
+    end;
+
+    nStr := ' Select Sum(M_Money) from %s ' +
+            ' where M_CusID = ''%s'' and M_Date < ''%s'' ';
+    nStr := Format(nStr, [sTable_InOutMoney, nCID, Date2Str(FStart)]);
+    with FDM.QuerySQL(nStr) do
+    begin
+      nLastInMoney := Float2Float(Fields[0].AsFloat, cPrecision, True);
+    end;
+    //上期应收款余额
+    nLastYSMoney := nLastOutMoney - nLastInMoney;
+
+
+    nStr := ' Select Sum(L_Money) from (' +
+            ' select L_Value * L_Price as L_Money from %s' +
+            ' where L_OutFact Is not Null And L_CusID = ''%s'' and L_Date >= ''%s'' and L_Date < ''%s'') t';
+    nStr := Format(nStr, [sTable_Bill, nCID, Date2Str(FStart),Date2Str(FEnd + 1)]);
+
+    with FDM.QuerySQL(nStr) do
+    begin
+      //本期应收账款
+      nOutMoney := Float2Float(Fields[0].AsFloat, cPrecision, True);
+    end;
+
+    nStr := ' Select Sum(M_Money) from %s ' +
+            ' where M_CusID = ''%s'' and M_Date >= ''%s'' and M_Date < ''%s'' ';
+    nStr := Format(nStr, [sTable_InOutMoney, nCID, Date2Str(FStart),Date2Str(FEnd + 1)]);
+    with FDM.QuerySQL(nStr) do
+    begin
+      //本期收到客户款项
+      nInMoney := Float2Float(Fields[0].AsFloat, cPrecision, True);
+    end;
+    //本期应收款余额
+    nYSMoney := nOutMoney - nInMoney + nLastYSMoney ;
+
+    nStr := ' Select Sum(L_Value) L_Value, Sum(L_Value * L_Price) L_Money, L_StockName, L_Price from %s ' +
+            ' where L_OutFact Is not Null And L_CusID = ''%s'' and L_Date >= ''%s'' and L_Date < ''%s'' ' +
+            ' Group By L_StockName, L_Price ';
+
+    nStr := Format(nStr, [sTable_Bill, nCID, Date2Str(FStart),Date2Str(FEnd + 1)]);
+
+    if FDM.QueryTemp(nStr).RecordCount < 1 then Exit;
+
+    nStr := gPath + sReportDir + 'CBReport.fr3';
+    if not FDR.LoadReportFile(nStr) then
+    begin
+      nStr := '无法正确加载报表文件';
+      ShowMsg(nStr, sHint); Exit;
+    end;
+
+    nParam.FName  := 'UserName';
+    nParam.FValue := gSysParam.FUserID;
+    FDR.AddParamItem(nParam);
+
+    nParam.FName  := 'Company';
+    nParam.FValue := gSysParam.FHintText;
+    FDR.AddParamItem(nParam);
+
+    nParam.FName  := 'CusName';
+    nParam.FValue := nCName;
+    FDR.AddParamItem(nParam);
+
+    nParam.FName  := 'CusDate';
+    nParam.FValue := nCDate;
+    FDR.AddParamItem(nParam);
+
+    nParam.FName  := 'LastYSMoney';
+    nParam.FValue := FloatToStr(nLastYSMoney);
+    FDR.AddParamItem(nParam);
+
+    nParam.FName  := 'YSSumMoney';
+    nParam.FValue := FloatToStr(nOutMoney);
+    FDR.AddParamItem(nParam);
+
+    nParam.FName  := 'InOutMoney';
+    nParam.FValue := FloatToStr(nInMoney);
+    FDR.AddParamItem(nParam);
+
+    nParam.FName  := 'YSMoney';
+    nParam.FValue := FloatToStr(nYSMoney);
+    FDR.AddParamItem(nParam);
+
+    FDR.Dataset1.DataSet := FDM.SqlTemp;
+    FDR.ShowReport;
+    nSus := FDR.PrintSuccess;
+  end;
 end;
 
 initialization

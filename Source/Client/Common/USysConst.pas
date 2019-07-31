@@ -104,6 +104,7 @@ const
 
   cFI_FormBill          = $1017;                     //开提货单
   cFI_FormBillKW        = $1117;                     //提货单勘误
+  cFI_FormBillAdjustNum = $1118;                     //提货单价格/数量冲红
   cFI_FormGetZhika      = $1101;                     //获取纸卡
   cFI_FormShouJu        = $1018;                     //开收据
   cFI_FormCusCredit     = $1019;                     //信用变动
@@ -174,6 +175,9 @@ const
   cFI_FormAuditTruck    = $1095;                     //车辆审核
 
   cFI_Form_HT_SalePlan  = $1100;                     //销售计划(红塔)
+
+  cFI_FramePayBill      = $2021;                     //发票记录
+  cFI_FormPayBill       = $2022;                     //发票记录
 
   {*Command*}
   cCmd_RefreshData      = $0002;                     //刷新数据
@@ -346,6 +350,7 @@ begin
   AddMenuModuleItem('MAIN_C06', cFI_FrameInvoiceWeek);
   AddMenuModuleItem('MAIN_C07', cFI_FrameShouJu);
   AddMenuModuleItem('MAIN_C08', cFI_FrameSaleZZ);
+  AddMenuModuleItem('MAIN_C12', cFI_FramePayBill);
 
   AddMenuModuleItem('MAIN_D01', cFI_FrameTruckPlan);
   AddMenuModuleItem('MAIN_D02', cFI_FrameMakeCard);

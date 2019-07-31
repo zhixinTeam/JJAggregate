@@ -162,6 +162,7 @@ inherited fFormBill: TfFormBill
     object EditPValue: TcxTextEdit [12]
       Left = 81
       Top = 289
+      ParentFont = False
       TabOrder = 15
       Width = 271
     end
