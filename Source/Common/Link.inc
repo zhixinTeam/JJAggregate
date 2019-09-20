@@ -152,4 +152,6 @@
   //定量装车使用车检
   {$DEFINE AdminUseFL} 
   //管理员组使用返利
+  {$DEFINE UseCarrier}
+  //使用承运商
 {$ENDIF}

@@ -2,7 +2,7 @@ inherited fFormBillAdjustNum: TfFormBillAdjustNum
   Left = 418
   Top = 228
   Width = 606
-  Height = 403
+  Height = 424
   BorderStyle = bsSizeable
   Position = poDesktopCenter
   OnClose = FormClose
@@ -11,20 +11,20 @@ inherited fFormBillAdjustNum: TfFormBillAdjustNum
   TextHeight = 12
   inherited dxLayout1: TdxLayoutControl
     Width = 598
-    Height = 372
+    Height = 393
     inherited BtnOK: TButton
       Left = 452
-      Top = 339
+      Top = 360
       Caption = #30830#23450
-      TabOrder = 5
+      TabOrder = 7
     end
     inherited BtnExit: TButton
       Left = 522
-      Top = 339
-      TabOrder = 6
+      Top = 360
+      TabOrder = 8
     end
     object EditValue: TcxTextEdit [2]
-      Left = 153
+      Left = 177
       Top = 217
       Enabled = False
       ParentFont = False
@@ -76,25 +76,40 @@ inherited fFormBillAdjustNum: TfFormBillAdjustNum
       ViewStyle = vsReport
     end
     object EditNewPrice: TcxTextEdit [4]
-      Left = 153
-      Top = 242
-      ParentFont = False
-      TabOrder = 3
-      Width = 121
-    end
-    object EditNewValue: TcxTextEdit [5]
-      Left = 153
+      Left = 177
       Top = 267
       ParentFont = False
       TabOrder = 4
       Width = 121
     end
+    object EditNewValue: TcxTextEdit [5]
+      Left = 177
+      Top = 292
+      ParentFont = False
+      TabOrder = 5
+      Width = 121
+    end
     object EditPrice: TcxTextEdit [6]
-      Left = 153
+      Left = 177
       Top = 192
       Enabled = False
       ParentFont = False
       TabOrder = 1
+      Width = 121
+    end
+    object EditYFPrice: TcxTextEdit [7]
+      Left = 177
+      Top = 242
+      Enabled = False
+      ParentFont = False
+      TabOrder = 3
+      Width = 121
+    end
+    object EditNewYFPrice: TcxTextEdit [8]
+      Left = 177
+      Top = 317
+      ParentFont = False
+      TabOrder = 6
       Width = 121
     end
     inherited dxLayout1Group_Root: TdxLayoutGroup
@@ -116,6 +131,11 @@ inherited fFormBillAdjustNum: TfFormBillAdjustNum
           Control = EditValue
           ControlOptions.ShowBorder = False
         end
+        object dxLayout1Item8: TdxLayoutItem
+          Caption = #21407#26469#36816#36153#20215#26684'('#20803'/'#21544')'#65306
+          Control = EditYFPrice
+          ControlOptions.ShowBorder = False
+        end
         object dxLayout1Item3: TdxLayoutItem
           Caption = #35843#25972#21518#30340#20215#26684'('#20803'/'#21544')'#65306
           Control = EditNewPrice
@@ -124,6 +144,11 @@ inherited fFormBillAdjustNum: TfFormBillAdjustNum
         object dxLayout1Item6: TdxLayoutItem
           Caption = #35843#25972#21518#30340#25968#37327'('#21544')'#65306
           Control = EditNewValue
+          ControlOptions.ShowBorder = False
+        end
+        object dxLayout1Item9: TdxLayoutItem
+          Caption = #35843#25972#21518#30340#36816#36153#20215#26684'('#20803'/'#21544')'#65306
+          Control = EditNewYFPrice
           ControlOptions.ShowBorder = False
         end
       end

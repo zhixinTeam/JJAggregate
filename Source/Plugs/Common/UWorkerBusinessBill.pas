@@ -560,6 +560,11 @@ begin
               SF('L_Price', FListC.Values['Price'], sfVal),
               SF('L_PriceDesc', FListC.Values['PriceDesc']),
               SF('L_HYDan', FListC.Values['HYDan']),
+
+              {$IFDEF UseCarrier}
+              SF('L_YFPrice', FListA.Values['L_YFPric'],sfVal),
+              SF('L_Carrier', FListA.Values['L_Carrier']),
+              {$ENDIF}
               
               SF('L_ZKMoney', nFixMoney),
               SF('L_Truck', FListA.Values['Truck']),

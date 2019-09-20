@@ -306,15 +306,16 @@ begin
   end;
 
   AL_ZhiKa := GetCtrlData(EditZK);
-  nStr := 'Select Z_Project From %s Where Z_ID=''%s'' ';
-  nStr := Format(nStr, [sTable_ZhiKa, AL_ZhiKa]);
-  with FDM.QueryTemp(nStr) do
-  begin
-    if RecordCount > 0 then
-    begin
-      AL_Project := FieldByName('Z_Project').AsString;
-    end;
-  end;
+//  nStr := 'Select Z_Project From %s Where Z_ID=''%s'' ';
+//  nStr := Format(nStr, [sTable_ZhiKa, AL_ZhiKa]);
+//  with FDM.QueryTemp(nStr) do
+//  begin
+//    if RecordCount > 0 then
+//    begin
+//      AL_Project := FieldByName('Z_Project').AsString;
+//    end;
+//  end;
+  AL_Project := EditProject.Text;
 
   //更改提货信息
   nSQL := 'Update %s Set L_ZhiKa=''%s'',L_CusID=''%s'',L_CusName=''%s'',L_CusPY=''%s'','+

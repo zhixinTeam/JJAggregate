@@ -11,6 +11,7 @@ object fFormMain: TfFormMain
   Font.Name = #23435#20307
   Font.Style = []
   OldCreateOrder = False
+  Position = poDesktopCenter
   OnClose = FormClose
   OnCreate = FormCreate
   PixelsPerInch = 96
@@ -19,7 +20,7 @@ object fFormMain: TfFormMain
     Left = 0
     Top = 48
     Width = 180
-    Height = 500
+    Height = 508
     Align = alLeft
     Color = 14408641
     ActiveGroupIndex = 0
@@ -27,7 +28,7 @@ object fFormMain: TfFormMain
     View = 8
     OptionsBehavior.Common.DragDropFlags = []
     OptionsImage.LargeImages = FDM.ImageMid
-    OptionsImage.SmallImages = FDM.Imagesmall
+    OptionsImage.SmallImages = FDM.ImageSmall
     OptionsStyle.DefaultStyles.Background.BackColor = clGray
     OptionsStyle.DefaultStyles.Background.BackColor2 = clGray
     OptionsStyle.DefaultStyles.Background.Font.Charset = DEFAULT_CHARSET
@@ -163,11 +164,11 @@ object fFormMain: TfFormMain
         Properties.WordWrap = True
         Transparent = True
         Width = 154
-        AnchorY = 9
+        AnchorY = 10
       end
       object LabelAdmin: TcxLabel
         Left = 0
-        Top = 18
+        Top = 19
         Cursor = crHandPoint
         Align = alClient
         Caption = #31649#29702#21592#30331#24405
@@ -191,20 +192,20 @@ object fFormMain: TfFormMain
         Properties.ShadowedColor = clMoneyGreen
         OnClick = LabelAdminClick
         AnchorX = 154
-        AnchorY = 33
+        AnchorY = 34
       end
     end
   end
   object PanelTitle: TPanel
     Left = 0
     Top = 0
-    Width = 876
+    Width = 884
     Height = 48
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 1
     DesignSize = (
-      876
+      884
       48)
     object ImgLeft: TImage
       Left = 0
@@ -801,7 +802,7 @@ object fFormMain: TfFormMain
     object ImgClient: TImage
       Left = 289
       Top = 0
-      Width = 587
+      Width = 595
       Height = 48
       Align = alClient
       Picture.Data = {
@@ -939,8 +940,8 @@ object fFormMain: TfFormMain
   end
   object SBar: TStatusBar
     Left = 0
-    Top = 548
-    Width = 876
+    Top = 556
+    Width = 884
     Height = 19
     Panels = <
       item
@@ -956,8 +957,8 @@ object fFormMain: TfFormMain
   object PanelWork: TPanel
     Left = 180
     Top = 48
-    Width = 696
-    Height = 500
+    Width = 704
+    Height = 508
     Align = alClient
     BevelOuter = bvNone
     DockSite = True

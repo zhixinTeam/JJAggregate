@@ -318,6 +318,8 @@ const
   sTable_ZTLines      = 'S_ZTLines';                 //装车道
   sTable_ZTTrucks     = 'S_ZTTrucks';                //车辆队列
 
+  sTable_Carrier      = 'S_Carrier';                 //承运商维护
+
   sTable_Provider     = 'P_Provider';                //客户表
   sTable_Materails    = 'P_Materails';               //物料表
   sTable_Order        = 'P_Order';                   //采购订单
@@ -778,7 +780,8 @@ const
        'L_EmptyOut Char(1) Default ''N'',' +
        'L_Man varChar(32), L_Date DateTime,' +
        'L_DelMan varChar(32), L_DelDate DateTime,' +
-       'L_Seal varChar(100), L_PriceDesc varChar(100), L_Memo varChar(320))';
+       'L_Seal varChar(100), L_PriceDesc varChar(100), L_Memo varChar(320),' +
+       'L_KDValue $Float, L_YFPrice $Float,L_Carrier varchar(100))';
   {-----------------------------------------------------------------------------
    交货单表: Bill
    *.R_ID: 编号
@@ -816,6 +819,9 @@ const
    *.L_Seal: 封签号
    *.L_PriceDesc: 价格描述
    *.L_Memo: 动作备注
+   *.L_KDValue 扣吨数
+   *.L_YFPrice 运费单价
+   *.L_Carrier 承运商
   -----------------------------------------------------------------------------}
 
   sSQL_NewCard = 'Create Table $Table(R_ID $Inc, C_Card varChar(16),' +
@@ -1285,6 +1291,13 @@ const
    *.H_EachTruck: 随车开单
    *.H_ReportDate:报告日期
    *.H_Reporter:报告人
+
+  -----------------------------------------------------------------------------}
+  sSQL_NewCarrier = 'Create Table $Table(R_ID $Inc, S_Name varChar(100) )';
+  {-----------------------------------------------------------------------------
+   承运商信息维护: S_Carrier
+   *.R_ID: 编号
+   *.S_Name: 承运商名称
   -----------------------------------------------------------------------------}
 
   sSQL_NewStockBatcode = 'Create Table $Table(R_ID $Inc, B_Stock varChar(32),' +
@@ -1449,6 +1462,9 @@ begin
   AddSysTableItem(sTable_StockRecord, sSQL_NewStockRecord);
   AddSysTableItem(sTable_StockHuaYan, sSQL_NewStockHuaYan);
   AddSysTableItem(sTable_StockBatcode, sSQL_NewStockBatcode);
+
+  //承运商维护
+  AddSysTableItem(sTable_Carrier, sSQL_NewCarrier);
 
   AddSysTableItem(sTable_Order, sSQL_NewOrder);
   AddSysTableItem(sTable_OrderBak, sSQL_NewOrder);

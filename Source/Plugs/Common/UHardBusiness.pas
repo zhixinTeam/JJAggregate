@@ -1842,6 +1842,19 @@ begin
 
       if nTunnel.FWeightDone then
       begin
+        {$IFDEF UseERelayPLC}
+        if nTunnel.FTunnel.FOptions.Values['TruckProber'] <> 'Y' then
+        begin
+          //判断手持机是否放到位
+          if not gERelayManagerPLC.IsTunnelOK(nTunnel.FID+'_SC') then
+          begin
+            nTunnel.FStableDone := False;
+            //继续触发事件
+            nTunnel.FWeightDone := False;
+            Exit;
+          end;
+        end;
+        {$ENDIF}
         ShowLEDHint(nTunnel.FID, '毛重'+ FloatToStr(nTunnel.FValHas) +'保存完毕请下磅.','',nTunnel.FTunnel.FOptions.Values['TruckProber']);
         WriteNearReaderLog(nTunnel.FID+'毛重'+ FloatToStr(nTunnel.FValHas) +'保存完毕,请下磅');
         {$IFDEF UseERelayPLC}

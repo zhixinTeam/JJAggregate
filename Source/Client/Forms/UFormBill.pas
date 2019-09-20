@@ -44,6 +44,11 @@ type
     dxLayout1Group3: TdxLayoutGroup;
     EditPValue: TcxTextEdit;
     dxLayout1Item5: TdxLayoutItem;
+    EditYFPrice: TcxTextEdit;
+    dxLayout1Item15: TdxLayoutItem;
+    dxLayout1Group4: TdxLayoutGroup;
+    EditCarrier: TcxComboBox;
+    dxLayout1Item16: TdxLayoutItem;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure EditStockPropertiesChange(Sender: TObject);
@@ -199,6 +204,18 @@ begin
     nIni.Free;
   end;
 
+  {$IFDEF UseCarrier}
+  dxLayout1Item15.Visible := True;
+  EditYFPrice.Text := '';
+  dxLayout1Item16.Visible := True;
+  EditCarrier.Text := '';
+  {$ELSE}
+  dxLayout1Item15.Visible := False;
+  EditYFPrice.Text := '';
+  dxLayout1Item16.Visible := False;
+  EditCarrier.Text := '';
+  {$ENDIF}
+
   AdjustCtrlData(Self);
 end;
 
@@ -324,6 +341,23 @@ begin
   EditType.ItemIndex := 0;
   LoadStockList; //load stock into window
   ActiveControl := EditTruck;
+
+  if EditCarrier.Properties.Items.Count < 1 then
+  begin
+    nStr := 'Select S_Name From %s ';
+    nStr := Format(nStr, [sTable_Carrier]);
+
+    with FDM.QueryTemp(nStr) do
+    if RecordCount > 0 then
+    begin
+      First;
+      while not Eof do
+      begin
+        EditCarrier.Properties.Items.Add(FieldByName('S_Name').AsString);
+        Next;
+      end;
+    end;
+  end;
 end;
 
 //Desc: 将价格合并到纸卡品种列表
@@ -595,13 +629,15 @@ begin
 
     with nList do
     begin
-      Values['Bills'] := PackerEncodeStr(nList.Text);
-      Values['ZhiKa'] := gInfo.FZhiKa;
-      Values['Truck'] := EditTruck.Text;
-      Values['Lading'] := GetCtrlData(EditLading);
-      Values['IsVIP'] := GetCtrlData(EditType);
-      Values['BuDan'] := FBuDanFlag;
-      Values['Card'] := gInfo.FCard;
+      Values['Bills']     := PackerEncodeStr(nList.Text);
+      Values['ZhiKa']     := gInfo.FZhiKa;
+      Values['Truck']     := EditTruck.Text;
+      Values['Lading']    := GetCtrlData(EditLading);
+      Values['IsVIP']     := GetCtrlData(EditType);
+      Values['BuDan']     := FBuDanFlag;
+      Values['Card']      := gInfo.FCard;
+      Values['L_YFPrice'] := FloatToStr(StrToFloatDef(EditCarrier.Text,0));
+      Values['L_Carrier'] := EditCarrier.Text;
     end;
 
     BtnOK.Enabled := False;

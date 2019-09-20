@@ -113,7 +113,7 @@ inherited fFormBillKW: TfFormBillKW
     object EditProject: TcxTextEdit [7]
       Left = 99
       Top = 292
-      Enabled = False
+      ParentFont = False
       TabOrder = 5
       Width = 121
     end

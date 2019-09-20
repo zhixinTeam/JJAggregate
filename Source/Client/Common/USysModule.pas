@@ -34,6 +34,7 @@ uses
   UFrameBatcodeJ,UFormBatcodeJ,UFormGetProvider,UFormGetMeterails,
   UFrameOrderCard,UFramePurchaseOrder, UFormGetPOrderBase,  UFormPurchaseOrder,
   UFormPurchasing, UFramePOrderBase,UFormPOrderBase,UFrameOrderDetail,
+  UFrameCarrier, UFormCarrier,
   UFormOrderDtl, UFormBillKW, UFormBillAdjustNum, UFramePayBill, UFormPayBill;
 
 procedure InitSystemObject;

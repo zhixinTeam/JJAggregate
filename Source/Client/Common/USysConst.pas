@@ -78,6 +78,9 @@ const
   cFI_FrameOrderBase    = $0108;                     //采购申请单
   cFI_FrameOrderDetail  = $0109;                     //采购明细
 
+  cFI_FrameCarrier      = $2071;                     //承运商信息维护
+  cFI_FormCarrier       = $2072;                     //承运商信息维护
+
   cFI_FrameWXAccount    = $0110;                     //微信账户
   cFI_FrameWXSendLog    = $0111;                     //发送日志
 
@@ -406,6 +409,8 @@ begin
 
   AddMenuModuleItem('MAIN_W01', cFI_FrameWXAccount);
   AddMenuModuleItem('MAIN_W02', cFI_FrameWXSendLog);
+
+  AddMenuModuleItem('MAIN_X01', cFI_FrameCarrier);
 end;
 
 //Desc: 清理模块列表

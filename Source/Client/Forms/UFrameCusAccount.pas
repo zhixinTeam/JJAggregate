@@ -247,7 +247,7 @@ begin
              +Date2CH(FormatDateTime('YYYYMMDD', FEnd));
     nStr := ' Select Sum(L_Money) from (' +
             ' select L_Value * L_Price as L_Money from %s' +
-            ' where L_OutFact Is not Null And L_CusID = ''%s'' and L_Date < ''%s'') t';
+            ' where L_OutFact Is not Null And L_CusID = ''%s'' and L_OutFact < ''%s'') t';
     nStr := Format(nStr, [sTable_Bill, nCID, Date2Str(FStart)]);
 
     with FDM.QuerySQL(nStr) do
@@ -268,7 +268,7 @@ begin
 
     nStr := ' Select Sum(L_Money) from (' +
             ' select L_Value * L_Price as L_Money from %s' +
-            ' where L_OutFact Is not Null And L_CusID = ''%s'' and L_Date >= ''%s'' and L_Date < ''%s'') t';
+            ' where L_OutFact Is not Null And L_CusID = ''%s'' and L_OutFact >= ''%s'' and L_OutFact < ''%s'') t';
     nStr := Format(nStr, [sTable_Bill, nCID, Date2Str(FStart),Date2Str(FEnd + 1)]);
 
     with FDM.QuerySQL(nStr) do
@@ -289,7 +289,7 @@ begin
     nYSMoney := nOutMoney - nInMoney + nLastYSMoney ;
 
     nStr := ' Select Sum(L_Value) L_Value, Sum(L_Value * L_Price) L_Money, L_StockName, L_Price from %s ' +
-            ' where L_OutFact Is not Null And L_CusID = ''%s'' and L_Date >= ''%s'' and L_Date < ''%s'' ' +
+            ' where L_OutFact Is not Null And L_CusID = ''%s'' and L_OutFact >= ''%s'' and L_OutFact < ''%s'' ' +
             ' Group By L_StockName, L_Price ';
 
     nStr := Format(nStr, [sTable_Bill, nCID, Date2Str(FStart),Date2Str(FEnd + 1)]);
