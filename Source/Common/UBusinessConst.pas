@@ -102,6 +102,7 @@ const
   cBC_SyncMaterails           = $0086;   //远程同步原材料
 
   cBC_VerifySnapTruck         = $0087;   //车牌比对
+  cBC_GetTruckType            = $0088;   //车辆型号
 
   cBC_WX_SQLQuery             = $0501;   //执行SQL查询
   cBC_WX_SQLExecute           = $0502;   //执行写操作

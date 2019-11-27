@@ -47,7 +47,7 @@
 {.$DEFINE COMMON}
 //通用版本
 
-{$DEFINE DYCB}
+{$DEFINE JZQY}
 //特定系统
 
 //金九骨料
@@ -154,4 +154,49 @@
   //管理员组使用返利
   {$DEFINE UseCarrier}
   //使用承运商
+{$ENDIF}
+
+//焦作千叶新材料
+{$IFDEF JZQY}
+  {$DEFINE COMMON}
+  {$DEFINE HYRFID201}
+  //华益读头
+  {$DEFINE TTCEM100}
+  //自动收卡票箱
+  {$DEFINE MITTruckProber}
+  //车检由中间件控制
+  {$DEFINE ProberShow}
+  //车检发送小屏
+  {.$DEFINE ReverseTrafficLight}
+  //反转红绿灯控制信号
+  {.$DEFINE NoCheckOnPayment}
+  //退款时不校验资金余额
+  {.$DEFINE MicroMsg}
+  //使用微信
+  {.$DEFINE WxShowCusMoney}
+  //微信端显示客户金额
+  {$DEFINE CastMoney}
+  //对吨位及金额小数位后2位四舍五入
+  {$DEFINE CapturePictureEx}
+  //磅房抓拍模式扩展
+  {$DEFINE BasisWeight}
+  //启用定量装车
+  {$DEFINE BasisWeightWithPM}
+  //库底计量: 定量装车时过皮毛中
+  {$DEFINE UseERelayPLC}
+  //使用车捡由PLC控制
+  {$DEFINE TruckInNow}
+  //开单立即进厂,需要采用厂内排队模式 
+  {$DEFINE HKVDVR} 
+  //保存皮毛重时进行抓拍
+  {$DEFINE TruckAutoIn} 
+  //自动进厂
+  {$DEFINE BasisWeightTruckProber} 
+  //定量装车使用车检
+  {$DEFINE AdminUseFL} 
+  //管理员组使用返利
+  {$DEFINE UseCarrier}
+  //使用承运商
+  {$DEFINE SendTrukTypeToPLC}
+  //发送车辆型号到PLC
 {$ENDIF}

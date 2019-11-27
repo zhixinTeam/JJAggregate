@@ -896,14 +896,47 @@ end;
 
 //Date: 2019-03-12
 //Parm: 车辆;通道;皮重
+//Desc: 匹配在nTunnel车道放灰车辆类型
+function GetTruckType(const nTruck: string):string;
+var nList: TStrings;
+    nOut: TWorkerBusinessCommand;
+begin
+  Result:= '';
+  if nTruck = '' then
+  begin
+    WriteNearReaderLog('车牌号为空、无法匹配车辆类型。');
+    Exit;
+  end;
+
+  nList := nil;
+  try
+    nList := TStringList.Create;
+    nList.Values['Truck'] := nTruck;
+
+    if CallBusinessCommand(cBC_GetTruckType, nList.Text, '', @nOut) then
+      Result := nOut.FData;
+  finally
+    nList.Free;
+  end;
+end;
+
+//Date: 2019-03-12
+//Parm: 车辆;通道;皮重
 //Desc: 授权nTruck在nTunnel车道放灰
 procedure TruckStartFH(const nTruck: PTruckItem; const nTunnel: string;
  const nLading: TLadingBillItem; const UnPLC:string = '');
-var nStr: string;
+var nStr, nTruckType: string;
 begin
   {$IFDEF UseERelayPLC}
     if UnPLC = '' then
     begin
+      {$IFDEF SendTrukTypeToPLC}
+      //发送PLC 车号
+      nTruckType:= GetTruckType(nTruck.FTruck);
+      gERelayManagerPLC.OpenTunnel(nTunnel+nTruckType);
+      {$ENDIF}
+
+
       gERelayManagerPLC.OpenTunnel(nTunnel);
       WriteNearReaderLog(nTunnel+'打开进厂道闸,红绿灯');
     end

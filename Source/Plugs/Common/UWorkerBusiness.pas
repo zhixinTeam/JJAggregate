@@ -100,6 +100,8 @@ type
     //获取品种批次号
     function VerifySnapTruck(var nData: string): Boolean;
     //车牌比对
+    function GetTruckType(var nData: string): Boolean;
+    //获取车类型
   public
     constructor Create; override;
     destructor destroy; override;
@@ -352,6 +354,8 @@ begin
    cBC_UserLogOut          : Result := LogOut(nData);
    cBC_GetStockBatcode     : Result := GetStockBatcode(nData);
    cBC_VerifySnapTruck     : Result := VerifySnapTruck(nData);
+
+   cBC_GetTruckType        : Result := GetTruckType(nData);
    else
     begin
       Result := False;
@@ -1580,6 +1584,39 @@ begin
   //xxxxx
   gDBConnManager.WorkerExec(FDBConn, nStr);
 end;
+
+//Date: 2019-11-26
+//Parm: 车牌号(Truck)
+//Desc: 获取车辆类型
+function TWorkerBusinessCommander.GetTruckType(var nData: string): Boolean;
+var nStr: string;
+    nTruck, nBill, nPos, nSnapTruck, nEvent, nDept, nPicName: string;
+    nUpdate, nNeedManu: Boolean;
+begin
+  Result := False;
+  FListA.Text := FIn.FData;
+  nSnapTruck:= '';
+  nEvent:= '' ;
+  nNeedManu := False;
+
+  nTruck := FListA.Values['Truck'];
+
+  nStr := 'Select * From %s Where T_Truck=''%s'' ';
+  nStr := Format(nStr, [sTable_Truck, nTruck]);
+  //xxxxx
+
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    if RecordCount > 0 then
+    begin
+      FOut.FData:= FieldByName('T_Type').AsString;
+      FOut.FData:= StringReplace(FOut.FData, '型', '', [rfReplaceAll]);
+      Result := True;
+    end;
+  end;
+  WriteLog('车辆:'+nTruck+' 型号:'+FOut.FData);
+end;
+
 
 initialization
   gBusinessWorkerManager.RegisteWorker(TBusWorkerQueryField, sPlug_ModuleBus);

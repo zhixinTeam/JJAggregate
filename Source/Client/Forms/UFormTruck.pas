@@ -11,7 +11,8 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   UFormBase, UFormNormal, cxGraphics, cxControls, cxLookAndFeels,
   cxLookAndFeelPainters, cxContainer, cxEdit, cxMaskEdit, cxDropDownEdit,
-  cxTextEdit, dxLayoutControl, StdCtrls, cxCheckBox, cxLabel;
+  cxTextEdit, dxLayoutControl, StdCtrls, cxCheckBox, cxLabel, dxSkinsCore,
+  dxSkinsDefaultPainters, dxSkinsdxLCPainter;
 
 type
   TfFormTruck = class(TfFormNormal)
@@ -48,10 +49,15 @@ type
     dxLayout1Item16: TdxLayoutItem;
     Label3: TcxLabel;
     dxLayout1Group5: TdxLayoutGroup;
+    dxlytmLayout1Item17: TdxLayoutItem;
+    cbb_TruckType: TcxComboBox;
+    dxLayout1Group6: TdxLayoutGroup;
+    dxLayout1Group7: TdxLayoutGroup;
     procedure BtnOKClick(Sender: TObject);
   protected
     { Protected declarations }
     FTruckID: string;
+    procedure LoadTruckType;
     procedure LoadFormData(const nID: string);
   public
     { Public declarations }
@@ -74,19 +80,21 @@ begin
   if Assigned(nParam) then
        nP := nParam
   else Exit;
-  
+
   with TfFormTruck.Create(Application) do
   try
     if nP.FCommand = cCmd_AddData then
     begin
       Caption := '车辆 - 添加';
       FTruckID := '';
+      LoadTruckType;
     end;
 
     if nP.FCommand = cCmd_EditData then
     begin
       Caption := '车辆 - 修改';
       FTruckID := nP.FParamA;
+      LoadTruckType;
     end;
 
     LoadFormData(FTruckID); 
@@ -102,6 +110,30 @@ begin
   Result := cFI_FormTrucks;
 end;
 
+procedure TfFormTruck.LoadTruckType;
+var nStr:string;
+begin
+  cbb_TruckType.Properties.Items.Clear;
+  if cbb_TruckType.Properties.Items.Count < 1 then
+  begin
+    nStr := 'Select * From %s Where D_Name=''TruckType'' ';
+    nStr := Format(nStr, [sTable_SysDict]);
+
+    with FDM.QueryTemp(nStr) do
+    if RecordCount > 0 then
+    begin
+      First;
+
+      cbb_TruckType.Properties.Items.Clear;
+      while not Eof do
+      begin
+        cbb_TruckType.Properties.Items.Add(FieldByName('D_Memo').AsString);
+        Next;
+      end;
+    end;
+  end;
+
+end;
 procedure TfFormTruck.LoadFormData(const nID: string);
 var nStr: string;
 begin
@@ -134,6 +166,9 @@ begin
 
     CheckVip.Checked   := FieldByName('T_VIPTruck').AsString = sFlag_TypeVIP;
     CheckGPS.Checked   := FieldByName('T_HasGPS').AsString = sFlag_Yes;
+
+    nStr:= FieldByName('T_Type').AsString;
+    cbb_TruckType.ItemIndex:= cbb_TruckType.Properties.Items.IndexOf(nStr);
   end;
 end;
 
@@ -189,6 +224,7 @@ begin
           SF('T_PrePUse', nP),
           SF('T_VIPTruck', nVip),
           SF('T_HasGPS', nGps),
+          SF('T_Type', cbb_TruckType.Text),
           SF('T_LastTime', sField_SQLServer_Now, sfVal)
           ], sTable_Truck, nStr, FTruckID = '');
   FDM.ExecuteSQL(nStr);

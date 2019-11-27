@@ -12,7 +12,8 @@ uses
   UFormNormal, cxGraphics, cxControls, cxLookAndFeels,
   cxLookAndFeelPainters, cxContainer, cxEdit, ComCtrls, cxMaskEdit,
   cxDropDownEdit, cxListView, cxTextEdit, cxMCListBox, dxLayoutControl,
-  StdCtrls, cxButtonEdit, cxCheckBox;
+  StdCtrls, cxButtonEdit, cxCheckBox, dxSkinsCore, dxSkinsDefaultPainters,
+  dxSkinsdxLCPainter;
 
 type
   TfFormBill = class(TfFormNormal)
