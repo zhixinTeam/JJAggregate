@@ -1875,10 +1875,10 @@ begin
 
       if nTunnel.FWeightDone then
       begin
-        {$IFDEF UseERelayPLC}
+        {$IFDEF UseERelayPLCSC}
         if nTunnel.FTunnel.FOptions.Values['TruckProber'] <> 'Y' then
         begin
-          //判断手持机是否放到位
+          //判断手持机是否放到位（城堡用千叶不用）
           if not gERelayManagerPLC.IsTunnelOK(nTunnel.FID+'_SC') then
           begin
             nTunnel.FStableDone := False;

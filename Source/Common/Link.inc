@@ -152,8 +152,10 @@
   //定量装车使用车检
   {$DEFINE AdminUseFL} 
   //管理员组使用返利
-  {$DEFINE UseCarrier}
+  {$DEFINE UseCarrier} 
   //使用承运商
+  {$DEFINE UseERelayPLCSC} 
+  //判断手持机是否放到位
 {$ENDIF}
 
 //焦作千叶新材料
@@ -185,7 +187,7 @@
   //库底计量: 定量装车时过皮毛中
   {$DEFINE UseERelayPLC}
   //使用车捡由PLC控制
-  {$DEFINE TruckInNow}
+  {.$DEFINE TruckInNow}
   //开单立即进厂,需要采用厂内排队模式 
   {$DEFINE HKVDVR} 
   //保存皮毛重时进行抓拍
