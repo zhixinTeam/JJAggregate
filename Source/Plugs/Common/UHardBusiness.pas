@@ -1703,7 +1703,6 @@ begin
    bsClose     : WriteNearReaderLog('称重关闭:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
    bsDone      : WriteNearReaderLog('称重完成:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
    bsStable    : WriteNearReaderLog('数据平稳:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
-   bsError     : WriteNearReaderLog('地磅连接故障:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
   end; //log
 
   if nTunnel.FStatusNew = bsClose then
@@ -1722,45 +1721,6 @@ begin
     {$IFDEF BasisWeightTruckProber}
       gProberManager.CloseTunnel(nTunnel.FID+'_O');
       WriteNearReaderLog(nTunnel.FID+'装车业务关闭,关闭放灰');
-    {$ENDIF}
-    end;
-    {$ENDIF}
-    
-    gBasisWeightManager.SetParam(nTunnel.FID, 'CanFH', sFlag_No);
-    //通知DCS关闭装车
-    Exit;
-  end;
-
-  if nTunnel.FStatusNew = bsError then
-  begin
-    ShowLEDHint(nTunnel.FID, '地磅连接故障', nTunnel.FParams.Values['Truck'],nTunnel.FTunnel.FOptions.Values['TruckProber']);
-    {$IFDEF UseERelayPLC}
-    if nTunnel.FTunnel.FOptions.Values['TruckProber'] <> 'Y' then
-    begin
-      gERelayManagerPLC.CloseTunnel(nTunnel.FID+'_N');
-    end
-    else
-    begin
-    {$IFDEF BasisWeightTruckProber}
-      gProberManager.CloseTunnel(nTunnel.FID+'_O');
-    {$ENDIF}
-    end;
-    {$ENDIF}
-    WriteNearReaderLog(nTunnel.FID+'地磅连接故障');
-
-    //尝试重新连接
-    gBasisWeightManager.TunnelManager.ClosePort(nTunnel.FID);
-    nTunnel.FEnable := gBasisWeightManager.TunnelManager.ActivePort(nTunnel.FID, nil, True);
-    {$IFDEF UseERelayPLC}
-    if nTunnel.FTunnel.FOptions.Values['TruckProber'] <> 'Y' then
-    begin
-      gERelayManagerPLC.CloseTunnel(nTunnel.FID+'_N');
-      WriteNearReaderLog(nTunnel.FID+'关闭放灰');
-    end
-    else
-    begin
-    {$IFDEF BasisWeightTruckProber}
-      gProberManager.CloseTunnel(nTunnel.FID+'_O');
     {$ENDIF}
     end;
     {$ENDIF}
