@@ -80,6 +80,8 @@ type
     dxLayoutControl1Group9: TdxLayoutGroup;
     CheckFL: TcxCheckBox;
     dxLayoutControl1Item24: TdxLayoutItem;
+    EditCarrier: TcxComboBox;
+    dxLayoutControl1Item25: TdxLayoutItem;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure BtnAddClick(Sender: TObject);
@@ -90,6 +92,7 @@ type
       Shift: TShiftState);
     procedure EditAreaPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
+    procedure FormShow(Sender: TObject);
   private
     { Private declarations }
     FCustomerID: string;
@@ -191,6 +194,14 @@ begin
   {$IFNDEF MicroMsg}
   EditWX.Hint := '';
   EditWX.Visible := False; 
+  {$ENDIF}
+
+  {$IFDEF UseCarrier}
+  dxLayoutControl1Item25.Visible := True;
+  EditCarrier.Text := '';
+  {$ELSE}
+  dxLayoutControl1Item25.Visible := False;
+  EditCarrier.Text := '';
   {$ENDIF}
 
   nIni := TIniFile.Create(gPath + sFormConfig);
@@ -470,6 +481,29 @@ begin
   except
     FDM.ADOConn.RollbackTrans;
     ShowMsg('数据保存失败', '未知原因');
+  end;
+end;
+
+procedure TfFormCustomer.FormShow(Sender: TObject);
+var
+  nStr: string;
+begin
+  inherited;
+  if EditCarrier.Properties.Items.Count < 1 then
+  begin
+    nStr := 'Select S_Name From %s ';
+    nStr := Format(nStr, [sTable_Carrier]);
+
+    with FDM.QueryTemp(nStr) do
+    if RecordCount > 0 then
+    begin
+      First;
+      while not Eof do
+      begin
+        EditCarrier.Properties.Items.Add(FieldByName('S_Name').AsString);
+        Next;
+      end;
+    end;
   end;
 end;
 

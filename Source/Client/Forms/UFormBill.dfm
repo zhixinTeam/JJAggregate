@@ -1,7 +1,7 @@
 inherited fFormBill: TfFormBill
   Left = 609
   Top = 168
-  ClientHeight = 529
+  ClientHeight = 460
   ClientWidth = 466
   Position = poDesktopCenter
   OnClose = FormClose
@@ -10,17 +10,17 @@ inherited fFormBill: TfFormBill
   TextHeight = 12
   inherited dxLayout1: TdxLayoutControl
     Width = 466
-    Height = 529
+    Height = 460
     AutoControlTabOrders = False
     inherited BtnOK: TButton
       Left = 320
-      Top = 496
+      Top = 427
       Caption = #24320#21333
       TabOrder = 5
     end
     inherited BtnExit: TButton
       Left = 390
-      Top = 496
+      Top = 427
       TabOrder = 9
     end
     object ListInfo: TcxMCListBox [2]
@@ -40,17 +40,11 @@ inherited fFormBill: TfFormBill
         end>
       ParentFont = False
       Style.Edges = [bLeft, bTop, bRight, bBottom]
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -12
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
       TabOrder = 8
     end
     object ListBill: TcxListView [3]
       Left = 23
-      Top = 381
+      Top = 339
       Width = 372
       Height = 113
       Columns = <
@@ -71,65 +65,41 @@ inherited fFormBill: TfFormBill
       RowSelect = True
       SmallImages = FDM.ImageBar
       Style.Edges = [bLeft, bTop, bRight, bBottom]
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -12
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
       TabOrder = 6
       ViewStyle = vsReport
     end
     object EditValue: TcxTextEdit [4]
       Left = 81
-      Top = 317
+      Top = 289
       ParentFont = False
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -13
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
       TabOrder = 3
       OnKeyPress = EditLadingKeyPress
-      Width = 318
+      Width = 120
     end
     object EditTruck: TcxTextEdit [5]
       Left = 264
-      Top = 189
+      Top = 182
       ParentFont = False
       Properties.MaxLength = 15
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -13
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
       TabOrder = 2
       OnKeyPress = EditLadingKeyPress
-      Width = 179
+      Width = 116
     end
     object EditStock: TcxComboBox [6]
       Left = 81
-      Top = 285
+      Top = 264
       ParentFont = False
       Properties.DropDownListStyle = lsEditFixedList
       Properties.DropDownRows = 15
       Properties.ItemHeight = 18
       Properties.OnChange = EditStockPropertiesChange
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -13
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
       TabOrder = 0
       OnKeyPress = EditLadingKeyPress
-      Width = 318
+      Width = 115
     end
     object BtnAdd: TButton [7]
       Left = 404
-      Top = 285
+      Top = 264
       Width = 39
       Height = 17
       Caption = #28155#21152
@@ -138,7 +108,7 @@ inherited fFormBill: TfFormBill
     end
     object BtnDel: TButton [8]
       Left = 404
-      Top = 317
+      Top = 289
       Width = 39
       Height = 18
       Caption = #21024#38500
@@ -147,7 +117,7 @@ inherited fFormBill: TfFormBill
     end
     object EditLading: TcxComboBox [9]
       Left = 81
-      Top = 189
+      Top = 182
       ParentFont = False
       Properties.DropDownListStyle = lsEditFixedList
       Properties.ItemHeight = 18
@@ -155,12 +125,7 @@ inherited fFormBill: TfFormBill
         'T=T'#12289#33258#25552
         'S=S'#12289#36865#36135
         'X=X'#12289#36816#21368)
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -13
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
+      Properties.OnChange = EditLadingPropertiesChange
       TabOrder = 1
       OnKeyPress = EditLadingKeyPress
       Width = 120
@@ -176,12 +141,6 @@ inherited fFormBill: TfFormBill
         'Z=Z'#12289#26632#21488
         'V=V'#12289'VIP'
         'S=S'#12289#33337#36816)
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -13
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
       TabOrder = 13
       OnKeyPress = EditLadingKeyPress
       Width = 120
@@ -197,52 +156,28 @@ inherited fFormBill: TfFormBill
         end>
       Properties.ReadOnly = True
       Properties.OnButtonClick = EditPricePropertiesButtonClick
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -13
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
       TabOrder = 14
       Text = #28857#20987#26597#30475
-      Width = 179
+      Width = 121
     end
     object EditPValue: TcxTextEdit [12]
       Left = 81
-      Top = 349
+      Top = 314
       ParentFont = False
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -13
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
       TabOrder = 15
       Width = 271
     end
     object EditYFPrice: TcxTextEdit [13]
       Left = 81
-      Top = 221
+      Top = 207
       ParentFont = False
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -13
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
       TabOrder = 16
       Width = 121
     end
     object EditCarrier: TcxComboBox [14]
       Left = 265
-      Top = 221
+      Top = 207
       ParentFont = False
-      Style.Font.Charset = GB2312_CHARSET
-      Style.Font.Color = clBlack
-      Style.Font.Height = -13
-      Style.Font.Name = #24494#36719#38597#40657
-      Style.Font.Style = []
-      Style.IsFontAssigned = True
       TabOrder = 17
       Width = 178
     end

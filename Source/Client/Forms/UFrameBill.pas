@@ -510,7 +510,7 @@ begin
           +' L_Truck,L_Status,L_NextStatus,L_InTime,L_InMan,L_PValue,L_PDate,L_PMan,L_MValue,L_MDate,L_MMan,L_LadeTime, '
           +' L_LadeMan,L_OutFact,L_OutMan,L_Man,L_Date,L_Memo,L_KDValue,L_YFPrice,L_Carrier) values '
           +' (''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',%f,%f,''%s'',''%s'',''%s'',''%s'',%s, '
-          +'  ''%s'',%f,%s,''%s'',%f,%s,''%s'',%s,''%s'',''%s'',''%s'',''%s'',%s,''%s'',%f,%f,''%s'')';
+          +'  ''%s'',%f,%s,''%s'',%f,%s,''%s'',%s,''%s'',%s,''%s'',''%s'',%s,''%s'',%f,%f,''%s'')';
 
         nStr := Format(nStr, [sTable_Bill, 'CH'+nLID, SQLQuery.FieldByName('L_ZhiKa').AsString,
                 SQLQuery.FieldByName('L_CusID').AsString,SQLQuery.FieldByName('L_CusName').AsString,SQLQuery.FieldByName('L_CusPY').AsString,
@@ -520,7 +520,7 @@ begin
                 SQLQuery.FieldByName('L_NextStatus').AsString,FDM.SQLServerNow,SQLQuery.FieldByName('L_InMan').AsString,
                 SQLQuery.FieldByName('L_PValue').AsFloat,FDM.SQLServerNow,SQLQuery.FieldByName('L_PMan').AsString,
                 SQLQuery.FieldByName('L_MValue').AsFloat,FDM.SQLServerNow,SQLQuery.FieldByName('L_MMan').AsString,
-                FDM.SQLServerNow,SQLQuery.FieldByName('L_LadeMan').AsString,SQLQuery.FieldByName('L_OutFact').AsString,
+                FDM.SQLServerNow,SQLQuery.FieldByName('L_LadeMan').AsString,FDM.SQLServerNow,
                 SQLQuery.FieldByName('L_OutMan').AsString,SQLQuery.FieldByName('L_Man').AsString,FDM.SQLServerNow,
                 '³åºì¼ÇÂ¼', SQLQuery.FieldByName('L_KDValue').AsFloat,SQLQuery.FieldByName('L_YFPrice').AsFloat,
                 SQLQuery.FieldByName('L_Carrier').AsString]);

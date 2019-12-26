@@ -59,6 +59,7 @@ type
     procedure EditLadingKeyPress(Sender: TObject; var Key: Char);
     procedure EditPricePropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
+    procedure EditLadingPropertiesChange(Sender: TObject);
   protected
     { Protected declarations }
     FBuDanFlag: string;
@@ -637,7 +638,7 @@ begin
       Values['IsVIP']     := GetCtrlData(EditType);
       Values['BuDan']     := FBuDanFlag;
       Values['Card']      := gInfo.FCard;
-      Values['L_YFPrice'] := FloatToStr(StrToFloatDef(EditCarrier.Text,0));
+      Values['L_YFPrice'] := FloatToStr(StrToFloatDef(EditYFPrice.Text,0));
       Values['L_Carrier'] := EditCarrier.Text;
     end;
 
@@ -667,6 +668,28 @@ begin
   
   ModalResult := mrOk;
   ShowMsg('提货单保存成功', sHint);
+end;
+
+procedure TfFormBill.EditLadingPropertiesChange(Sender: TObject);
+var
+  nStr: string;
+begin
+  inherited;
+  if EditLading.ItemIndex = 1 then
+  begin
+    nStr := 'Select C_Carrier From %s Where C_ID=''%s'' ';
+    nStr := Format(nStr, [sTable_Customer, gInfo.FCusID]);
+
+    with FDM.QueryTemp(nStr) do
+    if RecordCount > 0 then
+    begin
+      EditCarrier.Text := FieldByName('C_Carrier').AsString;
+    end;
+  end
+  else
+  begin
+    EditCarrier.Text := '';
+  end;
 end;
 
 initialization
