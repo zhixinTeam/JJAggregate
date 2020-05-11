@@ -181,7 +181,7 @@ begin
     FSaleMan := '';
 
     EditName.Text := '±ê×¼Ö½¿¨';
-    EditDays.Date := Date() + 60;
+    EditDays.Date := Date() + 90;
     EditLading.ItemIndex := 0;
     EditCode.Text := MakeZhiKaCode();
   end;

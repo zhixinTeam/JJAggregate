@@ -80,10 +80,12 @@ inherited fFormPriceArea: TfFormPriceArea
         end
         item
           Caption = #21517#31216
+          Width = 133
         end
         item
           Alignment = taCenter
           Caption = #21333#20215'('#20803'/'#21544')'
+          Width = 80
         end>
       ParentFont = False
       RowSelect = True
