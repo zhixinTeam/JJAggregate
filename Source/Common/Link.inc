@@ -47,7 +47,7 @@
 {.$DEFINE COMMON}
 //通用版本
 
-{$DEFINE JZQY}
+{$DEFINE JJGL3}
 //特定系统
 
 //金九骨料
@@ -201,4 +201,80 @@
   //使用承运商
   {$DEFINE SendTrukTypeToPLC}
   //发送车辆型号到PLC
+{$ENDIF}
+
+
+//重庆金九骨料3期
+{$IFDEF JJGL3}
+  {$DEFINE COMMON}
+  {$DEFINE HYRFID201}
+  //华益读头
+  {$DEFINE TTCEM100}
+  //自动收卡票箱
+  {$DEFINE MITTruckProber}
+  //车检由中间件控制
+  {$DEFINE ProberShow}
+  //车检发送小屏
+  {.$DEFINE ReverseTrafficLight}
+  //反转红绿灯控制信号
+  {.$DEFINE NoCheckOnPayment}
+  //退款时不校验资金余额
+  {.$DEFINE MicroMsg}
+  //使用微信
+  {.$DEFINE WxShowCusMoney}
+  //微信端显示客户金额
+  {$DEFINE CastMoney}
+  //对吨位及金额小数位后2位四舍五入
+  {$DEFINE CapturePictureEx}
+  //磅房抓拍模式扩展
+  {$DEFINE BasisWeight}
+  //启用定量装车
+  {.$DEFINE BasisWeightWithPM}
+  //库底计量: 定量装车时过皮毛中
+  {$DEFINE UseERelayPLC}
+  //使用车捡由PLC控制
+  {.$DEFINE TruckInNow}
+  //开单立即进厂,需要采用厂内排队模式 
+  {$DEFINE HKVDVR} 
+  //保存皮毛重时进行抓拍
+  {.$DEFINE TruckAutoIn} 
+  //自动进厂
+  {.$DEFINE BasisWeightTruckProber} 
+  //定量装车使用车检
+  {.$DEFINE AdminUseFL} 
+  //管理员组使用返利
+  {.$DEFINE UseCarrier}
+  //使用承运商
+  {.$DEFINE SendTrukTypeToPLC}
+  //发送车辆型号到PLC
+  {$DEFINE UseBXFontLED}
+  //票箱6KE小屏
+  {$DEFINE OpenBackWhenError}
+  //过磅失败抬后杆
+  {$DEFINE QueuePoundPChk}
+  //过皮检查车道容量、待装车数量
+  {$DEFINE LineNeedOPenDoor} 
+  //库底车道华裔读卡器抬杆
+  {$DEFINE SaveBillStatusFH} 
+  //装车更新放灰状态
+  {$DEFINE LineVoice} 
+  //车道语音
+  {$DEFINE CallLineNextPTruck} 
+  //当前车过毛重时，叫号第三辆车过皮
+  {$DEFINE AICMOnleSale} 
+  //自助机只显示销售办卡
+  {$DEFINE TruckNoChkHZ} 
+  //开单车牌检查是否有前缀
+  {$DEFINE PoundAutoEmptyOutChk} 
+  //自动称重空车出厂判定支持
+  {$DEFINE BuDanCanChoseDateTime} 
+  //销售补单可指定日期
+  {$DEFINE ReturnsBill} 
+  //销售退货支持
+  {$DEFINE UseBigFontSize} 
+  //销售退货支持
+  {$DEFINE PaymentChoseTime} 
+  //收款可指定日期
+  {$DEFINE LineWaitingCtl} 
+  //单车道待装车辆控制，设定后，过皮时根据设定控制可过皮待装车辆
 {$ENDIF}

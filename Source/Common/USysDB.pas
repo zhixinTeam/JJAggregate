@@ -169,6 +169,8 @@ const
   sFlag_ManualD       = 'D';                         //空车出厂
   sFlag_ManualE       = 'E';                         //车牌识别
   sFlag_ManualF       = 'F';                         //交货单余额不足
+  sFlag_NoEleCard     = 'NoEleCard';                 //无需办理电子标签
+
 
   sFlag_FactoryID     = 'FactoryID';                 //工厂编号
   sFlag_SysParam      = 'SysParam';                  //系统参数
@@ -313,6 +315,7 @@ const
   sTable_StockBatcode = 'S_Batcode';                 //批次号
   sFlag_HYValue       = 'HYMaxValue';                //化验批次量
 
+  sTable_TruckCus     = 'S_TruckCus';                //车辆客户绑定
   sTable_Truck        = 'S_Truck';                   //车辆表
   sTable_TruckPlan    = 'S_TruckPlan';               //派车单
   sTable_ZTLines      = 'S_ZTLines';                 //装车道
@@ -341,6 +344,10 @@ const
   sTable_Picture      = 'Sys_Picture';               //存放图片
   sTable_PoundDaiWC   = 'Sys_PoundDaiWuCha';         //包装误差
   sTable_SnapTruck    = 'Sys_SnapTruck';             //车辆抓拍记录
+  sTable_WebOrderMatch   = 'S_WebOrderMatch';        //商城订单映射
+  sTable_TransportCompany = 'P_TransportCompany';    //承运商
+
+
 
   {*新建表*}
   sSQL_NewSysDict = 'Create Table $Table(D_ID $Inc, D_Name varChar(15),' +
@@ -781,7 +788,9 @@ const
        'L_Man varChar(32), L_Date DateTime,' +
        'L_DelMan varChar(32), L_DelDate DateTime,' +
        'L_Seal varChar(100), L_PriceDesc varChar(100), L_Memo varChar(320),' +
-       'L_KDValue $Float, L_YFPrice $Float,L_Carrier varchar(100))';
+       'L_KDValue $Float, L_YFPrice $Float,L_Carrier varchar(100), ' +
+       'L_IsReturns Char(1) Default ''N'', L_ReturnsReson varChar(300), '+
+       'L_RetBillNo varChar(30) )';
   {-----------------------------------------------------------------------------
    交货单表: Bill
    *.R_ID: 编号
@@ -822,6 +831,9 @@ const
    *.L_KDValue 扣吨数
    *.L_YFPrice 运费单价
    *.L_Carrier 承运商
+   *.L_IsReturns     退货订单
+   *.L_ReturnsReson  退货原因
+   *.L_RetBillNo     退货来源订单
   -----------------------------------------------------------------------------}
 
   sSQL_NewCard = 'Create Table $Table(R_ID $Inc, C_Card varChar(16),' +
@@ -884,6 +896,13 @@ const
 
    有效平均皮重算法:
    T_PValue = (T_PValue * T_PTime + 新皮重) / (T_PTime + 1)
+  -----------------------------------------------------------------------------}
+
+  sSQL_TruckCus = 'Create Table $Table(R_ID $Inc, T_Truck varchar(15) NULL, T_CID varchar(32) NULL, ' +
+                  'T_CName varchar(200) NULL, T_InValidTime DateTime) ';
+  {-----------------------------------------------------------------------------
+   车辆客户绑定关系: TruckCus
+   *.R_ID   : 记录编号
   -----------------------------------------------------------------------------}
 
   sSQL_NewTruckPlan = 'Create Table $Table(R_ID $Inc, P_Truck varChar(15), ' +
@@ -968,7 +987,8 @@ const
   sSQL_NewZTLines = 'Create Table $Table(R_ID $Inc, Z_ID varChar(15),' +
        'Z_Name varChar(32), Z_StockNo varChar(20), Z_Stock varChar(80),' +
        'Z_StockType Char(1), Z_PeerWeight Integer,' +
-       'Z_QueueMax Integer, Z_VIPLine Char(1), Z_Valid Char(1), Z_Index Integer)';
+       'Z_QueueMax Integer, Z_VIPLine Char(1), Z_QueueFactMax Integer,'+
+       'Z_Valid Char(1), Z_Index Integer)';
   {-----------------------------------------------------------------------------
    装车线配置: ZTLines
    *.R_ID: 记录号
@@ -979,6 +999,7 @@ const
    *.Z_StockType: 类型(袋,散)
    *.Z_PeerWeight: 袋重
    *.Z_QueueMax: 队列大小
+   *.Z_QueueFactMax : 厂内通道待装车辆容量（单通道允许待装车数量、其他车辆禁止过皮等待装车）
    *.Z_VIPLine: VIP通道
    *.Z_Valid: 是否有效
    *.Z_Index: 顺序索引
@@ -1446,6 +1467,7 @@ begin
   AddSysTableItem(sTable_Bill, sSQL_NewBill);
   AddSysTableItem(sTable_BillBak, sSQL_NewBill);
 
+  AddSysTableItem(sTable_TruckCus, sSQL_TruckCus);
   AddSysTableItem(sTable_Truck, sSQL_NewTruck);
   AddSysTableItem(sTable_TruckPlan, sSQL_NewTruckPlan);
   AddSysTableItem(sTable_ZTLines, sSQL_NewZTLines);

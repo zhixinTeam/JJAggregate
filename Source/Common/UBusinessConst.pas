@@ -53,6 +53,7 @@ const
   cBC_LogoffCard              = $0025;   //注销磁卡
   cBC_SaveBillLSCard          = $0026;   //绑定厂内零售磁卡
   cBC_LoadSalePlan            = $0027;   //读取销售计划
+  cBC_SaveBillReturns         = $0028;   //销售退货
 
   cBC_SaveOrder               = $0040;
   cBC_DeleteOrder             = $0041;
@@ -86,6 +87,7 @@ const
   cBC_ShowLedTxt              = $0066;   //向led屏幕发送内容
   cBC_GetLimitValue           = $0067;   //获取车辆最大限载值
   cBC_LineClose               = $0068;   //关闭放灰
+  cBC_CallLineNextPTruck      = $0069;   //叫号下一过皮车辆（厂内保持 1车在装、1车待装）
 
   cBC_IsTunnelOK              = $0075;
   cBC_TunnelOC                = $0076;
@@ -163,9 +165,10 @@ type
     FPType      : string;          //业务类型
     FPoundID    : string;          //称重记录
     FSelected   : Boolean;         //选中状态
+    FIsReturns  : Boolean;         //是否退单
 
     FHKRecord   : string;          //合单记录(销售)卸货地点(采购)
-    FYSValid    : string;          //验收结果，Y验收成功；N拒收；
+    FYSValid    : string;          //验收结果，Y验收成功；N拒收；  Y 空车出厂  N  正常出厂
     FKZValue    : Double;          //供应扣除
     FPrintHY    : Boolean;         //打印化验单
     FHYDan      : string;          //化验单号
@@ -278,7 +281,8 @@ begin
         FPType      := Values['PType'];
         FPoundID    := Values['PoundID'];
         FSelected   := Values['Selected'] = sFlag_Yes;
-
+        FIsReturns  := Values['IsReturns'] = sFlag_Yes;       //退货单
+        
         with FPData do
         begin
           FStation  := Values['PStation'];
@@ -403,6 +407,10 @@ begin
         Values['YSValid']    := FYSValid;
         Values['Memo']       := FMemo;
         Values['HKRecord']   := FHKRecord;
+
+        if FIsReturns then
+             Values['IsReturns'] := sFlag_Yes
+        else Values['IsReturns'] := sFlag_No;
 
         if FPrintHY then
              Values['PrintHY'] := sFlag_Yes
