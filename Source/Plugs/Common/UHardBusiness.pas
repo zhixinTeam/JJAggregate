@@ -11,7 +11,7 @@ uses
   Windows, Classes, Controls, SysUtils, UMgrDBConn, UMgrParam, DB, IdGlobal,
   UBusinessWorker, UBusinessConst, UBusinessPacker, UMgrQueue, UFormCtrl,
   UMgrHardHelper, U02NReader, UMgrERelay, UMgrRemotePrint, UMgrTruckProbe,
-  UMgrRFID102, UMgrTTCEM100, UMgrBasisWeight, UMgrPoundTunnels,
+  UMgrRFID102, UMgrTTCEM100, UMgrBasisWeight, UMgrPoundTunnels, UMgrBXFontCard,
   {$IFDEF UseERelayPLC} UMgrERelayPLC, {$ENDIF}
   UMgrRemoteSnap,{$IFDEF HKVDVR}UMgrCamera, {$ENDIF} Graphics, UMITConst, UMgrVoiceNet;
 
@@ -35,6 +35,8 @@ procedure WhenTruckLineChanged(const nTruckLine: TList);
 function VerifySnapTruck(const nTruck,nBill,nPos,nDept: string;
   var nResult: string): Boolean;
 //车牌识别
+procedure ShowTextByBXFontCard(nCard, nTitle, nData:string;const IsZT:Boolean=False);
+
 {$IFDEF HKVDVR}
 procedure WhenCaptureFinished(const nPtr: Pointer);
 //保存图片
@@ -334,6 +336,33 @@ begin
   end;
 end;
 
+//Date: 2017-10-16
+//Parm: 内容;岗位;业务成功
+//Desc: 播放门岗语音
+procedure MakeGateSound(const nText,nPost: string; const nSucc: Boolean);
+var nStr: string;
+    nInt: Integer;
+begin
+  if nPost='' then Exit;
+  try
+    if gNetVoiceHelper=nil then Exit;
+    //gHKSnapHelper.Display(nPost, nText, nInt);
+    //小屏显示
+
+    //if GetHasVoice(nPost) then
+      gNetVoiceHelper.PlayVoice(nText, nPost);
+    //播发语音
+    WriteHardHelperLog(Format('发送语音[%s %s]', [nPost ,nText]));
+  except
+    on nErr: Exception do
+    begin
+      nStr := '播放[ %s ]语音失败,描述: %s';
+      nStr := Format(nStr, [nPost, nErr.Message]);
+      WriteHardHelperLog(nStr);
+    end;
+  end;
+end;
+
 //Date: 2012-4-22
 //Parm: 卡号
 //Desc: 对nCard放行进厂
@@ -630,6 +659,12 @@ begin
     BlueOpenDoor(nReader, nReaderType); //抬杆
   Result := True;
 
+  {$IFDEF UseBXFontLED}
+  nStr := '\C3%s \C1请出厂,祝您一路顺风,欢迎您再次光临.';
+  nStr := Format(nStr, [nTrucks[0].FTruck]);
+  ShowTextByBXFontCard(nPost, '', nStr);
+  {$ENDIF}
+
   for nIdx:=Low(nTrucks) to High(nTrucks) do
   begin
     {$IFDEF PrintBillMoney}
@@ -732,10 +767,8 @@ begin
   nRetain := False;
   //init
 
-  {$IFDEF DEBUG}
   nStr := '三合一读卡器卡号'  + nItem.FID + ' ::: ' + nItem.FCard;
   WriteHardHelperLog(nStr);
-  {$ENDIF}
 
   try
     if not nItem.FVirtual then Exit;
@@ -776,9 +809,9 @@ begin
           end;
         end;
         if nRetain then
-          WriteHardHelperLog('吞卡机执行状态:'+'卡类型:'+nCType+'动作:吞卡')
+          WriteHardHelperLog('吞卡机执行状态:卡类型:'+nCType+' 动作:吞卡')
         else
-          WriteHardHelperLog('吞卡机执行状态:'+'卡类型:'+nCType+'动作:吞卡后吐卡');
+          WriteHardHelperLog('吞卡机执行状态:卡类型:'+nCType+' 动作:吞卡后吐卡');
     end else
     begin
       gHardwareHelper.SetReaderCard(nItem.FVReader, nItem.FCard, False);
@@ -808,7 +841,10 @@ begin
     nHint := Copy(nHint, 1, 24);
   {$IFDEF UseERelayPLC}
     if nUnPLC = '' then
-      gERelayManagerPLC.ShowText(nTunnel, nHint)
+    begin
+      gERelayManagerPLC.ShowText(nTunnel, nHint);
+      WriteNearReaderLog(Format('发送 gERelayManagerPLC 通道 %s 小屏显示：%s.', [nTunnel, nHint]));
+    end
     else
     begin
       {$IFDEF BasisWeightTruckProber}
@@ -933,9 +969,9 @@ begin
       {$IFDEF SendTrukTypeToPLC}
       //发送PLC 车号
       nTruckType:= GetTruckType(nTruck.FTruck);
-      gERelayManagerPLC.OpenTunnel(nTunnel+nTruckType);
+      //gERelayManagerPLC.OpenTunnel(nTunnel+nTruckType);
+      WriteNearReaderLog(nTunnel+' 发送车型：'+nTruckType);
       {$ENDIF}
-
 
       gERelayManagerPLC.OpenTunnel(nTunnel);
       WriteNearReaderLog(nTunnel+'打开进厂道闸,红绿灯');
@@ -950,7 +986,7 @@ begin
     end;
     //语音播报
     if Assigned(gNetVoiceHelper) then
-      gNetVoiceHelper.PlayVoice(nLading.FTruck+'刷卡成功请上磅',nTunnel);
+      gNetVoiceHelper.PlayVoice(nLading.FTruck+' 刷卡成功请上磅',nTunnel);
   {$ELSE}
     gERelayManager.LineOpen(nTunnel);
   {$ENDIF}
@@ -960,6 +996,8 @@ begin
   gBasisWeightManager.StartWeight(nTunnel, nTruck.FBill, nTruck.FValue,
     nLading.FPData.FValue, nStr);
   //开始定量装车
+  WriteNearReaderLog('通道:' + nTunnel +' 开始装车业务:' + nTruck.FBill + ' ' + nTruck.FTruck);
+  ShowLEDHint(nTunnel, FloatToStr(nTruck.FValue), nTruck.FTruck,UnPLC);
 
   if nLading.FStatus <> sFlag_TruckIn then
   begin
@@ -967,12 +1005,13 @@ begin
       if UnPLC = '' then
       begin
         gERelayManagerPLC.OpenTunnel(nTunnel+'_O');
-        WriteNearReaderLog(nTunnel+'允许放灰');
+        WriteNearReaderLog(nTunnel+' 允许放灰');
       end
       else
       begin
         {$IFDEF BasisWeightTruckProber}
           gProberManager.OpenTunnel(nTunnel+'_O');
+          WriteNearReaderLog(nTunnel+' 允许放灰');
         {$ENDIF}
       end;
     {$ENDIF}
@@ -981,19 +1020,148 @@ begin
   end;
 end;
 
+procedure TruckStartFHSan(const nTruck: PTruckItem; const nTunnel: string);
+var nStr,nTmp,nCardUse: string;
+   nField: TField;
+   nWorker: PDBWorker;
+begin
+  nWorker := nil;
+  try
+    nTmp := '';
+    nStr := 'Select * From %s Where T_Truck=''%s''';
+    nStr := Format(nStr, [sTable_Truck, nTruck.FTruck]);
+
+    with gDBConnManager.SQLQuery(nStr, nWorker) do
+    if RecordCount > 0 then
+    begin
+      nField := FindField('T_Card');
+      if Assigned(nField) then nTmp := nField.AsString;
+
+      nField := FindField('T_CardUse');
+      if Assigned(nField) then nCardUse := nField.AsString;
+
+      if nCardUse = sFlag_No then
+        nTmp := '';
+      //xxxxx
+    end;
+
+    g02NReader.SetRealELabel(nTunnel, nTmp);
+  finally
+    gDBConnManager.ReleaseConnection(nWorker);
+  end;
+
+
+  gERelayManager.LineOpen(nTunnel);
+  //打开放灰
+
+  nStr := nTruck.FTruck + StringOfChar(' ', 12 - Length(nTruck.FTruck));
+  nTmp := nTruck.FStockName + FloatToStr(nTruck.FValue);
+  nStr := nStr + nTruck.FStockName + StringOfChar(' ', 12 - Length(nTmp)) +
+          FloatToStr(nTruck.FValue);
+  //xxxxx
+
+  WriteNearReaderLog('发送通道 '+nTunnel+' 小屏、显示内容： '+nStr);
+  gERelayManager.ShowTxt(nTunnel, nStr);
+  //显示内容
+end;
+
 //Date: 2019-03-12
 //Parm: 磁卡号;通道号
 //Desc: 对nCard执行袋装装车操作
 procedure MakeTruckLadingSan(const nCard,nTunnel: string);
+var nStr: string;
+    nIdx: Integer;
+    nPLine: PLineItem;
+    nPTruck: PTruckItem;
+    nTrucks: TLadingBillItems;
 begin
+  {$IFDEF DEBUG}
+  WriteNearReaderLog('MakeTruckLadingSan进入.');
+  {$ENDIF}
 
+    nStr := 'MakeTruckLadingSan进入 收到散装通道[ %s ]磁卡[ %s ].';
+    nStr := Format(nStr, [nTunnel, nCard]);
+    WriteNearReaderLog(nStr);
+
+  if nCard='002863311530' then  Exit;
+  if not GetLadingBills(nCard, sFlag_TruckFH, nTrucks) then
+  begin
+    nStr := '读取 散装通道[ %s ]磁卡[ %s ]交货单信息失败.';
+    nStr := Format(nStr, [nTunnel, nCard]);
+
+    WriteNearReaderLog(nStr);
+    Exit;
+  end;
+
+  if Length(nTrucks) < 1 then
+  begin
+    nStr := '磁卡[ %s ]没有需要放灰车辆.';
+    nStr := Format(nStr, [nCard]);
+
+    WriteNearReaderLog(nStr);
+    Exit;
+  end;
+
+  for nIdx:=Low(nTrucks) to High(nTrucks) do
+  with nTrucks[nIdx] do
+  begin
+    {$IFDEF AllowMultiM}
+    if FStatus = sFlag_TruckBFM then
+      FStatus := sFlag_TruckFH;
+    //过重后允许返回再次装车 （多次过重）
+    {$ENDIF}
+
+    if (FStatus = sFlag_TruckFH) or (FNextStatus = sFlag_TruckFH) then Continue;
+    //未装或已装
+
+    nStr := '车辆[ %s ]下一状态为:[ %s ],无法放灰.';
+    nStr := Format(nStr, [FTruck, TruckStatusToStr(FNextStatus)]);
+
+    WriteHardHelperLog(nStr);
+    Exit;
+  end;
+
+  if not IsTruckInQueue(nTrucks[0].FTruck, nTunnel, False, nStr,
+         nPTruck, nPLine, sFlag_San) then
+  begin
+    WriteNearReaderLog(nStr);
+    //loged
+
+    nIdx := Length(nTrucks[0].FTruck);
+    nStr := nTrucks[0].FTruck + StringOfChar(' ',12 - nIdx) + '请换库装车';
+    gERelayManager.ShowTxt(nTunnel, nStr);
+    Exit;
+  end; //检查通道
+
+  if nTrucks[0].FStatus = sFlag_TruckFH then
+  begin
+    nStr := '散装车辆[ %s ]再次刷卡装车.';
+    nStr := Format(nStr, [nTrucks[0].FTruck]);
+    WriteNearReaderLog(nStr);
+
+    TruckStartFHSan(nPTruck, nTunnel);
+    Exit;
+  end;
+
+  if not SaveLadingBills(sFlag_TruckFH, nTrucks) then
+  begin
+    nStr := '车辆[ %s ]放灰处提货失败.';
+    nStr := Format(nStr, [nTrucks[0].FTruck]);
+
+    WriteNearReaderLog(nStr);
+    Exit;
+  end;
+
+  TruckStartFHSan(nPTruck, nTunnel);
+  //执行放灰
 end;
 
 //Date: 2019-03-12
 //Parm: 磁卡号;通道号
 //Desc: 对nCard执行称量操作
-procedure MakeTruckWeightFirst(const nCard,nTunnel: string;const UnPLC:string = '');
-var nStr: string;
+procedure MakeTruckWeightFirst(const nCard,nTunnel: string;const UnPLC:string = '';
+                                const nReader:string = '');
+var nStr,nVoiceID : string;
     nIdx: Integer;
     nPound: TBWTunnel;
     nPLine: PLineItem;
@@ -1001,17 +1169,21 @@ var nStr: string;
     nTrucks: TLadingBillItems;
     nPT: PPTTunnelItem;
 begin
-  {$IFDEF DEBUG}
-  WriteNearReaderLog('MakeTruckWeightFirst进入.');
-  {$ENDIF}
+  WriteNearReaderLog(Format('MakeTruckWeightFirst进入. %s %s %s',[nCard,nTunnel,UnPLC]));
 
+  nVoiceID:= nTunnel;
   if not GetLadingBills(nCard, sFlag_TruckFH, nTrucks) then
   begin
     nStr := '读取磁卡[ %s ]交货单信息失败.';
     nStr := Format(nStr, [nCard]);
 
     WriteNearReaderLog(nStr);
-    ShowLEDHint(nTunnel, '读取交货单信息失败','',UnPLC);
+
+    nStr:= '读取交货单信息失败';
+    ShowLEDHint(nTunnel, nStr,'',UnPLC);
+    {$IFDEF LineVoice}
+    MakeGateSound(nStr, nVoiceID, False);
+    {$ENDIF}
     Exit;
   end;
 
@@ -1021,7 +1193,12 @@ begin
     nStr := Format(nStr, [nCard]);
 
     WriteNearReaderLog(nStr);
-    ShowLEDHint(nTunnel, '没有需要装料车辆','',UnPLC);
+
+    nStr:= '没有需要装料车辆';
+    ShowLEDHint(nTunnel, nStr,'',UnPLC);
+    {$IFDEF LineVoice}
+    MakeGateSound(nStr, nVoiceID, False);
+    {$ENDIF}
     Exit;
   end;
 
@@ -1031,6 +1208,10 @@ begin
     if FStatus = sFlag_TruckNone then
     begin
       ShowLEDHint(nTunnel, '请进厂刷卡', nTrucks[0].FTruck,UnPLC);
+      {$IFDEF LineVoice}
+      nStr:=  nTrucks[0].FTruck + '请进厂刷卡';
+      MakeGateSound(nStr, nVoiceID, False);
+      {$ENDIF}
       Exit;
     end;
   end;
@@ -1043,6 +1224,11 @@ begin
       if not Assigned(nPT) then
       begin
         ShowLEDHint(nTunnel, '通道未启用', nTrucks[0].FTruck,UnPLC);
+
+        {$IFDEF LineVoice}
+        nStr:= '当前通道未启用、请换道装车';
+        MakeGateSound(nStr, nVoiceID, False);
+        {$ENDIF}
         Exit;
       end;
     end;
@@ -1054,14 +1240,18 @@ begin
       begin
         nStr := Format('%s 请等待前车', [nTrucks[0].FTruck]);
         ShowLEDHint(nTunnel, nStr,'',UnPLC);
+
+        {$IFDEF LineVoice}
+        MakeGateSound(nStr, nVoiceID, False);
+        {$ENDIF}
         Exit;
       end;
     end;
-  end;
+ end;
 
 
-  WriteNearReaderLog('通道' + nTunnel +'当前业务:' + nPound.FBill +
-                     '新刷卡:' + nTrucks[0].FID);
+  WriteNearReaderLog('通道:' + nTunnel +' 当前业务:' + nPound.FBill +
+                     ' 新刷卡:' + nTrucks[0].FID);
 
   if nPound.FBill <> '' then
   if (nPound.FBill <> nTrucks[0].FID) then //前车业务未完成后车刷卡
@@ -1070,6 +1260,10 @@ begin
     begin
       nStr := Format('%s.%s 地磅重量异常', [nTrucks[0].FID, nTrucks[0].FTruck]);
       WriteNearReaderLog(nStr);
+
+        {$IFDEF LineVoice}
+        MakeGateSound('地磅重量异常、请联系工作人员', nVoiceID, False);
+        {$ENDIF}
       Exit;
     end;
   end;
@@ -1079,6 +1273,10 @@ begin
   begin
     WriteNearReaderLog(nStr);
     ShowLEDHint(nTunnel, '请换道装车', nTrucks[0].FTruck,UnPLC);
+
+    {$IFDEF LineVoice}
+    MakeGateSound(nTrucks[0].FTruck + '请换道装车', nVoiceID, False);
+    {$ENDIF}
     Exit;
   end; //检查通道
 
@@ -1090,6 +1288,10 @@ begin
 
     nStr := Format('请 %s 上磅称量皮重', [nTrucks[0].FTruck]);
     ShowLEDHint(nTunnel, nStr,'',UnPLC);
+
+    {$IFDEF LineVoice}
+    MakeGateSound(nStr, nVoiceID, False);
+    {$ENDIF}
   end else
   begin
     if nPound.FValTunnel > 0 then
@@ -1097,8 +1299,29 @@ begin
     else nStr := '请开始装车';
 
     ShowLEDHint(nTunnel, nStr, nTrucks[0].FTruck,UnPLC);
+
+    {$IFDEF LineVoice}
+    nStr:= nTrucks[0].FTruck + nStr;
+    MakeGateSound(nStr, nVoiceID, False);
+    {$ENDIF}
   end;
 
+  {$IFDEF SaveBillStatusFH}
+  if (nTrucks[0].FStatus=sFlag_TruckBFP) then
+  if not SaveLadingBills(sFlag_TruckFH, nTrucks) then
+  begin
+    nStr := '车辆[ %s ]放灰处提货失败.';
+    nStr := Format(nStr, [nTrucks[0].FTruck]);
+
+    WriteNearReaderLog(nStr);
+    Exit;
+  end;
+  {$ENDIF}
+  {$IFDEF LineNeedOPenDoor}
+  BlueOpenDoor(nReader,'');
+  //抬杆
+  {$ENDIF}
+  
   TruckStartFH(nPTruck, nTunnel, nTrucks[0],UnPLC);
   //执行放灰
 end;
@@ -1148,7 +1371,8 @@ begin
     if (Assigned(nReader.FOptions)) and
       (Trim(nReader.FOptions.Values['Tunnel']) <> '') then
     begin
-      MakeTruckWeightFirst(nCard, nReader.FOptions.Values['Tunnel'],Trim(nReader.FOptions.Values['TruckProber']));
+      MakeTruckWeightFirst(nCard, nReader.FOptions.Values['Tunnel'],Trim(nReader.FOptions.Values['TruckProber']),
+                                nReader.FID);
     end
     else
     begin
@@ -1644,7 +1868,7 @@ end;
 //Desc: 当nTunnel状态改变时,处理业务
 procedure WhenBasisWeightStatusChange(const nTunnel: PBWTunnel);
 var
-  nStr, nTruck, nMsg: string;
+  nStr, nTruck, nVoiceMsg, nMsg: string;
   nList : TStrings;
   nIdx  : Integer;
   FLevel1,FLevel2: Double;
@@ -1696,13 +1920,14 @@ begin
     Exit;
   end;
 
+  nTruck:= nTunnel.FParams.Values['Truck'];
   case nTunnel.FStatusNew of
    bsInit      : WriteNearReaderLog('初始化:' + nTunnel.FID   + '单据号：' + nTunnel.FBill);
    bsNew       : WriteNearReaderLog('新添加:' + nTunnel.FID   + '单据号：' + nTunnel.FBill);
    bsStart     : WriteNearReaderLog('开始称重:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
    bsClose     : WriteNearReaderLog('称重关闭:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
    bsDone      : WriteNearReaderLog('称重完成:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
-   bsStable    : WriteNearReaderLog('数据平稳:' + nTunnel.FID + '单据号：' + nTunnel.FBill);
+   bsStable    : WriteNearReaderLog('数据平稳:' + nTunnel.FID + '单据号：' + nTunnel.FBill + ' 重量：'+FloatToStr(nTunnel.FValHas));
   end; //log
 
   if nTunnel.FStatusNew = bsClose then
@@ -1737,6 +1962,12 @@ begin
       WriteNearReaderLog(nTunnel.FID+'装车完成请等待保存称重');
     {$ELSE}
       ShowLEDHint(nTunnel.FID, '装车完成 请下磅');
+
+      {$IFDEF LineVoice}
+        nVoiceMsg:= nTruck + ' 装车完成、请下磅';
+        MakeGateSound(nVoiceMsg, nTunnel.FID, False);
+      {$ENDIF}
+
       {$IFDEF UseERelayPLC}
       if nTunnel.FTunnel.FOptions.Values['TruckProber'] <> 'Y' then
       begin
@@ -1957,6 +2188,43 @@ begin
   finally
     nList.Free;
   end;
+end;
+
+// 发送网口小屏显示信息
+procedure ShowTextByBXFontCard(nCard, nTitle, nData:string;const IsZT:Boolean);
+var nStr  : string;
+    nTitleM, nDataM, nDataZ : TBXDisplayMode;
+begin
+  if nCard<>'' then
+  if Assigned(gBXFontCardManager) then
+  begin
+    gBXFontCardManager.InitDisplayMode(nTitleM);
+    gBXFontCardManager.InitDisplayMode(nDataM);
+
+    //title
+    nTitleM.FDisplayMode := 1;
+    nTitleM.FNewLine := BX_NewLine_02;
+    nTitleM.FSpeed   := $03;
+    nTitleM.FStayTime:= $0A;
+
+    //Data
+    nDataM.FDisplayMode := 3;
+    nDataM.FNewLine := BX_NewLine_02;
+    nDataM.FSpeed   := $03;
+    nDataM.FStayTime:= $0A;
+
+    nDataZ.FDisplayMode := 1;
+    nDataZ.FNewLine := BX_NewLine_02;
+    nDataZ.FSpeed   := $03;
+    nDataZ.FStayTime:= $0A;
+
+    WriteNearReaderLog(Format('向网口小屏 %s 发送 %s %s', [nCard, nTitle, nData]));
+
+    if Pos('ZT',nCard)>0 then
+      gBXFontCardManager.Display(nTitle, nData, nCard, 3600, 3600, @nTitleM, @nDataZ)
+    else gBXFontCardManager.Display(nTitle, nData, nCard, 3, 100, @nTitleM, @nDataM);
+  end
+  else WriteNearReaderLog('网口小屏管理器不存在');
 end;
 
 {$IFDEF HKVDVR}

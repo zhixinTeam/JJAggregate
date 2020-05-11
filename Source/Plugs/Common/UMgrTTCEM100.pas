@@ -78,6 +78,7 @@ type
     FClient : TIdTCPClient;    //通信链路
     FPost:string;
     FDept:string;
+    FBxCardNo: string;           //吞卡机小屏
   end;
 
   TM100ReaderThreadType = (ttAll, ttActive);

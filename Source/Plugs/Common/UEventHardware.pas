@@ -34,7 +34,7 @@ uses
   SysUtils, USysLoger, UHardBusiness, UMgrTruckProbe, UMgrParam,
   UMgrQueue, UMgrLEDCard, UMgrHardHelper, UMgrRemotePrint, U02NReader,
   UMgrERelay, UMgrCodePrinter, UMgrTTCEM100, UMgrRFID102, UMgrVoiceNet,
-  UMgrBasisWeight, UMgrRemoteSnap, USendStatusToDCS
+  UMgrBasisWeight, UMgrRemoteSnap, USendStatusToDCS, UMgrBXFontCard
   {$IFDEF UseERelayPLC} ,UMgrERelayPLC {$ENDIF};
 
 class function THardwareWorker.ModuleInfo: TPlugModuleInfo;
@@ -120,15 +120,6 @@ begin
     gBasisWeightManager.LoadConfig(nCfg + 'Tunnels.xml');
     {$ENDIF}
 
-    {$IFDEF RemoteSnap}
-    nStr := '海康威视远程抓拍';
-    if FileExists(nCfg + 'RemoteSnap.xml') then
-    begin
-      //gHKSnapHelper := THKSnapHelper.Create;
-      gHKSnapHelper.LoadConfig(nCfg + 'RemoteSnap.xml');
-    end;
-    {$ENDIF}
-
     {$IFDEF SendStatusToDCS}
     nStr := 'DCS数据发送';
     if FileExists(nCfg + 'DcsSender.xml') then
@@ -152,6 +143,15 @@ begin
     if FileExists(nCfg + 'RemoteSnap.xml') then
     begin
       gHKSnapHelper.LoadConfig(nCfg + 'RemoteSnap.xml');
+    end;
+    {$ENDIF}
+
+    {$IFDEF UseBXFontLED}
+    nStr := '装车道网口小屏';
+    if FileExists(nCfg + 'BXFontLED.xml') then
+    begin
+      gBXFontCardManager := TBXFontCardManager.Create;
+      gBXFontCardManager.LoadConfig(nCfg + 'BXFontLED.xml');
     end;
     {$ENDIF}
   except
@@ -249,6 +249,10 @@ begin
     gERelayManagerPLC.StartService;
   //车检由PLC控制
   {$ENDIF}
+
+  {$IFDEF UseBXFontLED}
+  gBXFontCardManager.StartService;
+  {$ENDIF}
 end;
 
 procedure THardwareWorker.AfterStopServer;
@@ -326,6 +330,10 @@ begin
   {$IFDEF RemoteSnap}
   gHKSnapHelper.StopSnap;
   //remote snap
+  {$ENDIF}
+
+  {$IFDEF UseBXFontLED}
+  gBXFontCardManager.StopService;
   {$ENDIF}
 end;
 

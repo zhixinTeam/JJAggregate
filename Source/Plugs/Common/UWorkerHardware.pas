@@ -10,7 +10,7 @@ interface
 uses
   Windows, Classes, Controls, DB, SysUtils, UBusinessWorker, UBusinessPacker,
   UBusinessConst, UMgrDBConn, UMgrParam, ZnMD5, ULibFun, UFormCtrl, USysLoger,
-  USysDB, UMITConst, UMgrRFID102;
+  USysDB, UMITConst, UMgrRFID102, UMgrVoiceNet;
 
 type
   THardwareDBWorker = class(TBusinessWorkerBase)
@@ -77,6 +77,7 @@ type
     //定制放灰调用小屏显示
     function LineClose(var nData: string): Boolean;
     //定制放灰
+    function CallLineNextPTruck(var nData: string): Boolean;
   public
     constructor Create; override;
     destructor destroy; override;
@@ -257,6 +258,7 @@ begin
 
    cBC_ShowLedTxt           : Result := ShowLedText(nData);
    cBC_LineClose            : Result := LineClose(nData);
+   cBC_CallLineNextPTruck   : Result := CallLineNextPTruck(nData);
    //xxxxxx
    else
     begin
@@ -760,6 +762,91 @@ begin
     gERelayManager.LineClose(nTunnel);
   Result := True;
 end;
+
+//Date: 2020-04-26
+//Parm: 岗位[FIn.FData] 发送内容[FIn.FExt]
+//Desc: 叫号 nTruck所在通道第三辆车称皮
+function THardwareCommander.CallLineNextPTruck(var nData: string): Boolean;
+var nIdx, nInt : Integer;
+    nTunnel, nTruck, nZName, nStr, nVoiceCard : string;
+    nPTruck, nNextPTruck: PTruckItem;
+    nPLine : PLineItem;
+    nlast  : Boolean;
+    nOut: TWorkerBusinessCommand;
+begin
+  Result := True;             nVoiceCard:= 'TCC';
+
+  FListA.Text := PackerDecodeStr(FIn.FData);
+
+  nTunnel:= FListA.Values['Tunnel'];
+  nZName := FListA.Values['TName'];
+  nTruck := FListA.Values['Truck'];
+
+  with gTruckQueueManager do
+  try
+    SyncLock.Enter;
+    nIdx := GetLine(nTunnel);
+
+    if nIdx < 0 then
+    begin
+      nData:= Format('CallLineNextPTruck：通道 %s 无效.', [nTunnel]);
+      WriteLog(nData);
+      Exit;
+    end;
+
+    nPLine := Lines[nIdx];
+    nInt := TruckInLine(nTruck, nPLine.FTrucks);
+    if nInt < 0 then
+    begin
+      nData:= Format('CallLineNextPTruck：车辆 %s 不在 %s 队列中.', [nTruck, nPLine.FName]);
+      WriteLog(nData);
+      Exit;
+    end;
+
+    nIdx := nInt;
+    if (nIdx < 0) or (nIdx = nPLine.FTrucks.Count - 1) then
+    begin
+      nlast:= True;
+    end;
+
+    IF not nlast then
+    begin
+      nNextPTruck := nPLine.FTrucks[nIdx+2];
+      //next truck
+
+      nZName:= StringReplace(nZName, '#', '库', [rfReplaceAll]);
+      nStr := '%s 请过皮重、并到 ' + nZName + '道 等待装车';
+      nStr := Format(nStr, [nNextPTruck.FTruck]);
+    end
+    else
+    begin
+      nStr := '车辆 %s 暂无后续车辆';
+      nStr := Format(nStr, [nTruck]);
+      WriteLog(nStr);
+      nStr:= '';
+    end;
+
+    try
+      if not(gNetVoiceHelper=nil)And(nStr<>'') then
+      begin
+        gNetVoiceHelper.PlayVoice(nStr, nVoiceCard);
+        //播发语音
+
+        WriteLog(Format('CallLineNextPTruck 发送语音[%s %s]', [nVoiceCard ,nStr]));
+      end;
+    except
+      on nErr: Exception do
+      begin
+        nStr := 'CallLineNextPTruck 播放[ %s ]语音失败,描述: %s';
+        nStr := Format(nStr, [nVoiceCard, nErr.Message]);
+        WriteLog(nStr);
+      end;
+    end;
+  finally
+    SyncLock.Leave;
+  end;
+end;
+
 
 initialization
   gBusinessWorkerManager.RegisteWorker(THardwareCommander, sPlug_ModuleHD);
