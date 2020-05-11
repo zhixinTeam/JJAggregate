@@ -6,6 +6,8 @@ unit UFrameNormal;
 
 interface
 
+{$I Link.inc}
+
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   USysFun, IniFiles, UFrameBase, cxButtonEdit, cxGraphics, cxControls,
@@ -14,7 +16,8 @@ uses
   UBitmapPanel, cxSplitter, dxLayoutControl, cxGridLevel, cxClasses,
   cxGridCustomView, cxGridCustomTableView, cxGridTableView,
   cxGridDBTableView, cxGrid, ComCtrls, ToolWin, Menus, 
-  cxGridCustomPopupMenu, cxGridPopupMenu;
+  cxGridCustomPopupMenu, cxGridPopupMenu, dxSkinsCore,
+  dxSkinsDefaultPainters, dxSkinscxPCPainter, dxSkinsdxLCPainter;
 
 type
   TfFrameNormal = class(TBaseFrame)
@@ -129,6 +132,11 @@ begin
   
   FEnableBackDB := False;
   FShowDetailInfo := True;
+                          
+  {$IFDEF UseBigFontSize}
+  cxGrid1.Font.Name:= 'Î¢ÈíÑÅºÚ';
+  cxGrid1.Font.Size:= 10;
+  {$ENDIF}
 
   nIni := TIniFile.Create(gPath + sFormConfig);
   try

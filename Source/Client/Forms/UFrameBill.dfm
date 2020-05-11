@@ -21,6 +21,7 @@ inherited fFrameBill: TfFrameBill
     inherited cxView1: TcxGridDBTableView
       PopupMenu = PMenu1
       OnDblClick = cxView1DblClick
+      OnCustomDrawCell = cxView1CustomDrawCell
     end
   end
   inherited dxLayout1: TdxLayoutControl
@@ -244,6 +245,9 @@ inherited fFrameBill: TfFrameBill
       Caption = #26597#30475#20215#26684#25551#36848
       OnClick = N3Click
     end
+    object N11: TMenuItem
+      Caption = '-'
+    end
     object N12: TMenuItem
       Caption = #25552#36135#21333#21208#35823
       OnClick = N12Click
@@ -259,6 +263,13 @@ inherited fFrameBill: TfFrameBill
     object N7: TMenuItem
       Caption = #20215#26684'/'#25968#37327#35843#25972
       OnClick = N7Click
+    end
+    object N13: TMenuItem
+      Caption = '-'
+    end
+    object N14: TMenuItem
+      Caption = #38144#21806#25552#36135#21333#36864#36135
+      OnClick = N14Click
     end
   end
 end

@@ -607,7 +607,7 @@ inherited fFrameAutoPoundItem: TfFrameAutoPoundItem
   end
   object Timer_ReadCard: TTimer
     OnTimer = Timer_ReadCardTimer
-    Left = 508
+    Left = 509
     Top = 256
   end
   object TimerDelay: TTimer
@@ -621,6 +621,13 @@ inherited fFrameAutoPoundItem: TfFrameAutoPoundItem
     Enabled = False
     OnTimer = Timer_SaveFailTimer
     Left = 560
+    Top = 256
+  end
+  object tmr_ShowDefault: TTimer
+    Enabled = False
+    Interval = 2000
+    OnTimer = tmr_ShowDefaultTimer
+    Left = 598
     Top = 256
   end
 end

@@ -80,6 +80,7 @@ begin
 
       FIconFile := ReadString(FProgID, 'IconFile', gPath + 'Icons\Icon.ini');
       FIconFile := StringReplace(FIconFile, '$Path\', gPath, [rfIgnoreCase]);
+      FPoundLEDTxt:= ReadString(FProgID, 'PoundLEDDefaultTxt', '  金耀华夏   九润神州');
 
       FProberUser := 0;
       FVoiceUser := 0;

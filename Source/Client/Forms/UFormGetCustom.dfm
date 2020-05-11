@@ -1,8 +1,8 @@
 inherited fFormGetCustom: TfFormGetCustom
-  Left = 401
-  Top = 134
-  Width = 445
-  Height = 300
+  Left = 619
+  Top = 253
+  Width = 470
+  Height = 347
   BorderStyle = bsSizeable
   Constraints.MinHeight = 300
   Constraints.MinWidth = 445
@@ -12,18 +12,22 @@ inherited fFormGetCustom: TfFormGetCustom
   PixelsPerInch = 96
   TextHeight = 12
   inherited dxLayout1: TdxLayoutControl
-    Width = 437
-    Height = 269
+    Width = 454
+    Height = 308
     inherited BtnOK: TButton
-      Left = 291
-      Top = 236
+      Left = 298
+      Top = 270
+      Width = 70
+      Height = 24
       Caption = #30830#23450
-      TabOrder = 5
+      TabOrder = 6
     end
     inherited BtnExit: TButton
-      Left = 361
-      Top = 236
-      TabOrder = 6
+      Left = 373
+      Top = 270
+      Width = 70
+      Height = 24
+      TabOrder = 7
     end
     object EditSMan: TcxComboBox [2]
       Left = 81
@@ -76,7 +80,7 @@ inherited fFormGetCustom: TfFormGetCustom
         end
         item
           Caption = #23458#25143#21517#31216
-          Width = 70
+          Width = 230
         end>
       HideSelection = False
       ParentFont = False
@@ -95,6 +99,20 @@ inherited fFormGetCustom: TfFormGetCustom
       Caption = #26597#35810#32467#26524':'
       ParentFont = False
       Transparent = True
+    end
+    object InValidTime: TcxDateEdit [7]
+      Left = 75
+      Top = 270
+      ParentFont = False
+      Properties.Kind = ckDateTime
+      Style.Font.Charset = GB2312_CHARSET
+      Style.Font.Color = clBlack
+      Style.Font.Height = -13
+      Style.Font.Name = #24494#36719#38597#40657
+      Style.Font.Style = []
+      Style.IsFontAssigned = True
+      TabOrder = 5
+      Width = 169
     end
     inherited dxLayout1Group_Root: TdxLayoutGroup
       inherited dxGroup1: TdxLayoutGroup
@@ -131,6 +149,13 @@ inherited fFormGetCustom: TfFormGetCustom
           Caption = #26597#35810#32467#26524':'
           ShowCaption = False
           Control = ListCustom
+          ControlOptions.ShowBorder = False
+        end
+      end
+      inherited dxLayout1Group1: TdxLayoutGroup
+        object dxLayout1Item8: TdxLayoutItem [0]
+          Caption = #22833#25928#26085#26399#65306
+          Control = InValidTime
           ControlOptions.ShowBorder = False
         end
       end

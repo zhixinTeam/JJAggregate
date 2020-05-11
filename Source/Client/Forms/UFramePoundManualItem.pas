@@ -9,10 +9,10 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  UMgrPoundTunnels, UBusinessConst, cxGraphics, cxControls, cxLookAndFeels,
+  UMgrPoundTunnels, UBusinessConst, cxGraphics, cxControls, cxLookAndFeels, USysLoger,
   cxLookAndFeelPainters, cxContainer, cxEdit, Menus, ExtCtrls, cxCheckBox,
   StdCtrls, cxButtons, cxTextEdit, cxMaskEdit, cxDropDownEdit, cxLabel,
-  ULEDFont, cxRadioGroup, UFrameBase;
+  ULEDFont, cxRadioGroup, UFrameBase, dxSkinsCore, dxSkinsDefaultPainters;
 
 type
   TfFrameManualPoundItem = class(TBaseFrame)
@@ -176,6 +176,11 @@ begin
       nImage.Picture.Bitmap := ImageOn.Picture.Bitmap;
     end;
   end;
+end;
+
+procedure WriteSysLog(const nEvent: string);
+begin
+  gSysLoger.AddLog(TfFrameManualPoundItem, '手动称重业务', nEvent);
 end;
 
 //------------------------------------------------------------------------------
@@ -773,8 +778,8 @@ end;
 
 //Desc: 保存销售
 function TfFrameManualPoundItem.SavePoundSale: Boolean;
-var nStr: string;
-    nVal,nNet: Double;
+var nStr, nStrSql: string;
+    nVal,nNet,nPMVal: Double;
 begin
   Result := False;
   //init
@@ -812,63 +817,122 @@ begin
 
   if (FUIData.FPData.FValue > 0) and (FUIData.FMData.FValue > 0) then
   begin
-    if FUIData.FPData.FValue > FUIData.FMData.FValue then
+    {$IFDEF PoundAutoEmptyOutChk}
+    nPMVal := FUIData.FMData.FValue;
+    nPMVal := nPMVal * 1000 - FUIData.FPData.FValue * 1000;
+
+    if (FUIData.FNextStatus = sFlag_TruckBFM) then //出厂模式,过重车
+    with FUIData do
     begin
-      ShowMsg('皮重应小于毛重', sHint);
-      Exit;
+      if (Abs(nPMVal)<= gSysParam.FEmpTruckWc) then //and (FBillItems[0].FIsSample<>sFlag_Yes)
+      begin
+        // 判断为空车出厂
+        WriteSysLog(Format('单号：%s 净重：%.2f 公斤 符合空车出净重 %.2f 公斤以内要求  予以空车出厂标示',[FBillItems[0].FID, nPMVal, gSysParam.FEmpTruckWc]));
+        FBillItems[0].FYSValid:= 'Y';
+        FInnerData.FPModel := sFlag_PoundCC;
+        //*****************
+        nStrSql := 'UPDate %s Set L_EmptyOut=''Y'' Where L_ID=''%s''  ';
+        nStrSql := Format(nStrSql, [sTable_Bill, FBillItems[0].FID]);
+        FDM.ExecuteSQL(nStrSql);
+
+        PlayVoice(Format('%s 空车出厂', [FTruck]));
+        //*********************************************************
+        nStr := '[ %s ]符合空车出厂,详情如下:' + #13#10 +
+                '※.单据号: %s' + #13#10 +
+                '※.开单量: %.2f 吨' + #13#10 +
+                '※.净  重: %.2f 公斤' + #13#10 +
+                '请确认.';
+        nStr := Format(nStr, [FTruck, FID, FValue, nPMVal]);         WriteSysLog(nStr);
+
+        AddManualEventRecord(FID + sFlag_ManualD, FTruck, nStr,
+          sFlag_DepBangFang , sFlag_Solution_OK, sFlag_DepDaTing, True);
+        //xxxxx
+      end;
     end;
+    {$ENDIF}
 
-    nNet := FUIData.FMData.FValue - FUIData.FPData.FValue;
-    //净重
-    nVal := nNet * 1000 - FInnerData.FValue * 1000;
-    //与开票量误差(公斤)
-
-    with gSysParam,FBillItems[0] do
+    if FBillItems[0].FYSValid <> sFlag_Yes then //判断是否空车出厂
     begin
-      if FDaiPercent and (FType = sFlag_Dai) then
+      if FUIData.FPData.FValue > FUIData.FMData.FValue then
       begin
-        if nVal > 0 then
-             FPoundDaiZ := Float2Float(FInnerData.FValue * FPoundDaiZ_1 * 1000,
-                                       cPrecision, False)
-        else FPoundDaiF := Float2Float(FInnerData.FValue * FPoundDaiF_1 * 1000,
-                                       cPrecision, False);
-      end;
-
-      if ((FType = sFlag_Dai) and (
-          ((nVal > 0) and (FPoundDaiZ > 0) and (nVal > FPoundDaiZ)) or
-          ((nVal < 0) and (FPoundDaiF > 0) and (-nVal > FPoundDaiF)))) or
-         ((FType = sFlag_San) and (
-          (nVal < 0) and (FPoundSanF > 0) and (-nVal > FPoundSanF))) then
-      begin
-        nStr := '车辆[ %s ]实际装车量误差较大,详情如下:' + #13#10#13#10 +
-                '※.开单量: %.2f吨' + #13#10 +
-                '※.装车量: %.2f吨' + #13#10 +
-                '※.误差量: %.2f公斤';
-
-        if FDaiWCStop and (FType = sFlag_Dai) then
+        if not FBillItems[0].FIsReturns then
         begin
-          nStr := nStr + #13#10#13#10 + '请通知司机点验包数.';
-          nStr := Format(nStr, [FTruck, FInnerData.FValue, nNet, nVal]);
-
-          ShowDlg(nStr, sHint);
+          ShowMsg('皮重应小于毛重', sHint);
           Exit;
-        end else
+        end
+        else
         begin
-          nStr := nStr + #13#10#13#10 + '是否继续保存?';
-          nStr := Format(nStr, [FTruck, FInnerData.FValue, nNet, nVal]);
-          if not QueryDlg(nStr, sAsk) then Exit;
-        end;  
+          if (-1*(FUIData.FMData.FValue-FUIData.FPData.FValue))<=FBillItems[0].FValue then
+          begin
+            WriteSysLog(FBillItems[0].FID + ' 为退货单');
+          end
+          else
+          begin
+            nStr:= Format('%s 提货量：%s 退货量：%s 退货量不能大于提货量', [FBillItems[0].FID, FBillItems[0].FValue,
+                                              (FUIData.FMData.FValue-FUIData.FPData.FValue)]);
+            ShowMsg(nStr, sHint);
+            WriteSysLog(nStr);
+            Exit;
+          end;
+        end;
       end;
 
-      if (FType = sFlag_San) and IsStrictSanValue and
-         FloatRelation(FValue, nNet, rtLess, cPrecision) then
+
+      nNet := FUIData.FMData.FValue - FUIData.FPData.FValue;
+      //净重
+      nVal := nNet * 1000 - FInnerData.FValue * 1000;
+      //与开票量误差(公斤)
+
+      with gSysParam,FBillItems[0] do
       begin
-        nStr := '车辆[n1]%s[p500]净重[n2]%.2f吨[p500]开票量[n2]%.2f吨,请卸货';
-        nStr := Format(nStr, [FTruck, Float2Float(nNet, cPrecision, True),
-                Float2Float(FValue, cPrecision, True)]);
+        if not FIsReturns then
+        begin
+          if FDaiPercent and (FType = sFlag_Dai) then
+          begin
+            if nVal > 0 then
+                 FPoundDaiZ := Float2Float(FInnerData.FValue * FPoundDaiZ_1 * 1000,
+                                           cPrecision, False)
+            else FPoundDaiF := Float2Float(FInnerData.FValue * FPoundDaiF_1 * 1000,
+                                           cPrecision, False);
+          end;
+
+          if ((FType = sFlag_Dai) and (
+              ((nVal > 0) and (FPoundDaiZ > 0) and (nVal > FPoundDaiZ)) or
+              ((nVal < 0) and (FPoundDaiF > 0) and (-nVal > FPoundDaiF)))) or
+             ((FType = sFlag_San) and (
+              (nVal < 0) and (FPoundSanF > 0) and (-nVal > FPoundSanF))) then
+          begin
+            nStr := '车辆[ %s ]实际装车量误差较大,详情如下:' + #13#10#13#10 +
+                    '※.开单量: %.2f吨' + #13#10 +
+                    '※.装车量: %.2f吨' + #13#10 +
+                    '※.误差量: %.2f公斤';
+
+            if FDaiWCStop and (FType = sFlag_Dai) then
+            begin
+              nStr := nStr + #13#10#13#10 + '请通知司机点验包数.';
+              nStr := Format(nStr, [FTruck, FInnerData.FValue, nNet, nVal]);
+
+              ShowDlg(nStr, sHint);
+              Exit;
+            end else
+            begin
+              nStr := nStr + #13#10#13#10 + '是否继续保存?';
+              nStr := Format(nStr, [FTruck, FInnerData.FValue, nNet, nVal]);
+              if not QueryDlg(nStr, sAsk) then Exit;
+            end;  
+          end;
+
+          if (FType = sFlag_San) and IsStrictSanValue and
+             FloatRelation(FValue, nNet, rtLess, cPrecision) then
+          begin
+            nStr := '车辆[n1]%s[p500]净重[n2]%.2f吨[p500]开票量[n2]%.2f吨,请卸货';
+            nStr := Format(nStr, [FTruck, Float2Float(nNet, cPrecision, True),
+                    Float2Float(FValue, cPrecision, True)]);
                 
-        ShowDlg(nStr, sHint);
-        Exit;        
+            ShowDlg(nStr, sHint);
+            Exit;
+          end;
+        end;
       end;
     end;
   end;
@@ -954,7 +1018,7 @@ end;
 //Desc: 车将检测器判定
 function TfFrameManualPoundItem.IsTruckProbeOK: Boolean;
 begin
-  Result := True;
+  Result := True;          Exit;
   //default
 
   {$IFDEF MITTruckProber}

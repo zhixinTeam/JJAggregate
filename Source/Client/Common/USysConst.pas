@@ -105,6 +105,7 @@ const
   cFI_FormMakeRFIDCard  = $1015;                     //办理电子标签
   cFI_FormMakeLSCard    = $1016;                     //厂内零售办卡
 
+  cFI_FormBillReturns   = $2008;                     //销售退货
   cFI_FormBill          = $1017;                     //开提货单
   cFI_FormBillKW        = $1117;                     //提货单勘误
   cFI_FormBillAdjustNum = $1118;                     //提货单价格/数量冲红
@@ -148,6 +149,7 @@ const
   cFI_FormGetPOrderBase  = $1056;                    //采购订单
   cFI_FormOrderDtl      = $1057;                     //采购明细
   cFI_FormGetWXAccount  = $1058;                     //获取商城注册信息
+  cFI_FormCtlCusbd      = $1059;                     //管理绑定客户
 
   cFI_FormBatch         = $1064;                     //批次管理
   cFI_FormStockParam    = $1065;                     //品种管理
@@ -247,6 +249,7 @@ type
     FVoiceUser  : Integer;                           //语音计数
     FProberUser : Integer;                           //检测器技术
     FEmpTruckWc : Double;                            //空车出厂误差
+    FPoundLEDTxt: string;                            //磅房小屏过磅后默认显示内容
   end;
   //系统参数
 

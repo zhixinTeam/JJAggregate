@@ -59,7 +59,7 @@ inherited fFrameSaleDetailTotal: TfFrameSaleDetailTotal
       Top = 93
       Hint = 'T.L_CusName'
       ParentFont = False
-      TabOrder = 5
+      TabOrder = 6
       Width = 165
     end
     object EditDate: TcxButtonEdit [1]
@@ -95,7 +95,7 @@ inherited fFrameSaleDetailTotal: TfFrameSaleDetailTotal
       Top = 93
       Hint = 'T.L_Value'
       ParentFont = False
-      TabOrder = 7
+      TabOrder = 8
       Width = 168
     end
     object cxtxtdt4: TcxTextEdit [4]
@@ -103,7 +103,7 @@ inherited fFrameSaleDetailTotal: TfFrameSaleDetailTotal
       Top = 93
       Hint = 'T.L_StockName'
       ParentFont = False
-      TabOrder = 6
+      TabOrder = 7
       Width = 185
     end
     object Radio1: TcxRadioButton [5]
@@ -116,6 +116,7 @@ inherited fFrameSaleDetailTotal: TfFrameSaleDetailTotal
       ParentColor = False
       TabOrder = 3
       TabStop = True
+      OnClick = Radio1Click
     end
     object Radio2: TcxRadioButton [6]
       Left = 655
@@ -125,6 +126,7 @@ inherited fFrameSaleDetailTotal: TfFrameSaleDetailTotal
       Caption = #21516#23458#25143#21516#21697#31181
       ParentColor = False
       TabOrder = 4
+      OnClick = Radio1Click
     end
     object cxLabel1: TcxLabel [7]
       Left = 499
@@ -134,6 +136,16 @@ inherited fFrameSaleDetailTotal: TfFrameSaleDetailTotal
       Style.BorderStyle = ebsNone
       Style.Edges = [bBottom]
       Transparent = True
+    end
+    object Rb_Stock: TcxRadioButton [8]
+      Left = 775
+      Top = 36
+      Width = 115
+      Height = 17
+      Caption = #21516#21697#31181
+      ParentColor = False
+      TabOrder = 5
+      OnClick = Radio1Click
     end
     inherited dxGroup1: TdxLayoutGroup
       inherited GroupSearch1: TdxLayoutGroup
@@ -164,6 +176,12 @@ inherited fFrameSaleDetailTotal: TfFrameSaleDetailTotal
           Caption = 'cxRadioButton2'
           ShowCaption = False
           Control = Radio2
+          ControlOptions.AutoColor = True
+          ControlOptions.ShowBorder = False
+        end
+        object dxlytmLayout1Item9: TdxLayoutItem
+          ShowCaption = False
+          Control = Rb_Stock
           ControlOptions.AutoColor = True
           ControlOptions.ShowBorder = False
         end

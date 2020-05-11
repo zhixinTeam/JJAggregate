@@ -1,7 +1,7 @@
 inherited fFormBill: TfFormBill
   Left = 609
   Top = 168
-  ClientHeight = 460
+  ClientHeight = 496
   ClientWidth = 466
   Position = poDesktopCenter
   OnClose = FormClose
@@ -10,17 +10,17 @@ inherited fFormBill: TfFormBill
   TextHeight = 12
   inherited dxLayout1: TdxLayoutControl
     Width = 466
-    Height = 460
+    Height = 496
     AutoControlTabOrders = False
     inherited BtnOK: TButton
       Left = 320
-      Top = 427
+      Top = 463
       Caption = #24320#21333
       TabOrder = 5
     end
     inherited BtnExit: TButton
       Left = 390
-      Top = 427
+      Top = 463
       TabOrder = 9
     end
     object ListInfo: TcxMCListBox [2]
@@ -165,7 +165,7 @@ inherited fFormBill: TfFormBill
       Top = 314
       ParentFont = False
       TabOrder = 15
-      Width = 271
+      Width = 72
     end
     object EditYFPrice: TcxTextEdit [13]
       Left = 81
@@ -180,6 +180,14 @@ inherited fFormBill: TfFormBill
       ParentFont = False
       TabOrder = 17
       Width = 178
+    end
+    object DateEdt_BD: TcxDateEdit [15]
+      Left = 222
+      Top = 314
+      ParentFont = False
+      Properties.Kind = ckDateTime
+      TabOrder = 18
+      Width = 177
     end
     inherited dxLayout1Group_Root: TdxLayoutGroup
       inherited dxGroup1: TdxLayoutGroup
@@ -293,11 +301,22 @@ inherited fFormBill: TfFormBill
             end
           end
         end
-        object dxLayout1Item5: TdxLayoutItem
-          AutoAligns = [aaVertical]
-          Caption = #34917#21333#30382#37325':'
-          Control = EditPValue
-          ControlOptions.ShowBorder = False
+        object dxLayout1Group6: TdxLayoutGroup
+          ShowCaption = False
+          Hidden = True
+          LayoutDirection = ldHorizontal
+          ShowBorder = False
+          object dxLayout1Item5: TdxLayoutItem
+            AutoAligns = [aaVertical]
+            Caption = #34917#21333#30382#37325':'
+            Control = EditPValue
+            ControlOptions.ShowBorder = False
+          end
+          object dxlytmLayout1Item14: TdxLayoutItem
+            Caption = #24320#21333#26102#38388#65306
+            Control = DateEdt_BD
+            ControlOptions.ShowBorder = False
+          end
         end
         object dxLayout1Item4: TdxLayoutItem
           AutoAligns = [aaHorizontal]

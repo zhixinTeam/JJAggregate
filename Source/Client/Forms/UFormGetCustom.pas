@@ -12,7 +12,8 @@ uses
   Dialogs, UFormNormal, cxGraphics, cxContainer, cxEdit, cxTextEdit,
   cxMaskEdit, cxDropDownEdit, dxLayoutControl, StdCtrls, cxControls,
   ComCtrls, cxListView, cxButtonEdit, cxLabel, cxLookAndFeels,
-  cxLookAndFeelPainters;
+  cxLookAndFeelPainters, dxSkinsCore, dxSkinsDefaultPainters,
+  dxSkinsdxLCPainter, cxCalendar;
 
 type
   TfFormGetCustom = class(TfFormNormal)
@@ -27,6 +28,8 @@ type
     dxLayout1Group2: TdxLayoutGroup;
     cxLabel1: TcxLabel;
     dxLayout1Item7: TdxLayoutItem;
+    dxLayout1Item8: TdxLayoutItem;
+    InValidTime: TcxDateEdit;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure BtnOKClick(Sender: TObject);
@@ -75,6 +78,7 @@ begin
   with TfFormGetCustom.Create(Application) do
   begin
     Caption := '选择客户';
+    dxLayout1Item8.Visible:= nP.FParamB='ShowDate';
     InitFormData(nP.FParamA);
 
     nP.FCommand := cCmd_ModalResult;
@@ -85,6 +89,7 @@ begin
       nP.FParamB := FCusID;
       nP.FParamC := FCusName;
       nP.FParamD := FSaleMan;
+      nP.FParamE := DateTime2Str(InValidTime.Date);
     end;
     Free;
   end;
@@ -287,7 +292,7 @@ procedure TfFormGetCustom.ListCustomDblClick(Sender: TObject);
 begin
   if ListCustom.ItemIndex > -1 then
   begin
-    GetResult; ModalResult := mrOk;
+    BtnOK.Click;
   end;
 end;
 
@@ -295,10 +300,21 @@ procedure TfFormGetCustom.BtnOKClick(Sender: TObject);
 begin
   if ListCustom.ItemIndex > -1 then
   begin
+    IF InValidTime.Visible then
+    begin
+      IF InValidTime.Date<Now then
+      begin
+        ShowMsg('有效日期不能为当前日期之前的时间点', sHint);
+        Exit;
+      end;
+    end;
+
     GetResult; ModalResult := mrOk;
   end else ShowMsg('请在查询结果中选择', sHint);
 end;
 
 initialization
   gControlManager.RegCtrl(TfFormGetCustom, TfFormGetCustom.FormID);
+
+  
 end.

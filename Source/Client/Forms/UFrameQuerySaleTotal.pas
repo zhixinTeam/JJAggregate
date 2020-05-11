@@ -15,7 +15,9 @@ uses
   StdCtrls, cxRadioGroup, cxMaskEdit, cxButtonEdit, cxTextEdit, ADODB,
   cxLabel, UBitmapPanel, cxSplitter, cxGridLevel, cxClasses,
   cxGridCustomView, cxGridCustomTableView, cxGridTableView,
-  cxGridDBTableView, cxGrid, ComCtrls, ToolWin;
+  cxGridDBTableView, cxGrid, ComCtrls, ToolWin, dxSkinsCore,
+  dxSkinsDefaultPainters, dxSkinscxPCPainter, dxSkinsdxLCPainter,
+  cxGridCustomPopupMenu, cxGridPopupMenu;
 
 type
   TfFrameSaleDetailTotal = class(TfFrameNormal)
@@ -37,11 +39,14 @@ type
     dxLayout1Item4: TdxLayoutItem;
     cxLabel1: TcxLabel;
     dxLayout1Item7: TdxLayoutItem;
+    dxlytmLayout1Item9: TdxLayoutItem;
+    Rb_Stock: TcxRadioButton;
     procedure EditDatePropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure EditTruckPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure mniN1Click(Sender: TObject);
+    procedure Radio1Click(Sender: TObject);
   private
     { Private declarations }
   protected
@@ -127,10 +132,15 @@ begin
               'CAST(Sum(L_Value * L_Price) as decimal(38, 2)) as L_Money ' +
               'From $Bill ';
     //xxxxx
-  end else
+  end else if Radio2.Checked then
   begin
     Result := 'select L_SaleID,L_SaleMan,L_CusID,L_CusName,L_CusPY,L_Type,' +
               'L_StockNo,L_StockName,CAST(Sum(L_Value) as decimal(38, 2)) as L_Value,' +
+              'CAST(Sum(L_Value * L_Price) as decimal(38, 2)) as L_Money From $Bill ';
+    //xxxxx
+  end else
+  begin
+    Result := 'select L_StockNo,L_StockName,CAST(Sum(L_Value) as decimal(38, 2)) as L_Value,' +
               'CAST(Sum(L_Value * L_Price) as decimal(38, 2)) as L_Money From $Bill ';
     //xxxxx
   end;
@@ -141,10 +151,15 @@ begin
               'Sum(L_Value) as L_Value,Sum(L_Value * L_Price) as L_Money ' +
               'From $Bill ';
     //xxxxx
-  end else
+  end else if Radio2.Checked then
   begin
     Result := 'select L_SaleID,L_SaleMan,L_CusID,L_CusName,L_CusPY,L_Type,' +
               'L_StockNo,L_StockName,Sum(L_Value) as L_Value,' +
+              'Sum(L_Value * L_Price) as L_Money From $Bill ';
+    //xxxxx
+  end else
+  begin
+    Result := 'select L_Type,L_StockNo,L_StockName,Sum(L_Value) as L_Value,' +
               'Sum(L_Value * L_Price) as L_Money From $Bill ';
     //xxxxx
   end;
@@ -170,10 +185,14 @@ begin
   if Radio1.Checked then
   begin
     Result := Result + ' Group By L_SaleID,L_SaleMan,L_CusID,L_CusName,L_CusPY';
-  end else
+  end else if Radio2.Checked then
   begin
     Result := Result + ' Group By L_SaleID,L_SaleMan,L_CusID,L_CusName,L_CusPY,' +
               'L_Type,L_StockNo,L_StockName';
+    //xxxxx
+  end else
+  begin
+    Result := Result + ' Group By L_Type,L_StockNo,L_StockName';
     //xxxxx
   end;
 
@@ -252,6 +271,12 @@ begin
   end;
 end;
 
+procedure TfFrameSaleDetailTotal.Radio1Click(Sender: TObject);
+begin
+  BtnRefresh.Click;
+end;
+
 initialization
   gControlManager.RegCtrl(TfFrameSaleDetailTotal, TfFrameSaleDetailTotal.FrameID);
+  
 end.

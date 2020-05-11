@@ -6,6 +6,7 @@ inherited fFormNormal: TfFormNormal
   ClientHeight = 129
   ClientWidth = 223
   OldCreateOrder = True
+  Position = poScreenCenter
   PixelsPerInch = 96
   TextHeight = 12
   object dxLayout1: TdxLayoutControl

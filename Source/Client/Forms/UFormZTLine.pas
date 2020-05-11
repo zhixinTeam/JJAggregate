@@ -4,13 +4,15 @@
 *******************************************************************************}
 unit UFormZTLine;
 
+{$I Link.Inc}
 interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   UFormNormal, cxGraphics, cxControls, cxLookAndFeels,
   cxLookAndFeelPainters, cxContainer, cxEdit, cxMaskEdit, cxDropDownEdit,
-  cxLabel, cxCheckBox, cxTextEdit, dxLayoutControl, StdCtrls;
+  cxLabel, cxCheckBox, cxTextEdit, dxLayoutControl, StdCtrls, dxSkinsCore,
+  dxSkinsDefaultPainters, dxSkinsdxLCPainter;
 
 type
   TfFormZTLine = class(TfFormNormal)
@@ -42,6 +44,12 @@ type
     cxLabel5: TcxLabel;
     dxLayout1Group10: TdxLayoutGroup;
     dxLayout1Group12: TdxLayoutGroup;
+    dxlytmLayout1Item6: TdxLayoutItem;
+    edt_Waiting: TcxTextEdit;
+    dxLayout1Group5: TdxLayoutGroup;
+    dxlytmLayout1Item61: TdxLayoutItem;
+    cxlbl1: TcxLabel;
+    dxLayout1Group6: TdxLayoutGroup;
     procedure BtnOKClick(Sender: TObject);
     procedure EditStockIDPropertiesChange(Sender: TObject);
   protected
@@ -194,6 +202,12 @@ begin
   gOldLine.FQueueMax  := EditMax.Text;
   gOldLine.FPeer      := EditPeer.Text;
   gOldLine.FValid     := CheckValid.Checked = True;
+
+  {$IFNDEF LineWaitingCtl}
+  dxlytmLayout1Item6.Visible:= False;
+  dxlytmLayout1Item61.Visible:= False;
+  edt_Waiting.Hint:= '';
+  {$ENDIF}
 end;
 
 procedure TfFormZTLine.EditStockIDPropertiesChange(Sender: TObject);

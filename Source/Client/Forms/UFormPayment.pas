@@ -4,6 +4,7 @@
 *******************************************************************************}
 unit UFormPayment;
 
+{$I Link.inc}
 interface
 
 uses
@@ -11,7 +12,8 @@ uses
   UFormNormal, cxGraphics, cxControls, cxLookAndFeels,
   cxLookAndFeelPainters, cxContainer, cxEdit, cxButtonEdit, cxMCListBox,
   cxLabel, cxMemo, cxTextEdit, cxMaskEdit, cxDropDownEdit, dxLayoutControl,
-  StdCtrls;
+  StdCtrls, dxSkinsCore, dxSkinsDefaultPainters, dxSkinsdxLCPainter,
+  cxCalendar;
 
 type
   TfFormPayment = class(TfFormNormal)
@@ -43,6 +45,8 @@ type
     dxLayout1Item15: TdxLayoutItem;
     cxLabel3: TcxLabel;
     dxLayout1Group4: TdxLayoutGroup;
+    Date_PaymentTime: TcxDateEdit;
+    dxlytm_PaymentTime: TdxLayoutItem;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure EditSalesManPropertiesChange(Sender: TObject);
@@ -136,6 +140,12 @@ begin
 
   LoadSysDictItem(sFlag_PaymentItem2, EditType.Properties.Items);
   EditType.ItemIndex := 0;
+  Date_PaymentTime.Date:= Now;
+
+  {$IFNDEF PaymentChoseTime}
+  dxlytm_PaymentTime.Visible:= False;
+  Date_PaymentTime.Visible  := False;
+  {$ENDIF}
   
   if nID <> '' then
   begin
@@ -285,10 +295,12 @@ end;
 
 procedure TfFormPayment.BtnOKClick(Sender: TObject);
 var nP: TFormCommandParam;
+    nTime:string;
 begin
+  nTime:= DateTime2Str(Date_PaymentTime.Date);
   if not IsDataValid then Exit;
   if not SaveCustomerPayment(gInfo.FCusID, gInfo.FCusName,
-     GetCtrlData(EditSalesMan), sFlag_MoneyHuiKuan, EditType.Text, EditDesc.Text,
+     GetCtrlData(EditSalesMan), sFlag_MoneyHuiKuan, EditType.Text, EditDesc.Text, nTime,
      StrToFloat(EditMoney.Text), True) then
   begin
     ShowMsg('»Ø¿î²Ù×÷Ê§°Ü', sError); Exit;

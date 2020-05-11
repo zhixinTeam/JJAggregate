@@ -11,7 +11,8 @@ uses
   UFormNormal, cxGraphics, cxControls, cxLookAndFeels,
   cxLookAndFeelPainters, cxContainer, cxEdit, ComCtrls, cxListView,
   cxDropDownEdit, cxTextEdit, cxMaskEdit, cxButtonEdit, cxMCListBox,
-  dxLayoutControl, StdCtrls;
+  dxLayoutControl, StdCtrls, dxSkinsCore, dxSkinsDefaultPainters,
+  dxSkinsdxLCPainter;
 
 type
   TfFormGetZhiKa = class(TfFormNormal)
@@ -128,6 +129,10 @@ procedure TfFormGetZhiKa.ClearCustomerInfo;
 begin
   if not EditCode.Focused then EditCode.Clear;
   if not EditName.Focused then EditName.ItemIndex := -1;
+
+  gParam.FParamB:= '';
+  gParam.FParamC:= '';
+  //EditZK.ItemIndex := -1;;
   ListInfo.Clear;
 end;
 
@@ -209,7 +214,8 @@ begin
     end;
 
     if Items.Count > 0 then
-      EditProject.ItemIndex := 0;
+      EditProject.ItemIndex := 0
+    else EditProject.ItemIndex := -1;
     //xxxxx
   end;
 end;
@@ -219,6 +225,7 @@ var nStr: string;
 begin
   if EditSalesMan.ItemIndex > -1 then
   begin
+    EditName.ItemIndex := -1;
     nStr := Format('C_SaleMan=''%s''', [GetCtrlData(EditSalesMan)]);
     LoadCustomer(EditName.Properties.Items, nStr);
   end;
@@ -423,6 +430,11 @@ begin
       LoadCustomerInfoEx(GetCtrlData(EditName),False,Trim(EditProject.Text))
     else
       LoadCustomerInfoEx(GetCtrlData(EditName),False);
+  end
+  else
+  begin
+    EditZK.Properties.Items.Clear;
+    ListDetail.Clear;
   end;
   //xxxxx
 end;

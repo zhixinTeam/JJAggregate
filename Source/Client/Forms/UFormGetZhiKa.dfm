@@ -1,6 +1,6 @@
 inherited fFormGetZhiKa: TfFormGetZhiKa
-  Left = 404
-  Top = 121
+  Left = 903
+  Top = 192
   Width = 431
   Height = 468
   BorderStyle = bsSizeable
@@ -10,17 +10,17 @@ inherited fFormGetZhiKa: TfFormGetZhiKa
   PixelsPerInch = 96
   TextHeight = 12
   inherited dxLayout1: TdxLayoutControl
-    Width = 423
-    Height = 437
+    Width = 415
+    Height = 429
     inherited BtnOK: TButton
-      Left = 277
-      Top = 404
+      Left = 269
+      Top = 396
       Caption = #30830#23450
       TabOrder = 7
     end
     inherited BtnExit: TButton
-      Left = 347
-      Top = 404
+      Left = 339
+      Top = 396
       TabOrder = 8
     end
     object ListInfo: TcxMCListBox [2]

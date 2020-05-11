@@ -13,7 +13,7 @@ uses
   cxLookAndFeelPainters, cxContainer, cxEdit, ComCtrls, cxMaskEdit,
   cxDropDownEdit, cxListView, cxTextEdit, cxMCListBox, dxLayoutControl,
   StdCtrls, cxButtonEdit, cxCheckBox, dxSkinsCore, dxSkinsDefaultPainters,
-  dxSkinsdxLCPainter;
+  dxSkinsdxLCPainter, cxCalendar;
 
 type
   TfFormBill = class(TfFormNormal)
@@ -50,6 +50,9 @@ type
     dxLayout1Group4: TdxLayoutGroup;
     EditCarrier: TcxComboBox;
     dxLayout1Item16: TdxLayoutItem;
+    DateEdt_BD: TcxDateEdit;
+    dxlytmLayout1Item14: TdxLayoutItem;
+    dxLayout1Group6: TdxLayoutGroup;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure EditStockPropertiesChange(Sender: TObject);
@@ -167,12 +170,18 @@ begin
       FBuDanFlag := sFlag_Yes;
       dxLayout1Item5.Visible := True;
       EditPValue.Text        := '0';
+      DateEdt_BD.Date:= Now;
+      {$IFDEF BuDanCanChoseDateTime}
+      dxlytmLayout1Item14.Visible := True;
+      {$ENDIF}
     end
     else
     begin
       FBuDanFlag := sFlag_No;
       dxLayout1Item5.Visible := False;
       EditPValue.Text        := '0';
+      DateEdt_BD.Date:= Now;
+      dxlytmLayout1Item14.Visible := False;
     end;
 
     if Assigned(nParam) then
@@ -255,11 +264,11 @@ begin
   if (Sender = EditTruck) and (Key = Char(VK_SPACE)) then
   begin
     Key := #0;
-    nP.FParamA := EditTruck.Text;
+    nP.FParamA := Trim(EditTruck.Text);
     CreateBaseFormItem(cFI_FormGetTruck, '', @nP);
 
     if (nP.FCommand = cCmd_ModalResult) and(nP.FParamA = mrOk) then
-      EditTruck.Text := nP.FParamB;
+      EditTruck.Text := Trim(nP.FParamB);
     EditTruck.SelectAll;
   end;
 end;
@@ -437,7 +446,8 @@ begin
     if gInfo.FShowPrice then
       dxGroup2.Caption := Format('提单明细 单价:%.2f元/吨', [FPrice]);
     //xxxxx
-  end;
+  end
+  else EditValue.Text := '0';
 end;
 
 procedure TfFormBill.EditPricePropertiesButtonClick(Sender: TObject;
@@ -463,6 +473,14 @@ begin
   begin
     Result := Length(EditTruck.Text) > 2;
     nHint := '车牌号长度应大于2位';
+
+    {$IFDEF TruckNoChkHZ}
+    if Result then
+    begin
+      Result:= IsHaveChinese(EditTruck.Text);
+      nHint := '需录入车牌前缀';
+    end;
+    {$ENDIF}
   end else
 
   if Sender = EditLading then
@@ -498,7 +516,7 @@ begin
     end else
     begin
       Result := False;
-      nHint := '单价[ 0 ]无效';
+      nHint := '单价[ 0 ]无效、该品种未设置售价,请反馈管理员';
     end;
   end;
 end;
@@ -617,6 +635,7 @@ begin
       begin
         Values['PValue'] := FloatToStr(StrToFloatDef(EditPValue.Text,0));
         Values['MValue'] := FloatToStr(StrToFloatDef(EditPValue.Text,0)+FValue);
+        Values['BDTime'] := DateTime2Str(DateEdt_BD.Date);
       end;
 
       Values['PriceDesc'] := gStockTypes[FPriceIndex].FParam;

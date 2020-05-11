@@ -15,20 +15,23 @@ uses
   UFormPassword, UFrameAuthorize, UFormAuthorize, UFormOptions,
   {$IFDEF MicroMsg}
   {UFrameWeiXinAccount, UFormWeiXinAccount,}
-  UFrameWeiXinSendlog, UFormWeiXinSendlog, UFormGetWechartAccount,
+  UFrameWeiXinSendlog, UFormWeiXinSendlog, UFormGetWechartAccount,    UFormLogin
   {$ENDIF}
   UFramePriceWeek, UFormPriceWeek, UFormPriceView, UFramePriceRule,
   UFormPriceRetail, UFormPriceArea, UFormPriceCustomer,
   UFrameCustomer, UFormCustomer, UFormGetCustom, UFrameSalesMan, UFormSalesMan,
   UFrameShouJu, UFormShouJu, UFramePayment, UFormPayment,
   UFrameCustomerCredit, UFormCustomerCredit, UFrameCusAccount,
-  UFrameCusInOutMoney, UFrameZhiKa, UFormZhiKa, UFrameBill, UFormBill,
-  UFormGetZhiKa, UFormReadCard, UFormTruckEmpty,
+  UFrameCusInOutMoney, UFrameZhiKa, UFormZhiKa, UFrameBill, UFormBill, UFormBillReturns,
+
+  UFramePoundAutoItem, UFramePoundManualItem,
+
+  UFormGetZhiKa, UFormReadCard, UFormTruckEmpty, UFormZTLine,
   UFormGetTruck, UFrameQueryDiapatch, UFrameTruckQuery, UFrameBillCard,
   UFormCard, UFormTruckIn, UFormTruckOut, UFormLadingDai, UFormLadingSan,
   UFramePoundManual, UFramePoundAuto, UFramePMaterails, UFormPMaterails,
   UFramePProvider, UFormPProvider, UFramePoundQuery, UFrameQuerySaleDetail,
-  UFrameQuerySaleTotal, UFrameZTDispatch, UFrameTrucks, UFormTruck,
+  UFrameQuerySaleTotal, UFrameZTDispatch, UFrameTrucks, UFormTruck, UFormCtlCusbd,
   UFrameTruckPlan, UFormTruckPlan, UFormTodo, UFormTodoSend, UFrameTodo,
   UFrameHYData,UFormHYData,UFrameHYStock,UFormHYStock, UFrameHYRecord, UFormHYRecord,
   UFrameBatcodeJ,UFormBatcodeJ,UFormGetProvider,UFormGetMeterails,
@@ -44,7 +47,7 @@ procedure FreeSystemObject;
 implementation
 
 uses
-  UMgrChannel, UChannelChooser, UDataModule, USysDB, USysMAC, SysUtils,
+  UMgrChannel, UChannelChooser, UDataModule, USysDB, USysMAC, SysUtils, USysBusiness,
   ULibFun, USysLoger, USysConst, UMemDataPool;
 
 //Desc: 初始化系统对象
@@ -165,6 +168,9 @@ begin
     end;
   end;
 
+  {$IFDEF QueuePoundPChk}
+  CreateVIEWs;
+  {$ENDIF}
   //----------------------------------------------------------------------------
   if gSysParam.FMITServURL = '' then  //使用默认URL
   begin

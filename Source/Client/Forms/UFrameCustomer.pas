@@ -15,7 +15,9 @@ uses
   cxTextEdit, cxMaskEdit, cxButtonEdit, ADODB, cxLabel, UBitmapPanel,
   cxSplitter, cxGridLevel, cxClasses, cxGridCustomView,
   cxGridCustomTableView, cxGridTableView, cxGridDBTableView, cxGrid,
-  ComCtrls, ToolWin;
+  ComCtrls, ToolWin, dxSkinsCore, dxSkinsDefaultPainters,
+  dxSkinscxPCPainter, dxSkinsdxLCPainter, cxGridCustomPopupMenu,
+  cxGridPopupMenu;
 
 type
   TfFrameCustomer = class(TfFrameNormal)
@@ -39,6 +41,9 @@ type
     N5: TMenuItem;
     N6: TMenuItem;
     N7: TMenuItem;
+    N8: TMenuItem;
+    N9: TMenuItem;
+    N10: TMenuItem;
     procedure EditIDPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure BtnAddClick(Sender: TObject);
@@ -51,6 +56,8 @@ type
     procedure N4Click(Sender: TObject);
     procedure N6Click(Sender: TObject);
     procedure N7Click(Sender: TObject);
+    procedure N9Click(Sender: TObject);
+    procedure N10Click(Sender: TObject);
   private
     { Private declarations }
     FListA: TStrings;
@@ -372,6 +379,33 @@ begin
     end else ShowDlg(nNode.NodeByNameR('errmsg').ValueAsString, sHint);
   finally
     nXML.Free;
+  end;
+end;
+
+procedure TfFrameCustomer.N9Click(Sender: TObject);
+var nP: TFormCommandParam;
+begin
+  if cxView1.DataController.GetSelectedCount > 0 then
+  begin
+    nP.FParamB:= SQLQuery.FieldByName('C_ID').AsString;
+    nP.FParamC:= 'Customer';
+    CreateBaseFormItem(cFI_FormCtlCusbd, '', @nP);
+  end;
+end;
+
+procedure TfFrameCustomer.N10Click(Sender: TObject);
+var nCus, nStr : string;
+begin
+  if cxView1.DataController.GetSelectedCount > 0 then
+  begin
+    nCus:= SQLQuery.FieldByName('C_ID').AsString;
+
+    nStr := 'Delete %s Where T_CID=''%s''';
+    nStr:= Format(nStr, [sTable_TruckCus, nCus]);
+    //xxxxxx
+
+    FDM.ExecuteSQL(nStr);
+    ShowMsg('已解除该客户所有绑定车辆', sHint);
   end;
 end;
 

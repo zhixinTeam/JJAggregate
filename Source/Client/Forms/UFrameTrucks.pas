@@ -14,7 +14,8 @@ uses
   cxContainer, dxLayoutControl, cxMaskEdit, cxButtonEdit, cxTextEdit,
   ADODB, cxLabel, UBitmapPanel, cxSplitter, cxGridLevel, cxClasses,
   cxGridCustomView, cxGridCustomTableView, cxGridTableView,
-  cxGridDBTableView, cxGrid, ComCtrls, ToolWin, Menus;
+  cxGridDBTableView, cxGrid, ComCtrls, ToolWin, Menus, dxSkinscxPCPainter,
+  dxSkinsdxLCPainter, cxGridCustomPopupMenu, cxGridPopupMenu;
 
 type
   TfFrameTrucks = class(TfFrameNormal)
@@ -32,6 +33,9 @@ type
     N3: TMenuItem;
     VIP1: TMenuItem;
     VIP2: TMenuItem;
+    N8: TMenuItem;
+    N9: TMenuItem;
+    N10: TMenuItem;
     procedure EditNamePropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure BtnAddClick(Sender: TObject);
@@ -44,6 +48,8 @@ type
     procedure N7Click(Sender: TObject);
     procedure VIP1Click(Sender: TObject);
     procedure VIP2Click(Sender: TObject);
+    procedure N9Click(Sender: TObject);
+    procedure N10Click(Sender: TObject);
   private
     { Private declarations }
   protected
@@ -256,6 +262,45 @@ begin
     FDM.ExecuteSQL(nStr);
     InitFormData(FWhere);
     ShowMsg('关闭车辆VIP成功', sHint);
+  end;
+end;
+
+procedure TfFrameTrucks.N9Click(Sender: TObject);
+var nStr, nTruck: string;
+    nP: TFormCommandParam;
+begin
+  nP.FParamA := '';
+  if cxView1.DataController.GetSelectedCount > 0 then
+  begin
+    nP.FParamB:= 'ShowDate';
+    CreateBaseFormItem(cFI_FormGetCustom, '', @nP);
+    if (nP.FCommand <> cCmd_ModalResult) or (nP.FParamA <> mrOK) then
+      Exit;
+
+    nP.FParamB:= nP.FParamB;
+    if (nP.FParamB<>'') And (nP.FParamC<>'') then
+    begin
+      nTruck:= SQLQuery.FieldByName('T_Truck').AsString;
+      nStr := 'if Not exists (Select * from S_TruckCus where T_Truck=''%s'' and T_CID=''%s'') begin ' +
+              'Insert Into %s (T_Truck, T_CID, T_CName, T_InValidTime) Select ''%s'',''%s'', ''%s'', ''%s'' end ';
+      nStr := Format(nStr, [nTruck, nP.FParamB, sTable_TruckCus, nTruck,
+                            nP.FParamB, nP.FParamC, nP.FParamE]);
+      //xxxxxx
+
+      FDM.ExecuteSQL(nStr);
+    end
+    else  ShowMsg('无效的客户信息、请重新选择', sHint);
+  end;
+end;
+
+procedure TfFrameTrucks.N10Click(Sender: TObject);
+var nP: TFormCommandParam;
+begin
+  if cxView1.DataController.GetSelectedCount > 0 then
+  begin
+    nP.FParamB := SQLQuery.FieldByName('T_Truck').AsString;
+    nP.FParamC:= 'Truck';
+    CreateBaseFormItem(cFI_FormCtlCusbd, '', @nP);
   end;
 end;
 

@@ -46,6 +46,7 @@ function WorkPCHasPopedom: Boolean;
 function GetSysValidDate: Integer;
 //获取系统有效期
 function GetTruckEmptyValue(nTruck: string): Double;
+function GetTruckLineInfo(nTruck: string;var nTunnel,nZName:string): Boolean;
 function GetSerialNo(const nGroup,nObject: string; nUseDate: Boolean = True): string;
 //获取串行编号
 function GetLadingStockItems(var nItems: TStockTypeItems): Boolean;
@@ -105,7 +106,7 @@ function IsAutoPayCredit: Boolean;
 function SmallTOBig(small: real): string;
 //金额转大写
 function SaveCustomerPayment(const nCusID,nCusName,nSaleMan: string;
- const nType,nPayment,nMemo: string; const nMoney: Double;
+ const nType,nPayment,nMemo,nTime: string; const nMoney: Double;
  const nCredit: Boolean = True): Boolean;
 //保存回款记录
 function SaveCustomerPayBill(const nCusID,nCusName,nSaleMan: string;
@@ -122,6 +123,8 @@ function IsStockValid(const nStocks: string): Boolean;
 function LoadStockItemsPrice(const nCusID: string;
   var nItems: TStockTypeItems): Boolean;
 //载入客户的价格清单
+function SaveBillReturns(const nBillData: string): string;
+//保存退货单,返回交货单号列表
 function SaveBill(const nBillData: string): string;
 //保存交货单
 function DeleteBill(const nBill: string): Boolean;
@@ -192,6 +195,8 @@ function PlayNetVoice(const nText,nCard,nContent: string): Boolean;
 //经中间件播发语音
 procedure ProberShowTxt(const nTunnel, nText: string);
 //车检发送小屏
+procedure CallLineNextPTruck(const nData: string);
+//叫号下一过皮车辆
 
 function SaveOrderBase(const nOrderData: string): string;
 //保存采购申请单
@@ -231,6 +236,9 @@ function ChangeDispatchMode(const nMode: Byte): Boolean;
 function OpenDoorByReader(const nReader: string; nType: string = 'Y'): Boolean;
 //读卡器打开道闸
 
+function IsHaveChinese(nStr: string): boolean;
+//判断字符串首位是否汉字
+
 function IsEleCardVaid(const nTruckNo: string): Boolean;
 //验证车辆电子标签
 function IfStockHasLs(const nStockNo: string): Boolean;
@@ -269,6 +277,9 @@ function GetTruckLastTime(const nTruck: string): Integer;
 //最后一次过磅时间
 function IsStrictSanValue: Boolean;
 //判断是否严格执行散装禁止超发
+function CanPoundP(const nStockNo:string): Boolean;
+//根据开放车道、待装车车辆觉得是否允许后续车辆过皮
+function CreateVIEWs: Boolean;
 
 function AddManualEventRecord(const nEID,nKey,nEvent:string;
  const nFrom: string = sFlag_DepBangFang ;
@@ -349,6 +360,33 @@ begin
   with FDM.QueryTemp(nStr) do
   if RecordCount > 0 then
     Result := Fields[0].AsFloat;
+end;
+
+//Desc: 车辆车道信息
+function GetTruckLineInfo(nTruck: string;var nTunnel,nZName:string): Boolean;
+var nStr: string;
+begin
+  Result := True;
+  nTunnel:= ''; nZName:= ''; 
+
+  nStr := 'Select * From %s Where T_Truck=''%s'' ';
+  nStr := Format(nStr, [sTable_ZTTrucks, nTruck]);
+  with FDM.QueryTemp(nStr) do
+  if Recordcount > 0 then
+  begin
+    nTunnel := FieldByName('T_Line').AsString;
+  end;
+
+  if nTunnel<>'' then
+  begin
+    nStr := 'Select * From %s Where Z_ID=''%s'' ';
+    nStr := Format(nStr, [sTable_ZTLines, nTunnel]);
+    with FDM.QueryTemp(nStr) do
+    if Recordcount > 0 then
+    begin
+      nZName  := FieldByName('Z_Name').AsString;
+    end;
+  end;
 end;
 
 //Date: 2014-09-05
@@ -835,7 +873,6 @@ begin
     end;
     Result := True;
   except
-
   end;
 end;
 
@@ -849,7 +886,6 @@ begin
 
     Result := True;
   except
-
   end;
 end;
 
@@ -1014,6 +1050,13 @@ procedure ProberShowTxt(const nTunnel, nText: string);
 var nOut: TWorkerBusinessCommand;
 begin
   CallBusinessHardware(cBC_ShowTxt, nTunnel, nText, @nOut);
+end;
+
+
+procedure CallLineNextPTruck(const nData: string);
+var nOut: TWorkerBusinessCommand;
+begin
+  CallBusinessHardware(cBC_CallLineNextPTruck, nData, '', @nOut);
 end;
 
 //------------------------------------------------------------------------------
@@ -1186,7 +1229,7 @@ end;
 
 //Desc: 保存nCusID的一次回款记录
 function SaveCustomerPayment(const nCusID,nCusName,nSaleMan: string;
- const nType,nPayment,nMemo: string; const nMoney: Double;
+ const nType,nPayment,nMemo,nTime: string; const nMoney: Double;
  const nCredit: Boolean): Boolean;
 var nStr: string;
     nBool: Boolean;
@@ -1246,11 +1289,19 @@ begin
     nStr := Format(nStr, [sTable_CusAccount, nVal, nCusID]);
     FDM.ExecuteSQL(nStr);
 
-    nStr := 'Insert Into %s(M_SaleMan,M_CusID,M_CusName,' +
-            'M_Type,M_Payment,M_Money,M_Date,M_Man,M_Memo) ' +
-            'Values(''%s'',''%s'',''%s'',''%s'',''%s'',%.2f,%s,''%s'',''%s'')';
-    nStr := Format(nStr, [sTable_InOutMoney, nSaleMan, nCusID, nCusName, nType,
-            nPayment, nVal, FDM.SQLServerNow, gSysParam.FUserID, nMemo]);
+    {$IFNDEF PaymentChoseTime}
+      nStr := 'Insert Into %s(M_SaleMan,M_CusID,M_CusName,' +
+              'M_Type,M_Payment,M_Money,M_Date,M_Man,M_Memo) ' +
+              'Values(''%s'',''%s'',''%s'',''%s'',''%s'',%.2f,%s,''%s'',''%s'')';
+      nStr := Format(nStr, [sTable_InOutMoney, nSaleMan, nCusID, nCusName, nType,
+              nPayment, nVal, FDM.SQLServerNow, gSysParam.FUserID, nMemo]);
+    {$ELSE}
+      nStr := 'Insert Into %s(M_SaleMan,M_CusID,M_CusName,' +
+              'M_Type,M_Payment,M_Money,M_Date,M_Man,M_Memo) ' +
+              'Values(''%s'',''%s'',''%s'',''%s'',''%s'',%.2f,''%s'',''%s'',''%s'')';
+      nStr := Format(nStr, [sTable_InOutMoney, nSaleMan, nCusID, nCusName, nType,
+              nPayment, nVal, nTime, gSysParam.FUserID, nMemo]);
+    {$ENDIF}
     FDM.ExecuteSQL(nStr);
 
     if (nLimit > 0) and (
@@ -1883,6 +1934,17 @@ begin
   if Result then
        AnalyseTypeItems(nOut.FData, nItems)
   else SetLength(nItems, 0);
+end;
+
+//Date: 2019-12-07
+//Parm: 退货单数据
+//Desc: 保存退货单,返回交货单号列表
+function SaveBillReturns(const nBillData: string): string;
+var nOut: TWorkerBusinessCommand;
+begin
+  if CallBusinessSaleBill(cBC_SaveBillReturns, nBillData, '', @nOut) then
+       Result := nOut.FData
+  else Result := '';
 end;
 
 //Date: 2014-09-15
@@ -2842,6 +2904,60 @@ begin
   with FDM.QueryTemp(nSQL) do
   if RecordCount > 0 then
     Result := Fields[0].AsString = sFlag_Yes;
+end;
+
+function CanPoundP(const nStockNo:string): Boolean;
+var nSQL: string;
+begin
+  Result := True;
+
+  nSQL := 'Select Z_StockNo,Z_Stock,ISNULL(QueueMax,0) QueueMax,ISNULL(Num,0) Num '+
+          'From StockQueueMax Left Join StockLoadding On L_StockNo=Z_StockNo ' +
+          'Where L_StockNo=''%s'' ';
+  nSQL := Format(nSQL, [nStockNo]);
+
+  with FDM.QueryTemp(nSQL) do
+  if RecordCount > 0 then
+  begin
+    WriteLog(Format('品种 %s 队列上限:%s 待装车：%s ', [nStockNo,FieldByName('QueueMax').AsString,
+                                                                 FieldByName('Num').AsString]));
+    Result := FieldByName('QueueMax').AsInteger>FieldByName('Num').AsInteger;
+  end;
+end;
+
+// 创建过皮检查视图
+function CreateVIEWs: Boolean;
+var nSQL: string;
+begin
+  Result := True;
+
+  try
+    nSQL := 'IF not EXISTS (SELECT * FROM sys.views WHERE object_id = OBJECT_ID(N''StockQueueMax'')) ' +
+            'Begin ' +
+              'CREATE VIEW StockQueueMax ' +
+              'AS  ' +
+              'Select Z_StockNo,Z_Stock,SUM(Z_QueueMax) QueueMax From S_ZTLines Where Z_Valid=''Y'' Group By Z_StockNo,Z_Stock ' +
+            'End ';
+    FDM.QueryTemp(nSQL);
+
+    nSQL := 'IF not EXISTS (SELECT * FROM sys.views WHERE object_id = OBJECT_ID(N''StockLoadding'')) ' +
+            'Begin ' +
+              'CREATE VIEW StockLoadding ' +
+              'AS ' +
+              'Select L_StockNo,L_StockName, COUNT(*) Num From S_Bill Where L_Status In(''P'',''F'') Group by L_StockNo,L_StockName ' +
+            'End ';
+    FDM.QueryTemp(nSQL);
+  except
+  end;
+end;
+
+function IsHaveChinese(nStr: string): boolean;
+var nWStr:WideString;
+    nX : string;
+begin
+  nWStr:= nStr;
+  nX:= nWStr[1];
+  Result:= ( Length(nX)>1 ) ;
 end;
 
 function OpenDoorByReader(const nReader: string; nType: string = 'Y'): Boolean;

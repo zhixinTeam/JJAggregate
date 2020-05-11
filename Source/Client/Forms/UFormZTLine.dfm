@@ -1,24 +1,24 @@
 inherited fFormZTLine: TfFormZTLine
-  Left = 536
-  Top = 401
+  Left = 653
+  Top = 277
   Caption = #35013#36710#32447#37197#32622
-  ClientHeight = 247
-  ClientWidth = 550
+  ClientHeight = 232
+  ClientWidth = 556
   Position = poMainFormCenter
   PixelsPerInch = 96
   TextHeight = 12
   inherited dxLayout1: TdxLayoutControl
-    Width = 550
-    Height = 247
+    Width = 556
+    Height = 232
     inherited BtnOK: TButton
-      Left = 404
-      Top = 214
-      TabOrder = 11
+      Left = 410
+      Top = 199
+      TabOrder = 13
     end
     inherited BtnExit: TButton
-      Left = 474
-      Top = 214
-      TabOrder = 12
+      Left = 480
+      Top = 199
+      TabOrder = 14
     end
     object EditName: TcxTextEdit [2]
       Left = 354
@@ -51,13 +51,13 @@ inherited fFormZTLine: TfFormZTLine
     end
     object CheckValid: TcxCheckBox [5]
       Left = 11
-      Top = 214
+      Top = 199
       Hint = 'T.Z_Valid'
       Caption = #36890#36947#26377#25928
       ParentFont = False
       Style.BorderColor = clWindowFrame
       Style.BorderStyle = ebsSingle
-      TabOrder = 10
+      TabOrder = 12
       Transparent = True
       Width = 80
     end
@@ -125,6 +125,24 @@ inherited fFormZTLine: TfFormZTLine
       Left = 296
       Top = 86
       Caption = #27880': '#35813#21442#25968#24433#21709#36827#38431#21015#30340#21457#36135#21333#31867#22411'.'
+      ParentFont = False
+      Transparent = True
+    end
+    object edt_Waiting: TcxTextEdit [13]
+      Left = 81
+      Top = 161
+      Hint = 'T.Z_QueueFactMax'
+      HelpType = htKeyword
+      HelpKeyword = 'I'
+      ParentFont = False
+      TabOrder = 10
+      Text = '3'
+      Width = 210
+    end
+    object cxlbl1: TcxLabel [14]
+      Left = 296
+      Top = 161
+      Caption = #27880': '#35813#21442#25968#29992#20110#25511#21046#36710#36947#31561#24453#35013#36710#25968#37327'.'
       ParentFont = False
       Transparent = True
     end
@@ -209,17 +227,40 @@ inherited fFormZTLine: TfFormZTLine
         object dxLayout1Group9: TdxLayoutGroup
           ShowCaption = False
           Hidden = True
-          LayoutDirection = ldHorizontal
           ShowBorder = False
-          object dxLayout1Item19: TdxLayoutItem
-            Caption = #21333#34955#37325#37327':'
-            Control = EditPeer
-            ControlOptions.ShowBorder = False
-          end
-          object dxLayout1Item20: TdxLayoutItem
+          object dxLayout1Group5: TdxLayoutGroup
             ShowCaption = False
-            Control = cxLabel4
-            ControlOptions.ShowBorder = False
+            Hidden = True
+            LayoutDirection = ldHorizontal
+            ShowBorder = False
+            object dxLayout1Item19: TdxLayoutItem
+              AutoAligns = [aaVertical]
+              Caption = #21333#34955#37325#37327':'
+              Control = EditPeer
+              ControlOptions.ShowBorder = False
+            end
+            object dxLayout1Item20: TdxLayoutItem
+              ShowCaption = False
+              Control = cxLabel4
+              ControlOptions.ShowBorder = False
+            end
+          end
+          object dxLayout1Group6: TdxLayoutGroup
+            ShowCaption = False
+            Hidden = True
+            LayoutDirection = ldHorizontal
+            ShowBorder = False
+            object dxlytmLayout1Item6: TdxLayoutItem
+              AutoAligns = [aaVertical]
+              Caption = #24453#35013#36710#36742':'
+              Control = edt_Waiting
+              ControlOptions.ShowBorder = False
+            end
+            object dxlytmLayout1Item61: TdxLayoutItem
+              ShowCaption = False
+              Control = cxlbl1
+              ControlOptions.ShowBorder = False
+            end
           end
         end
       end

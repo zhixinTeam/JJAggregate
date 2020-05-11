@@ -15,7 +15,8 @@ uses
   cxGridCustomTableView, cxGridTableView, cxGridDBTableView, cxGrid,
   ComCtrls, ToolWin, cxTextEdit, cxMaskEdit, cxButtonEdit, Menus,
   UBitmapPanel, cxSplitter, cxLookAndFeels, cxLookAndFeelPainters,
-  cxCheckBox;
+  cxCheckBox, dxSkinsCore, dxSkinsDefaultPainters, dxSkinscxPCPainter,
+  dxSkinsdxLCPainter, cxGridCustomPopupMenu, cxGridPopupMenu;
 
 type
   TfFrameBill = class(TfFrameNormal)
@@ -51,6 +52,9 @@ type
     N12: TMenuItem;
     N6: TMenuItem;
     N7: TMenuItem;
+    N11: TMenuItem;
+    N13: TMenuItem;
+    N14: TMenuItem;
     procedure EditIDPropertiesButtonClick(Sender: TObject;
       AButtonIndex: Integer);
     procedure BtnDelClick(Sender: TObject);
@@ -68,11 +72,17 @@ type
     procedure N12Click(Sender: TObject);
     procedure N6Click(Sender: TObject);
     procedure N7Click(Sender: TObject);
+    procedure N14Click(Sender: TObject);
+    procedure cxView1CustomDrawCell(Sender: TcxCustomGridTableView;
+      ACanvas: TcxCanvas; AViewInfo: TcxGridTableDataCellViewInfo;
+      var ADone: Boolean);
   protected
     FStart,FEnd: TDate;
     //时间区间
     FUseDate: Boolean;
     //使用区间
+  private
+    function IsHasPopedom(nMainID, nPopedom: string;var nHas:Boolean):Boolean;
     procedure OnCreateFrame; override;
     procedure OnDestroyFrame; override;
     function FilterColumnField: string; override;
@@ -164,6 +174,8 @@ begin
   if CheckDelete.Checked then
        Result := MacroValue(Result, [MI('$Bill', sTable_BillBak)])
   else Result := MacroValue(Result, [MI('$Bill', sTable_Bill)]);
+
+  Result:= Result + ' Order By R_ID Desc ';
 end;
 
 procedure TfFrameBill.AfterInitFormData;
@@ -260,6 +272,10 @@ begin
   begin
     ShowMsg('请选择要删除的记录', sHint); Exit;
   end;
+  
+  nStr := '确定要删除编号为[ %s ]的单据吗?';
+  nStr := Format(nStr, [SQLQuery.FieldByName('L_ID').AsString]);
+  if not QueryDlg(nStr, sAsk) then Exit;
 
   with nP do
   begin
@@ -286,12 +302,31 @@ begin
   end;
 end;
 
+//
+function TfFrameBill.IsHasPopedom(nMainID, nPopedom: string;var nHas:Boolean):Boolean;
+var nStr:string;
+begin
+  nHas:= false;
+  
+  nStr := 'Select * From %s Left Join Sys_Popedom ON U_Group=P_GROUP ' +
+          'Where U_Name=''%s'' And P_ITEM=''%s'' And P_POPEDOM like ''%%'+nPopedom+'%%''  ';
+  nStr := Format(nStr, [sTable_User, gSysParam.FUserID,nMainID]);
+
+  with FDM.QueryTemp(nStr)  do
+  begin
+    // 查询是否有权限
+    nHas:= (RecordCount > 0);
+  end;
+end;
+
 procedure TfFrameBill.PMenu1Popup(Sender: TObject);
+var nHasKW:Boolean;
 begin
   N3.Enabled := (cxView1.DataController.GetSelectedCount > 0) and
                 (gPopedomManager.HasPopedom(sPopedom_ViewPrice, PopedomItem));
   //xxxxx
-  N12.Enabled := gSysParam.FIsAdmin;
+  IsHasPopedom('MAIN_D06', 'C', nHasKW);
+  N12.Enabled := gSysParam.FIsAdmin or (nHasKW);
   N6.Enabled  := gSysParam.FIsAdmin;
   N7.Enabled  := gSysParam.FIsAdmin;
 end;
@@ -530,15 +565,14 @@ begin
         nStr := Format(nStr, [sTable_Bill, '已冲红', nLID]);
 
         FDM.ExecuteSQL(nStr);
+      end;
     end;
-
-  end;
-  if cxView1.DataController.GetSelectedCount > 0 then
-  begin
-      //冲红后校正资金
-      CheckAllCusMoney;
-      InitFormData(FWhere);
-      ShowMsg('提货单冲红成功！', sHint);
+    if cxView1.DataController.GetSelectedCount > 0 then
+    begin
+        //冲红后校正资金
+        CheckAllCusMoney;
+        InitFormData(FWhere);
+        ShowMsg('提货单冲红成功！', sHint);
     end;
   end;
 end;
@@ -575,10 +609,76 @@ begin
     begin
       InitFormData(FWhere);
     end;
-
   finally
     nList.Free;
   end;
+end;
+
+procedure TfFrameBill.N14Click(Sender: TObject);
+var nParam: TFormCommandParam;
+    nStr,nLID,nZhiKa,nCusID,nCusName,nMID,nMName,nTruck,nValue:string;
+begin
+  if cxView1.DataController.GetSelectedCount > 0 then
+  begin
+    nLID := SQLQuery.FieldByName('L_ID').AsString;
+
+    nStr := 'Select * From %s Where L_RetBillNo=''%s''';
+    nStr := Format(nStr, [sTable_Bill, nLID ]);
+    with FDM.QueryTemp(nStr) do
+    begin
+      if RecordCount>0 then
+      begin
+        nStr := '提货单 %s 已退货、禁止再次退货.';
+        ShowMsg(Format(nStr, [ nLID ]), '提示');
+        Exit;
+      end;
+    end;
+
+    if (SQLQuery.FieldByName('L_EmptyOut').AsString=sFlag_Yes) then
+    begin
+      ShowMsg('提货单 ' + nLID + ' 为空车出厂订单、不能退货', '提示');
+      Exit;
+    end;
+
+    if (SQLQuery.FieldByName('L_IsReturns').AsString=sFlag_Yes) then
+    begin
+      ShowMsg('提货单 ' + nLID + ' 为退货单、禁止此操作', '提示');
+      Exit;
+    end;
+                                                                   
+    if (SQLQuery.FieldByName('L_Status').AsString<>sFlag_TruckOut) then
+    begin
+      ShowMsg('订单尚未出厂不能退货', '提示');
+      Exit;
+    end;
+
+    nLID     := SQLQuery.FieldByName('L_ID').AsString;
+    //nStockGID:= SQLQuery.FieldByName('Grid').AsString +'、'+SQLQuery.FieldByName('G_Name').AsString;
+    nZhiKa   := SQLQuery.FieldByName('L_Zhika').AsString;
+    nCusID   := SQLQuery.FieldByName('L_CusID').AsString;
+    nCusName := SQLQuery.FieldByName('L_CusName').AsString;
+    nMID     := SQLQuery.FieldByName('L_StockNo').AsString;
+    nMName   := SQLQuery.FieldByName('L_StockName').AsString;
+    nTruck   := SQLQuery.FieldByName('L_Truck').AsString;
+    nValue   := SQLQuery.FieldByName('L_Value').AsString;
+    //*************
+    nStr := Format('%s,%s,%s,%s,%s,%s,%s,%s', [nLID,nZhiKa,nCusID,nCusName,nMID,nMName,nTruck,nValue]);
+    nParam.FParamA := StringReplace(nStr, ' ', '@', [rfReplaceAll]);
+    CreateBaseFormItem(cFI_FormBillReturns, PopedomItem, @nParam);
+    ///
+  end;
+end;
+
+procedure TfFrameBill.cxView1CustomDrawCell(Sender: TcxCustomGridTableView;
+  ACanvas: TcxCanvas; AViewInfo: TcxGridTableDataCellViewInfo;
+  var ADone: Boolean);
+begin
+  inherited;
+//  {$IFDEF UseBigFontSize}
+//  if (AViewInfo.GridRecord.Values[TcxGridDBTableView(Sender).GetColumnByFieldName('L_Status').Index])<>'O' then
+//      ACanvas.Canvas.Font.Color := $00A5FF  ;  //$C0C0C0;
+//  {$ENDIF}
+
 end;
 
 initialization
