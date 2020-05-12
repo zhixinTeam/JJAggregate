@@ -15,7 +15,7 @@ uses
   cxMaskEdit, cxButtonEdit, cxTextEdit, ADODB, cxLabel, UBitmapPanel,
   cxSplitter, cxGridLevel, cxClasses, cxGridCustomView,
   cxGridCustomTableView, cxGridTableView, cxGridDBTableView, cxGrid,
-  ComCtrls, ToolWin;
+  ComCtrls, ToolWin, cxGridCustomPopupMenu, cxGridPopupMenu;
 
 type
   TfFrameSaleDetailQuery = class(TfFrameNormal)
@@ -128,7 +128,7 @@ begin
 
   {$IFDEF CastMoney}
   Result := ' Select *, CAST((L_Value * L_Price) as decimal(38, 2)) as L_Money, ' +
-            ' CAST((L_Value * L_YFPrice) as decimal(38, 2)) as L_YFMoney, ' +
+            ' CAST((L_Value * isnull(L_YFPrice,0)) as decimal(38, 2)) as L_YFMoney, ' +
             ' (P_MValue-P_PValue) As P_NetWeight From $Bill b ' +
             ' left join $Pound P on P.P_Bill = b.L_ID ';
   {$ELSE}

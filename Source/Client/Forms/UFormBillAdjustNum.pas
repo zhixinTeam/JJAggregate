@@ -170,9 +170,9 @@ begin
     //新增冲红记录
     nStr := ' insert Into %s(L_ID,L_ZhiKa,L_CusID,L_CusName,L_CusPY,L_SaleID,L_SaleMan,L_StockNo,L_StockName,L_Value,L_Price,L_ZKMoney, '
       +' L_Truck,L_Status,L_NextStatus,L_InTime,L_InMan,L_PValue,L_PDate,L_PMan,L_MValue,L_MDate,L_MMan,L_LadeTime, '
-      +' L_LadeMan,L_OutFact,L_OutMan,L_Man,L_Date,L_Memo,L_KDValue,L_YFPrice,L_Carrier) values '
+      +' L_LadeMan,L_OutFact,L_OutMan,L_Man,L_Date,L_Memo,L_KDValue,L_YFPrice,L_Carrier,L_Type) values '
       +' (''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',%f, %f,''%s'',''%s'',''%s'',''%s'',%s, '
-      +'  ''%s'',%f,%s,''%s'',%f,%s,''%s'',%s,''%s'',''%s'',''%s'',''%s'',%s,''%s'',%f,%f,''%s'')';
+      +'  ''%s'',%f,%s,''%s'',%f,%s,''%s'',%s,''%s'',''%s'',''%s'',''%s'',%s,''%s'',%f,%f,''%s'',''%s'')';
 
     nStr := Format(nStr, [sTable_Bill, 'CH'+nL_ID, FieldByName('L_ZhiKa').AsString,
             FieldByName('L_CusID').AsString,FieldByName('L_CusName').AsString,FieldByName('L_CusPY').AsString,
@@ -185,15 +185,15 @@ begin
             FDM.SQLServerNow,FieldByName('L_LadeMan').AsString,FieldByName('L_OutFact').AsString,
             FieldByName('L_OutMan').AsString,FieldByName('L_Man').AsString,FDM.SQLServerNow,
             '冲红记录', FieldByName('L_KDValue').AsFloat,FieldByName('L_YFPrice').AsFloat,
-            FieldByName('L_Carrier').AsString
+            FieldByName('L_Carrier').AsString,'S'
             ]);
     FDM.ExecuteSQL(nStr);
     //新增调价调量后的记录
     nStr := ' insert Into %s(L_ID,L_ZhiKa,L_CusID,L_CusName,L_CusPY,L_SaleID,L_SaleMan,L_StockNo,L_StockName,L_Value,L_Price,L_ZKMoney, '
       +' L_Truck,L_Status,L_NextStatus,L_InTime,L_InMan,L_PValue,L_PDate,L_PMan,L_MValue,L_MDate,L_MMan,L_LadeTime, '
-      +' L_LadeMan,L_OutFact,L_OutMan,L_Man,L_Date,L_Memo,L_KDValue,L_YFPrice,L_Carrier) values '
+      +' L_LadeMan,L_OutFact,L_OutMan,L_Man,L_Date,L_Memo,L_KDValue,L_YFPrice,L_Carrier,L_Type) values '
       +' (''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',%f, %f,''%s'',''%s'',''%s'',''%s'',%s, '
-      +'  ''%s'',%f,%s,''%s'',%f,%s,''%s'',%s,''%s'',''%s'',''%s'',''%s'',%s,''%s'',%f,%f,''%s'')';
+      +'  ''%s'',%f,%s,''%s'',%f,%s,''%s'',%s,''%s'',''%s'',''%s'',''%s'',%s,''%s'',%f,%f,''%s'',''%s'')';
 
     nStr := Format(nStr, [sTable_Bill, 'TZ'+nL_ID, FieldByName('L_ZhiKa').AsString,
             FieldByName('L_CusID').AsString,FieldByName('L_CusName').AsString,FieldByName('L_CusPY').AsString,
@@ -206,7 +206,7 @@ begin
             FDM.SQLServerNow,FieldByName('L_LadeMan').AsString,FieldByName('L_OutFact').AsString,
             FieldByName('L_OutMan').AsString,FieldByName('L_Man').AsString,FDM.SQLServerNow,
             '调价/调量记录', FieldByName('L_KDValue').AsFloat,StrToFloat(Trim(EditNewYFPrice.Text)),
-            FieldByName('L_Carrier').AsString]);
+            FieldByName('L_Carrier').AsString,'S']);
     FDM.ExecuteSQL(nStr);
 
     nStr := ' update %s set L_Memo=''%s'' where L_ID = ''%s'' ';
@@ -214,50 +214,6 @@ begin
 
     FDM.ExecuteSQL(nStr);
   end;
-//  end
-//  else
-//  begin
-//    if (StrToFloatDef(Trim(EditNewPrice.Text),0) = StrToFloatDef(Trim(EditPrice.Text),0)) then
-//    begin
-//      nNewPrice := StrToFloatDef(Trim(EditNewPrice.Text),0);
-//      nNewValue := StrToFloatDef(Trim(EditNewValue.Text),0) - StrToFloatDef(Trim(EditValue.Text),0);
-//    end
-//    else if (StrToFloatDef(Trim(EditNewValue.Text),0) = StrToFloatDef(Trim(EditValue.Text),0)) then
-//    begin
-//      nNewPrice :=  StrToFloatDef(Trim(EditNewPrice.Text),0) -StrToFloatDef(Trim(EditPrice.Text),0);
-//      nNewValue :=  StrToFloatDef(Trim(EditNewValue.Text),0);
-//    end;
-//    nSQL := 'Select * From %s Where L_ID=''%s'' ';
-//    nSQL := Format(nSQL, [sTable_Bill, nL_ID]);
-//    with FDM.QueryTemp(nSQL) do
-//    if (RecordCount > 0) then
-//    begin
-//      //新增调价调量差异记录
-//      nStr := ' insert Into %s(L_ID,L_ZhiKa,L_CusID,L_CusName,L_CusPY,L_SaleID,L_SaleMan,L_StockNo,L_StockName,L_Value,L_Price,L_ZKMoney, '
-//        +' L_Truck,L_Status,L_NextStatus,L_InTime,L_InMan,L_PValue,L_PDate,L_PMan,L_MValue,L_MDate,L_MMan,L_LadeTime, '
-//        +' L_LadeMan,L_OutFact,L_OutMan,L_Man,L_Date,L_Memo,L_KDValue) values '
-//        +' (''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',%f, %f,''%s'',''%s'',''%s'',''%s'',%s, '
-//        +'  ''%s'',%f,%s,''%s'',%f,%s,''%s'',%s,''%s'',''%s'',''%s'',''%s'',%s,''%s'',%f)';
-//
-//      nStr := Format(nStr, [sTable_Bill, 'TZ'+nL_ID, FieldByName('L_ZhiKa').AsString,
-//              FieldByName('L_CusID').AsString,FieldByName('L_CusName').AsString,FieldByName('L_CusPY').AsString,
-//              FieldByName('L_SaleID').AsString,FieldByName('L_SaleMan').AsString,FieldByName('L_StockNo').AsString,
-//              FieldByName('L_StockName').AsString,nNewValue,nNewPrice,
-//              FieldByName('L_ZKMoney').AsString,FieldByName('L_Truck').AsString,FieldByName('L_Status').AsString,
-//              FieldByName('L_NextStatus').AsString,FDM.SQLServerNow,FieldByName('L_InMan').AsString,
-//              FieldByName('L_PValue').AsFloat,FDM.SQLServerNow,FieldByName('L_PMan').AsString,
-//              FieldByName('L_MValue').AsFloat,FDM.SQLServerNow,FieldByName('L_MMan').AsString,
-//              FDM.SQLServerNow,FieldByName('L_LadeMan').AsString,FieldByName('L_OutFact').AsString,
-//              FieldByName('L_OutMan').AsString,FieldByName('L_Man').AsString,FDM.SQLServerNow,
-//              '调价/调量记录', FieldByName('L_KDValue').AsFloat]);
-//      FDM.ExecuteSQL(nStr);
-//
-//      nStr := ' update %s set L_Memo=''%s'' where L_ID = ''%s'' ';
-//      nStr := Format(nStr, [sTable_Bill, '已调价/调量', nL_ID]);
-//
-//      FDM.ExecuteSQL(nStr);
-//    end;
-//  end;
   //调价/调量后校正资金
   CheckAllCusMoney;
 

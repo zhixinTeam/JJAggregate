@@ -15,8 +15,7 @@ uses
   cxGridCustomTableView, cxGridTableView, cxGridDBTableView, cxGrid,
   ComCtrls, ToolWin, cxTextEdit, cxMaskEdit, cxButtonEdit, Menus,
   UBitmapPanel, cxSplitter, cxLookAndFeels, cxLookAndFeelPainters,
-  cxCheckBox, dxSkinsCore, dxSkinsDefaultPainters, dxSkinscxPCPainter,
-  dxSkinsdxLCPainter, cxGridCustomPopupMenu, cxGridPopupMenu;
+  cxCheckBox, cxGridCustomPopupMenu, cxGridPopupMenu;
 
 type
   TfFrameBill = class(TfFrameNormal)
@@ -174,8 +173,6 @@ begin
   if CheckDelete.Checked then
        Result := MacroValue(Result, [MI('$Bill', sTable_BillBak)])
   else Result := MacroValue(Result, [MI('$Bill', sTable_Bill)]);
-
-  Result:= Result + ' Order By R_ID Desc ';
 end;
 
 procedure TfFrameBill.AfterInitFormData;
@@ -272,10 +269,6 @@ begin
   begin
     ShowMsg('请选择要删除的记录', sHint); Exit;
   end;
-  
-  nStr := '确定要删除编号为[ %s ]的单据吗?';
-  nStr := Format(nStr, [SQLQuery.FieldByName('L_ID').AsString]);
-  if not QueryDlg(nStr, sAsk) then Exit;
 
   with nP do
   begin
@@ -543,9 +536,9 @@ begin
 
         nStr := ' insert Into %s(L_ID,L_ZhiKa,L_CusID,L_CusName,L_CusPY,L_SaleID,L_SaleMan,L_StockNo,L_StockName,L_Value,L_Price,L_ZKMoney, '
           +' L_Truck,L_Status,L_NextStatus,L_InTime,L_InMan,L_PValue,L_PDate,L_PMan,L_MValue,L_MDate,L_MMan,L_LadeTime, '
-          +' L_LadeMan,L_OutFact,L_OutMan,L_Man,L_Date,L_Memo,L_KDValue,L_YFPrice,L_Carrier) values '
+          +' L_LadeMan,L_OutFact,L_OutMan,L_Man,L_Date,L_Memo,L_KDValue,L_YFPrice,L_Carrier,L_Type) values '
           +' (''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',''%s'',%f,%f,''%s'',''%s'',''%s'',''%s'',%s, '
-          +'  ''%s'',%f,%s,''%s'',%f,%s,''%s'',%s,''%s'',%s,''%s'',''%s'',%s,''%s'',%f,%f,''%s'')';
+          +'  ''%s'',%f,%s,''%s'',%f,%s,''%s'',%s,''%s'',%s,''%s'',''%s'',%s,''%s'',%f,%f,''%s'',''%s'')';
 
         nStr := Format(nStr, [sTable_Bill, 'CH'+nLID, SQLQuery.FieldByName('L_ZhiKa').AsString,
                 SQLQuery.FieldByName('L_CusID').AsString,SQLQuery.FieldByName('L_CusName').AsString,SQLQuery.FieldByName('L_CusPY').AsString,
@@ -558,21 +551,22 @@ begin
                 FDM.SQLServerNow,SQLQuery.FieldByName('L_LadeMan').AsString,FDM.SQLServerNow,
                 SQLQuery.FieldByName('L_OutMan').AsString,SQLQuery.FieldByName('L_Man').AsString,FDM.SQLServerNow,
                 '冲红记录', SQLQuery.FieldByName('L_KDValue').AsFloat,SQLQuery.FieldByName('L_YFPrice').AsFloat,
-                SQLQuery.FieldByName('L_Carrier').AsString]);
+                SQLQuery.FieldByName('L_Carrier').AsString,'S']);
         FDM.ExecuteSQL(nStr);
 
         nStr := ' update %s set L_Memo=''%s'' where L_ID = ''%s'' ';
         nStr := Format(nStr, [sTable_Bill, '已冲红', nLID]);
 
         FDM.ExecuteSQL(nStr);
-      end;
     end;
-    if cxView1.DataController.GetSelectedCount > 0 then
-    begin
-        //冲红后校正资金
-        CheckAllCusMoney;
-        InitFormData(FWhere);
-        ShowMsg('提货单冲红成功！', sHint);
+
+  end;
+  if cxView1.DataController.GetSelectedCount > 0 then
+  begin
+      //冲红后校正资金
+      CheckAllCusMoney;
+      InitFormData(FWhere);
+      ShowMsg('提货单冲红成功！', sHint);
     end;
   end;
 end;
@@ -609,6 +603,7 @@ begin
     begin
       InitFormData(FWhere);
     end;
+
   finally
     nList.Free;
   end;
@@ -680,7 +675,6 @@ begin
 //  {$ENDIF}
 
 end;
-
 initialization
   gControlManager.RegCtrl(TfFrameBill, TfFrameBill.FrameID);
 end.
