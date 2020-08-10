@@ -12,7 +12,7 @@ uses
   UBusinessWorker, UBusinessConst, UBusinessPacker, UMgrQueue, UFormCtrl,
   UMgrHardHelper, U02NReader, UMgrERelay, UMgrRemotePrint, UMgrTruckProbe,
   UMgrRFID102, UMgrTTCEM100, UMgrBasisWeight, UMgrPoundTunnels, UMgrBXFontCard,
-  {$IFDEF UseERelayPLC} UMgrERelayPLC, {$ENDIF}
+  {$IFDEF UseERelayPLC} UMgrERelayPLC, {$ENDIF} UMgrSendCardNo,
   UMgrRemoteSnap,{$IFDEF HKVDVR}UMgrCamera, {$ENDIF} Graphics, UMITConst, UMgrVoiceNet;
 
 procedure WhenReaderCardArrived(const nReader: THHReaderItem);
@@ -1140,6 +1140,12 @@ begin
     WriteNearReaderLog(nStr);
 
     TruckStartFHSan(nPTruck, nTunnel);
+
+    {$IFDEF FixLoad}
+    WriteNearReaderLog('启动定置装车::'+nTunnel+'@'+nCard);
+    //发送卡号和通道号到定置装车服务器
+    gSendCardNo.SendCardNo(nTunnel+'@'+nCard);
+    {$ENDIF}
     Exit;
   end;
 
@@ -1154,6 +1160,11 @@ begin
 
   TruckStartFHSan(nPTruck, nTunnel);
   //执行放灰
+  {$IFDEF FixLoad}
+  WriteNearReaderLog('启动定置装车::'+nTunnel+'@'+nCard);
+  //发送卡号和通道号到定置装车服务器
+  gSendCardNo.SendCardNo(nTunnel+'@'+nCard);
+  {$ENDIF}
 end;
 
 //Date: 2019-03-12
@@ -1460,15 +1471,34 @@ end;
 //Desc: 对nHost.nCard超时卡作出动作
 procedure WhenReaderCardOut(const nCard: string; const nHost: PReaderHost);
 begin
-  {$IFDEF DEBUG}
   WriteHardHelperLog('WhenReaderCardOut退出.');
+
+  {$IFDEF FixLoad}
+  WriteHardHelperLog('停止定置装车::'+nHost.FTunnel+'@Close');
+  //发送卡号和通道号到定置装车服务器
+  gSendCardNo.SendCardNo(nHost.FTunnel+'@Close');
   {$ENDIF}
 
+  {$IFDEF 02NReaderCloseERela}
+  WriteHardHelperLog('关闭 '+nHost.FTunnel+' 继电器');
+  Sleep(100);
+                                                                        
+  gERelayManager.LineClose(nHost.FTunnel);
+  Sleep(100);
+
+  if nHost.FETimeOut then
+       gERelayManager.ShowTxt(nHost.FTunnel, '电子标签超出范围')
+  else gERelayManager.ShowTxt(nHost.FTunnel, nHost.FLEDText);
+  {$ENDIF}
+  
   {$IFDEF UseERelayPLC}
-  if nHost.FOptions.Values['TruckProber'] = '' then
+  if (Assigned(nHost.FOptions)) then
   begin
-    gERelayManagerPLC.CloseTunnel(nHost.FTunnel+'_N');
-    WriteNearReaderLog(nHost.FTunnel+'关闭放灰');
+    if nHost.FOptions.Values['TruckProber'] = '' then
+    begin
+      gERelayManagerPLC.CloseTunnel(nHost.FTunnel+'_N');
+      WriteNearReaderLog(nHost.FTunnel+'关闭放灰');
+    end;
   end
   else
   begin
@@ -1483,7 +1513,6 @@ begin
   {$ENDIF}
 
   Sleep(100);
-
   if nHost.FETimeOut then
   begin
     {$IFDEF UseERelayPLC}
@@ -1506,6 +1535,7 @@ begin
       gERelayManager.ShowTxt(nHost.FTunnel, nHost.FLEDText);
     {$ENDIF}
   end;
+
   Sleep(100);
 end;
 

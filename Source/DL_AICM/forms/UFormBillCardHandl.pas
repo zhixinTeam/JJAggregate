@@ -56,8 +56,11 @@ type
     procedure LoadTruckPre;
     function  VerifyCtrl(Sender: TObject; var nHint: string): Boolean;
     procedure Writelog(nMsg: string);
+    function IsCanCreateBill(nTruck : string; var nStdMI:Double): Boolean;
+    //出厂后N分钟后方可开单
     function  IsCustomerHaveTruckNo(nTruck, nCid: string): Boolean;
     //检查车牌、客户匹配关系
+
     function IsHasOPenLine(nMID: string): Boolean;
     function IsTruckNoValid(nTruck, nCid: string): Boolean;
     function CanUseCard(const nCardNo: string): Boolean;
@@ -221,7 +224,8 @@ var nStr : string;
 begin
   SetLength(gStockList, 0);
   cbb_Stocks.Properties.Items.Clear;
-  nStr := 'Select * From %s Where D_ZID=''%s''';
+  nStr := 'Select * From %s Left Join Sys_Dict On D_ParamB=D_StockNo Where D_ZID=''%s'' And D_ParamB<>'''' '+
+          'Order By D_Index ';
   nStr := Format(nStr, [sTable_ZhiKaDtl, nZkId]);
 
   with FDM.QueryTemp(nStr) do
@@ -334,6 +338,30 @@ begin
     Result:= (RecordCount>0)
 end;
 
+function TFormBillCardHandl.IsCanCreateBill(nTruck : string; var nStdMI:Double): Boolean;
+var nStr : string;
+begin
+  Result:= True;
+  //*************
+  nStr := 'Select * From %s Where D_Name=''OutTimeDiffStd'' ';
+  nStr := Format(nStr, [sTable_SysDict]);
+  with FDM.QuerySQLChk(nStr) do
+  if (RecordCount>0) then
+  begin
+    nStdMI:= (FieldByName('D_Value').AsFloat);
+  end
+  else nStdMI:= 10;
+
+  nStr := 'Select DATEDIFF(MI, L_OutFact, GETDATE()) OutMi From %s Where L_Truck=''%s'' Order By L_OutFact Desc ';
+  nStr := Format(nStr, [sTable_Bill, nTruck]);
+
+  with FDM.QuerySQLChk(nStr) do
+  if (RecordCount>0) then
+  begin
+    Result:= (FieldByName('OutMi').AsFloat > nStdMI);
+  end;
+end;
+
 function TFormBillCardHandl.IsTruckNoValid(nTruck, nCid: string): Boolean;
 var nStr : string;
 begin
@@ -387,12 +415,22 @@ end;
 
 procedure TFormBillCardHandl.btnOKClick(Sender: TObject);
 VAR nIdx:Integer;
+    nMi :Double;
 begin
   FAutoClose := gSysParam.FAutoClose_Second;
   BtnOK.Enabled := False;
   try
     gBill.FValue:= StrToFloatDef(Trim(edt_Value.Text), 0);
     gBill.FTruck:= Trim(cbb_TruckNo.Text);
+
+    {$IFDEF OutTimeCreateBillChk}
+    nMi:= 10;
+    if Not IsCanCreateBill(gBill.FTruck, nMi) then
+    begin
+      ShowMsg(Format('%s 暂不能开单、出厂后 %g 分钟内禁止开单',[gBill.FTruck, nMi]), sHint);
+      Exit;
+    end;
+    {$ENDIF}
 
     if Not IsHasOPenLine(gStockList[cbb_Stocks.ItemIndex].FStockNO) then
     begin

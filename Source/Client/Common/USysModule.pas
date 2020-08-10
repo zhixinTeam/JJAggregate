@@ -25,7 +25,7 @@ uses
   UFrameCusInOutMoney, UFrameZhiKa, UFormZhiKa, UFrameBill, UFormBill, UFormBillReturns,
 
   UFramePoundAutoItem, UFramePoundManualItem,
-
+  UFormBillPriceModify,
   UFormGetZhiKa, UFormReadCard, UFormTruckEmpty, UFormZTLine,
   UFormGetTruck, UFrameQueryDiapatch, UFrameTruckQuery, UFrameBillCard,
   UFormCard, UFormTruckIn, UFormTruckOut, UFormLadingDai, UFormLadingSan,

@@ -9,7 +9,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, UFormNormal, cxGraphics, cxContainer, cxEdit, cxTextEdit,
+  Dialogs, UFormNormal, cxGraphics, cxContainer, cxEdit, cxTextEdit, DateUtils,
   cxMaskEdit, cxDropDownEdit, dxLayoutControl, StdCtrls, cxControls,
   ComCtrls, cxListView, cxButtonEdit, cxLabel, cxLookAndFeels,
   cxLookAndFeelPainters, dxSkinsCore, dxSkinsDefaultPainters,
@@ -144,6 +144,7 @@ begin
     EditSMan.Properties.Items.Insert(0, '');
   end;
 
+  InValidTime.Date:= IncYear(Now, 80);
   if nID <> '' then
   begin
     EditCus.Text := nID;

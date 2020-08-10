@@ -303,7 +303,7 @@ begin
       gPoundTunnelManager.ClosePort(FPoundTunnel.FID);
       //关闭表头端口
 
-      Timer_ReadCard.Enabled := True;          tmr_ShowDefault.Enabled:= True;
+      Timer_ReadCard.Enabled := True;          //tmr_ShowDefault.Enabled:= True;
       //启动读卡
     end;
   end;
@@ -718,6 +718,7 @@ begin
     end;
 
     if Not ChkPoundStatus then Exit;
+    WriteSysLog('地磅状态检查通过');
     //检查地磅状态 如不为空磅，则喊话 退出称重
 
     FCardTmp := nCard;
@@ -997,8 +998,8 @@ begin
       FOperator := gSysParam.FUserID;
     end;
 
-    WriteSysLog(Format('自动称重 单号：%s 品种：%s 毛重：%.2f 皮重：%.2f ', [
-              FBillItems[0].FID, FUIData.FStockName, FMData.FValue, FPData.FValue]));
+    WriteSysLog(Format('自动称重 单号：%s %s 品种：%s 毛重：%.2f 皮重：%.2f ', [
+              FBillItems[0].FID, FBillItems[0].FTruck, FUIData.FStockName, FMData.FValue, FPData.FValue]));
 
     FPoundID := sFlag_Yes;
     //标记该项有称重数据
@@ -1025,7 +1026,7 @@ begin
     end;
   end;
 
-                              WriteSysLog(Format('自动称重 单号：%s 品种：%s  毛重：%.2f  皮重：%.2f', [FBillItems[0].FID, FUIData.FStockName,
+                              WriteSysLog(Format('自动称重 单号：%s %s 品种：%s  毛重：%.2f  皮重：%.2f', [FBillItems[0].FID, FBillItems[0].FTruck, FUIData.FStockName,
                                                                         FUIData.FMData.FValue, FUIData.FPData.FValue]));
 
   nNextStatus := FBillItems[0].FNextStatus;
@@ -1090,12 +1091,20 @@ begin
       FEmptyPoundInit := GetTickCount;
     nInt := GetTickCount - FEmptyPoundInit;
 
+    if ( (FEmptyPoundIdleLong * 1000)-nInt<= 30*1000 ) then
+    begin
+      nStr:= Format('上磅即将超时、%s 请在 30 秒内上磅', [ FUIData.FTruck ]);
+      WriteSysLog(nStr);
+      PlayVoice(nStr);
+    end;
+
     if (nInt > FEmptyPoundIdleLong * 1000) then
     begin
+      WriteSysLog(FUIData.FTruck + '刷卡后司机无响应,退出称重.');
       FIsWeighting :=False;
       Timer_SaveFail.Enabled := True;
 
-      WriteSysLog('刷卡后司机无响应,退出称重.');
+      PlayVoice('系统退出称重、如需上磅请重新刷卡');
       Exit;
     end;
     //上磅时间,延迟重置
@@ -1106,7 +1115,7 @@ begin
       FIsWeighting :=False;
       Timer_SaveFail.Enabled := True;
 
-      WriteSysLog('司机已下磅,退出称重.');
+      WriteSysLog('司机已下磅,退出称重.');                 tmr_ShowDefault.Enabled:= True;
       Exit;
     end;
     //上次保存成功后,空磅超时,认为车辆下磅
@@ -1185,7 +1194,8 @@ begin
     else nStr := GetTruckNO(FUIData.FTruck) + '重量:' + GetValue(nValue);
 
     LEDDisplay(nStr);
-    TimerDelay.Enabled := True
+    TimerDelay.Enabled := True;
+    tmr_ShowDefault.Enabled:= True;
   end
   else
   begin
@@ -1197,7 +1207,7 @@ begin
       {$ELSE}
       gProberManager.ShowTxt(FPoundTunnel.FID, nStr);
       {$ENDIF}
-      nStr := '数据保存失败,请重新过磅.';
+      nStr := '称重无效,请核对资金情况,请重新过磅.';
       PlayVoice(nStr);
     end;
 

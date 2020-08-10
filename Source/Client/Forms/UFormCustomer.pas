@@ -82,6 +82,9 @@ type
     dxLayoutControl1Item24: TdxLayoutItem;
     EditCarrier: TcxComboBox;
     dxLayoutControl1Item25: TdxLayoutItem;
+    dxLayoutControl1Item26: TdxLayoutItem;
+    Chk_VIP: TcxCheckBox;
+    dxLayoutControl1Group16: TdxLayoutGroup;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure BtnAddClick(Sender: TObject);
@@ -276,6 +279,11 @@ begin
   begin
     Result := True;
     CheckFL.Checked := nData = sFlag_Yes;
+  end
+  else if Sender = Chk_VIP then
+  begin
+    Result := True;
+    Chk_VIP.Checked := nData = sFlag_Yes;
   end;
 end;
 
@@ -389,6 +397,12 @@ begin
   begin
     if CheckFL.Checked then
         nData  := sFlag_Yes
+    else nData := sFlag_No;
+  end
+  else if Sender = Chk_VIP then
+  begin
+    if Chk_VIP.Checked then
+         nData := sFlag_Yes
     else nData := sFlag_No;
   end;
 end;

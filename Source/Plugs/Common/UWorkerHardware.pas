@@ -815,6 +815,7 @@ begin
       //next truck
 
       nZName:= StringReplace(nZName, '#', '库', [rfReplaceAll]);
+      nZName:= StringReplace(nZName, '道', '', [rfReplaceAll]);
       nStr := '%s 请过皮重、并到 ' + nZName + '道 等待装车';
       nStr := Format(nStr, [nNextPTruck.FTruck]);
     end

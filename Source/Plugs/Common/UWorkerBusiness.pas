@@ -843,7 +843,7 @@ begin
 
   nStr := 'Select W_NO,W_Name,R_ID,R_Type,R_Area,R_Customer,R_StockNo,' +
           'R_Price From %s,%s Where W_Valid=''%s'' And W_NO=R_Week ' +
-          'Order By R_StockNo ASC,R_Price DESC';
+          'Order By R_StockNo ASC,W_Begin DESC,R_Price DESC';
   nStr := Format(nStr, [sTable_PriceWeek, sTable_PriceRule, sFlag_Yes]);
   //价格倒序:同品种高价优先.
 

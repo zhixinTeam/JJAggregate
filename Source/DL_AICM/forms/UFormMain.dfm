@@ -11530,26 +11530,34 @@ object fFormMain: TfFormMain
     Width = 47
     AnchorY = 27
   end
-  object cxlbl_Tips: TcxLabel
-    Left = 352
-    Top = 306
-    Anchors = [akTop, akRight]
-    AutoSize = False
-    ParentFont = False
-    Style.Font.Charset = DEFAULT_CHARSET
-    Style.Font.Color = 2474495
-    Style.Font.Height = -48
-    Style.Font.Name = #23435#20307
-    Style.Font.Style = [fsBold]
-    Style.IsFontAssigned = True
-    Properties.Alignment.Horz = taLeftJustify
-    Properties.Alignment.Vert = taVCenter
-    Transparent = True
-    OnClick = LabelDecClick
-    OnDblClick = LabelTruckDblClick
-    Height = 59
-    Width = 401
-    AnchorY = 336
+  object Pnl_1: TPanel
+    Left = 355
+    Top = 241
+    Width = 400
+    Height = 68
+    TabOrder = 9
+    Visible = False
+    object cxlbl_Tips: TcxLabel
+      Left = 1
+      Top = 1
+      Align = alClient
+      AutoSize = False
+      ParentFont = False
+      Style.Font.Charset = DEFAULT_CHARSET
+      Style.Font.Color = 2474495
+      Style.Font.Height = -48
+      Style.Font.Name = #23435#20307
+      Style.Font.Style = [fsBold]
+      Style.IsFontAssigned = True
+      Properties.Alignment.Horz = taLeftJustify
+      Properties.Alignment.Vert = taVCenter
+      Transparent = True
+      OnClick = LabelDecClick
+      OnDblClick = LabelTruckDblClick
+      Height = 66
+      Width = 398
+      AnchorY = 34
+    end
   end
   object ComPort1: TComPort
     BaudRate = br9600

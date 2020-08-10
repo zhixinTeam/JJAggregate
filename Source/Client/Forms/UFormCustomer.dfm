@@ -1,10 +1,10 @@
 inherited fFormCustomer: TfFormCustomer
-  Left = 382
-  Top = 119
+  Left = 824
+  Top = 192
   BorderIcons = [biSystemMenu, biMinimize]
   BorderStyle = bsSingle
-  ClientHeight = 530
-  ClientWidth = 480
+  ClientHeight = 538
+  ClientWidth = 499
   OldCreateOrder = True
   OnClose = FormClose
   OnCreate = FormCreate
@@ -15,8 +15,8 @@ inherited fFormCustomer: TfFormCustomer
   object dxLayoutControl1: TdxLayoutControl
     Left = 0
     Top = 0
-    Width = 480
-    Height = 530
+    Width = 499
+    Height = 538
     Align = alClient
     TabOrder = 0
     TabStop = False
@@ -42,19 +42,19 @@ inherited fFormCustomer: TfFormCustomer
     end
     object EditMemo: TcxMemo
       Left = 81
-      Top = 286
+      Top = 287
       Hint = 'T.C_Memo'
       ParentFont = False
       Properties.MaxLength = 50
       Properties.ScrollBars = ssVertical
       Style.Edges = [bBottom]
-      TabOrder = 15
+      TabOrder = 16
       Height = 45
       Width = 385
     end
     object InfoList1: TcxMCListBox
       Left = 23
-      Top = 418
+      Top = 419
       Width = 438
       Height = 131
       HeaderSections = <
@@ -70,62 +70,62 @@ inherited fFormCustomer: TfFormCustomer
       ParentFont = False
       Style.BorderStyle = cbsOffice11
       Style.Edges = [bLeft, bTop, bRight, bBottom]
-      TabOrder = 20
+      TabOrder = 21
     end
     object InfoItems: TcxComboBox
       Left = 81
-      Top = 368
+      Top = 369
       ParentFont = False
       Properties.DropDownRows = 15
       Properties.ImmediateDropDown = False
       Properties.IncrementalSearch = False
       Properties.ItemHeight = 20
       Properties.MaxLength = 30
-      TabOrder = 16
+      TabOrder = 17
       Width = 100
     end
     object EditInfo: TcxTextEdit
       Left = 81
-      Top = 393
+      Top = 394
       ParentFont = False
       Properties.MaxLength = 50
-      TabOrder = 18
+      TabOrder = 19
       Width = 120
     end
     object BtnAdd: TButton
-      Left = 426
-      Top = 368
+      Left = 430
+      Top = 369
       Width = 46
       Height = 18
       Caption = #28155#21152
-      TabOrder = 17
+      TabOrder = 18
       OnClick = BtnAddClick
     end
     object BtnDel: TButton
-      Left = 427
-      Top = 393
+      Left = 431
+      Top = 394
       Width = 45
       Height = 17
       Caption = #21024#38500
-      TabOrder = 19
+      TabOrder = 20
       OnClick = BtnDelClick
     end
     object BtnOK: TButton
-      Left = 339
-      Top = 480
+      Left = 343
+      Top = 505
       Width = 70
       Height = 22
       Caption = #20445#23384
-      TabOrder = 23
+      TabOrder = 24
       OnClick = BtnOKClick
     end
     object BtnExit: TButton
-      Left = 414
-      Top = 480
+      Left = 418
+      Top = 505
       Width = 70
       Height = 22
       Caption = #21462#28040
-      TabOrder = 24
+      TabOrder = 25
       OnClick = BtnExitClick
     end
     object cxTextEdit1: TcxTextEdit
@@ -232,11 +232,11 @@ inherited fFormCustomer: TfFormCustomer
     end
     object Check1: TcxCheckBox
       Left = 11
-      Top = 480
+      Top = 505
       Hint = 'T.C_XuNi'
       Caption = #38750#27491#24335#23458#25143': '#27491#24120#26597#35810#26102#19981#20104#26174#31034'.'
       ParentFont = False
-      TabOrder = 21
+      TabOrder = 22
       Transparent = True
       Width = 218
     end
@@ -249,7 +249,7 @@ inherited fFormCustomer: TfFormCustomer
       Properties.DropDownRows = 20
       Properties.ItemHeight = 20
       TabOrder = 13
-      Width = 121
+      Width = 243
     end
     object EditArea: TcxButtonEdit
       Left = 280
@@ -270,19 +270,32 @@ inherited fFormCustomer: TfFormCustomer
     end
     object CheckFL: TcxCheckBox
       Left = 234
-      Top = 480
+      Top = 505
       Hint = 'T.C_FL'
       Caption = #36820#21033#23458#25143
+      ParentColor = False
       ParentFont = False
-      TabOrder = 22
+      Style.Color = clWhite
+      TabOrder = 23
       Width = 100
     end
     object EditCarrier: TcxComboBox
       Left = 81
       Top = 261
       Hint = 'T.C_Carrier'
+      ParentFont = False
       TabOrder = 14
-      Width = 121
+      Width = 330
+    end
+    object Chk_VIP: TcxCheckBox
+      Left = 416
+      Top = 261
+      Hint = 'T.C_VX'
+      Caption = 'VIP'
+      ParentFont = False
+      TabOrder = 15
+      Transparent = True
+      Width = 60
     end
     object dxLayoutControl1Group_Root: TdxLayoutGroup
       ShowCaption = False
@@ -417,14 +430,26 @@ inherited fFormCustomer: TfFormCustomer
           end
           object dxLayoutControl1Item22: TdxLayoutItem
             Caption = #24494#20449#36134#21495':'
+            Visible = False
             Control = EditWX
             ControlOptions.ShowBorder = False
           end
         end
-        object dxLayoutControl1Item25: TdxLayoutItem
-          Caption = #25215' '#36816' '#21830':'
-          Control = EditCarrier
-          ControlOptions.ShowBorder = False
+        object dxLayoutControl1Group16: TdxLayoutGroup
+          ShowCaption = False
+          Hidden = True
+          LayoutDirection = ldHorizontal
+          ShowBorder = False
+          object dxLayoutControl1Item25: TdxLayoutItem
+            Caption = #25215' '#36816' '#21830':'
+            Control = EditCarrier
+            ControlOptions.ShowBorder = False
+          end
+          object dxLayoutControl1Item26: TdxLayoutItem
+            ShowCaption = False
+            Control = Chk_VIP
+            ControlOptions.ShowBorder = False
+          end
         end
         object dxLayoutControl1Item4: TdxLayoutItem
           Caption = #22791#27880#20449#24687':'

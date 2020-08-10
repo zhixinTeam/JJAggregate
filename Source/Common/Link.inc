@@ -277,4 +277,12 @@
   //收款可指定日期
   {$DEFINE LineWaitingCtl} 
   //单车道待装车辆控制，设定后，过皮时根据设定控制可过皮待装车辆
+  {$DEFINE EnableABDB} 
+  //AB库支持
+  {$DEFINE OutTimeCreateBillChk} 
+  //出厂N分钟内禁止开单
+  {$DEFINE FixLoad} 
+  //出厂N分钟内禁止开单
+  {$DEFINE 02NReaderCloseERela} 
+  //近距离读卡器拔卡关闭继电器
 {$ENDIF}

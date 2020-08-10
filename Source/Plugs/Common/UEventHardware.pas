@@ -34,7 +34,7 @@ uses
   SysUtils, USysLoger, UHardBusiness, UMgrTruckProbe, UMgrParam,
   UMgrQueue, UMgrLEDCard, UMgrHardHelper, UMgrRemotePrint, U02NReader,
   UMgrERelay, UMgrCodePrinter, UMgrTTCEM100, UMgrRFID102, UMgrVoiceNet,
-  UMgrBasisWeight, UMgrRemoteSnap, USendStatusToDCS, UMgrBXFontCard
+  UMgrBasisWeight, UMgrRemoteSnap, USendStatusToDCS, UMgrBXFontCard, UMgrSendCardNo
   {$IFDEF UseERelayPLC} ,UMgrERelayPLC {$ENDIF};
 
 class function THardwareWorker.ModuleInfo: TPlugModuleInfo;
@@ -146,6 +146,11 @@ begin
     end;
     {$ENDIF}
 
+    {$IFDEF FixLoad}
+    nStr := '转子秤';
+    gSendCardNo.LoadConfig(nCfg + 'PLCController.xml');
+    {$ENDIF}
+
     {$IFDEF UseBXFontLED}
     nStr := '装车道网口小屏';
     if FileExists(nCfg + 'BXFontLED.xml') then
@@ -174,6 +179,10 @@ begin
 
   gHardShareData := WhenBusinessMITSharedDataIn;
   //hard monitor share
+
+  {$IFDEF FixLoad}
+  gSendCardNo := TReaderHelper.Create;
+  {$ENDIF}
 end;
 
 procedure THardwareWorker.BeforeStartServer;
@@ -252,6 +261,12 @@ begin
 
   {$IFDEF UseBXFontLED}
   gBXFontCardManager.StartService;
+  {$ENDIF}
+
+  {$IFDEF FixLoad}
+  if Assigned(gSendCardNo) then
+    gSendCardNo.StartPrinter;
+  //sendcard
   {$ENDIF}
 end;
 
@@ -334,6 +349,12 @@ begin
 
   {$IFDEF UseBXFontLED}
   gBXFontCardManager.StopService;
+  {$ENDIF}
+
+  {$IFDEF FixLoad}
+  if Assigned(gSendCardNo) then
+    gSendCardNo.StopPrinter;
+  //sendcard
   {$ENDIF}
 end;
 

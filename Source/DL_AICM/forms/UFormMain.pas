@@ -31,9 +31,10 @@ type
     LabelBill: TcxLabel;
     imgPrint: TImage;
     imgPurchaseCard: TImage;
-    cxlbl_Tips: TcxLabel;
     tmr1: TTimer;
     LabelCusName: TcxLabel;
+    Pnl_1: TPanel;
+    cxlbl_Tips: TcxLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure ComPort1RxChar(Sender: TObject; Count: Integer);
@@ -310,6 +311,7 @@ begin
     nSql := Format(nSql,[sTable_Card,nCardno]);
     with FDM.QuerySQL(nSql) do
     begin
+      Pnl_1.Visible:= True;
       if RecordCount<=0 then
       begin
         cxlbl_Tips.Caption := '´Å¿¨ºÅÎÞÐ§';
@@ -349,7 +351,7 @@ begin
 
   if (nCard = FLastCard) and (GetTickCount - FLastQuery < 8 * 1000) then
   begin
-    cxlbl_Tips.Caption := 'Çë²»ÒªÆµ·±¶Á¿¨';
+    cxlbl_Tips.Caption := 'ÇëÎðÆµ·±¶Á¿¨';
     tmr1.Enabled:= True;
     Exit;
   end;
@@ -867,6 +869,7 @@ end;
 procedure TfFormMain.tmr1Timer(Sender: TObject);
 begin
   cxlbl_Tips.Caption:= '';
+  Pnl_1.Visible:= False;
   tmr1.Enabled:= False;
 end;
 

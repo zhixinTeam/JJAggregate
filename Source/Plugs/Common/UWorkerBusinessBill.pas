@@ -67,6 +67,8 @@ type
     //获取岗位交货单
     function SavePostBillItems(var nData: string): Boolean;
     //保存岗位交货单
+    function GetBillSourcMValue(nLID: string): Double;
+    //获取退货来源订单出厂毛重
 
     function ReturnsBill(var nData: string): Boolean;
     //交货单退货
@@ -841,7 +843,7 @@ begin
     nStr := 'Insert into $ZTTrucks (T_Truck,T_StockNo,T_Stock,T_Type,T_InTime,T_Bill,T_Valid,T_Value,T_VIP,T_HKBills)'+
                             'Select L_Truck,L_StockNo,L_StockName,L_Type,$Now,''$LID'',''Y'',L_Value,''C'',''$LID.'' ' +
                             'From $BI Where L_ID=''$ID''   ';
-    nStr := MacroValue(nStr, [ MI('$ZTTrucks', sTable_ZTTrucks), MI('$LID', nOut.FData),
+    nStr := MacroValue(nStr, [ MI('$ZTTrucks', sTable_ZTTrucks), MI('$LID', nOut.FData), MI('$BI', sTable_Bill),
                                MI('$Now', sField_SQLServer_Now), MI('$RetReson', FListA.Values['Reson']),
                                MI('$ID', FListA.Values['Bill'] )]);
 
@@ -878,6 +880,7 @@ begin
       Exit;
     end;
 
+    {$IFNDEF JJGL3}
     {$IFNDEF TruckInNow}
     if Fields[1].AsString <> '' then
     begin
@@ -885,6 +888,7 @@ begin
       nData := Format(nData, [FIn.FData]);
       Exit;
     end;
+    {$ENDIF}
     {$ENDIF}
 
     nTruck := Fields[0].AsString;
@@ -1511,12 +1515,41 @@ begin
   Result := True;
 end;
 
+//Parm: L_ID
+//Desc: 获取退单来源订单出厂毛重
+function TWorkerBusinessBills.GetBillSourcMValue(nLID: string): Double;
+var nStr, nSourceBill : string;
+    nPreM: Double;
+begin
+  Result:= 0;
+
+  nStr := 'Select * From %s Where L_ID=''%s''';
+  nStr := Format(nStr, [sTable_Bill, nLID]);
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    nSourceBill:= FieldByName('L_RetBillNo').AsString;
+  end;
+
+  if nSourceBill='' then Exit;
+  //如果非退货退出   否则查找来源订单 如出厂时间在30分钟内，则返回毛重
+
+  nStr := 'Select *,DATEDIFF(MI, L_OutFact, GETDATE()) OutMi From %s Where L_ID=''%s''';
+  nStr := Format(nStr, [sTable_Bill, nSourceBill]);
+  with gDBConnManager.WorkerQuery(FDBConn, nStr) do
+  begin
+    if FieldByName('OutMi').AsFloat<30 then
+    begin
+      Result:= FieldByName('L_MValue').AsFloat;
+    end;
+  end;
+end;
+
 //Date: 2014-09-18
 //Parm: 交货单[FIn.FData];岗位[FIn.FExtParam]
 //Desc: 保存指定岗位提交的交货单列表
 function TWorkerBusinessBills.SavePostBillItems(var nData: string): Boolean;
 var nStr,nSQL,nTmp,nFixMoney: string;
-    f,m,nVal,nMVal: Double;
+    f,m,nVal,nMVal,nPreMVaue: Double;
     i,nIdx,nInt: Integer;
     nBills: TLadingBillItems;
     nOut: TWorkerBusinessCommand;
@@ -1524,6 +1557,7 @@ begin
   Result := False;
   AnalyseBillItems(FIn.FData, nBills);
   nInt := Length(nBills);
+  nPreMVaue:= 0;
 
   if nInt < 1 then
   begin
@@ -1644,18 +1678,33 @@ begin
         FNextStatus := sFlag_TruckBFM;
       //现场不发货直接过重
 
-      if FIsReturns then FNextStatus := sFlag_TruckBFM;
-      //退货单直接过重
+      if FIsReturns then
+      begin
+        FNextStatus := sFlag_TruckBFM;
+        //退货单直接过重 (无需库底刷卡)
+
+        nPreMVaue:= GetBillSourcMValue(FID);
+        //如上一车刚出厂在30分钟以内，那此次皮重参考上车毛重（防磅差纠纷）
+      end;
+                              //SF('L_PValue', nBills[nInt].FPData.FValue, sfVal),
 
       nSQL := MakeSQLByStr([
               SF('L_Status', FStatus),
               SF('L_NextStatus', FNextStatus),
-              SF('L_PValue', nBills[nInt].FPData.FValue, sfVal),
+
+              SF_IF([ SF('L_PValue', nPreMVaue, sfVal),
+                      SF('L_PValue', nBills[nInt].FPData.FValue, sfVal) ],
+                      nPreMVaue>0
+                      ),
+
               SF('L_PDate', sField_SQLServer_Now, sfVal),
               SF('L_PMan', FIn.FBase.FFrom.FUser)
               ], sTable_Bill, SF('L_ID', FID), False);
       FListA.Add(nSQL);
 
+      if FIsReturns then WriteLog('退货单：'+FID+' 保存皮重：'+nSQL);
+      //退货单保存皮重
+      
       if not TWorkerBusinessCommander.CallMe(cBC_GetSerialNO,
             FListC.Text, sFlag_Yes, @nOut) then
         raise Exception.Create(nOut.FData);

@@ -84,6 +84,9 @@ const
   cFI_FrameWXAccount    = $0110;                     //微信账户
   cFI_FrameWXSendLog    = $0111;                     //发送日志
 
+  cFI_FormBillPriceModify= $0900;                    //调整已出厂单据价格
+
+
   cFI_FormMemo          = $1000;                     //备注窗口
   cFI_FormBackup        = $1001;                     //数据备份
   cFI_FormRestore       = $1002;                     //数据恢复
@@ -347,6 +350,7 @@ begin
   AddMenuModuleItem('MAIN_B03', cFI_FrameSalesMan);
   AddMenuModuleItem('MAIN_B04', cFI_FramePriceWeek);
   AddMenuModuleItem('MAIN_B05', cFI_FramePriceRule);
+  AddMenuModuleItem('MAIN_B06', cFI_FormBillPriceModify, mtForm);
 
   AddMenuModuleItem('MAIN_C01', cFI_FrameZhiKa);
   AddMenuModuleItem('MAIN_C02', cFI_FramePayment);
