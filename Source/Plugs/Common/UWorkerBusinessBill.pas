@@ -567,7 +567,7 @@ begin
               SF('L_HYDan', FListC.Values['HYDan']),
 
               {$IFDEF UseCarrier}
-              SF('L_YFPrice', FListA.Values['L_YFPric'],sfVal),
+              SF('L_YFPrice', FListA.Values['L_YFPrice'],sfVal),
               SF('L_Carrier', FListA.Values['L_Carrier']),
               {$ENDIF}
               

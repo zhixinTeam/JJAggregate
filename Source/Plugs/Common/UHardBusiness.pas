@@ -1303,8 +1303,11 @@ begin
     {$IFDEF LineVoice}
     MakeGateSound(nStr, nVoiceID, False);
     {$ENDIF}
+    gERelayManagerPLC.CloseTunnel(nTunnel+'_N');
+    WriteNearReaderLog(nTunnel+'刷卡上磅,关闭放灰');
   end else
   begin
+    //666666
     if nPound.FValTunnel > 0 then
          nStr := '请上磅装车'
     else nStr := '请开始装车';
@@ -1780,6 +1783,7 @@ begin
   nDBConn := nil;
   try
     Result := False;
+    
     nStr := 'Select L_Status,L_Value,L_PValue,L_Truck From %s Where L_ID=''%s''';
     nStr := Format(nStr, [sTable_Bill, nTunnel.FBill]);
      
@@ -1815,7 +1819,6 @@ begin
           else
             nPValueWuCha :=  FieldByName('D_Value').AsFloat;
         end;
-
         //判断皮重有效性
         nPvalue := 0;
         nStr := ' Select Top 5 L_PValue from %s  where L_Truck = ''%s'' and L_PValue is not null order by R_ID Desc ';
@@ -1823,7 +1826,10 @@ begin
         with gDBConnManager.WorkerQuery(nDBConn, nStr) do
         begin
           if RecordCount < 1 then
-            nPvalue := nDefaultPValue
+          begin
+            nPvalue := nDefaultPValue;
+            nPValueWuCha := 50;
+          end
           else
           begin
             First;
@@ -1913,25 +1919,29 @@ begin
       FLevel2 := StrToFloatDef(nTunnel.FTunnel.FOptions.Values['Level2'],0);
       if (FLevel1 > 0) and (FLevel2 > FLevel1)  then
       begin
-        if (not nTunnel.FWeightDone) and (not nTunnel.FLevel1)
+        if (not nTunnel.FWeightDone)
           and (nTunnel.FValTunnel >= nTunnel.FWeightMax * FLevel1)
           and (nTunnel.FValTunnel < nTunnel.FWeightMax * FLevel2) then  //模拟量1
         begin
-          {$IFDEF UseERelayPLC}
-          if nTunnel.FTunnel.FOptions.Values['TruckProber'] = '' then
+          nTunnel.FLevel2 := False;
+          if (not nTunnel.FLevel1) then
           begin
-            nTunnel.FLevel1 := True;
-            gERelayManagerPLC.OpenTunnel(nTunnel.FID+'_O01');
-            WriteNearReaderLog(nTunnel.FID+'关一级'+' 当前量：'+FloatToStr(nTunnel.FValTunnel)+'最终量：'+FloatToStr(nTunnel.FWeightMax));
+            {$IFDEF UseERelayPLC}
+            if nTunnel.FTunnel.FOptions.Values['TruckProber'] = '' then
+            begin
+              nTunnel.FLevel1 := True;
+              gERelayManagerPLC.OpenTunnel(nTunnel.FID+'_O01');
+              WriteNearReaderLog(nTunnel.FID+'关一级'+' 当前量：'+FloatToStr(nTunnel.FValTunnel)+'最终量：'+FloatToStr(nTunnel.FWeightMax));
+            end;
+            {$ENDIF}
           end;
-          {$ENDIF}
         end;
       end;
       if (FLevel2 > 0) and (FLevel2 < 1) then
       begin
         if (not nTunnel.FWeightDone) and (not nTunnel.FLevel2)
           and (nTunnel.FValTunnel >= nTunnel.FWeightMax * FLevel2)
-          and (nTunnel.FValTunnel < (nTunnel.FWeightMax - 0.1)) then  //模拟量2
+          and (nTunnel.FValTunnel < (nTunnel.FWeightMax - 0.15)) then  //模拟量2
         begin
           {$IFDEF UseERelayPLC}
           if nTunnel.FTunnel.FOptions.Values['TruckProber'] = '' then
